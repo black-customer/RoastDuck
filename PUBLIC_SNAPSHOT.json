@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "ee7772a8671f79abc41d566714e8b9908a83495b",
-  "createdAt": "2026-09-08T10:58:56.807Z",
+  "sourceCommit": "1555993c234b0f892e444600cfa436ec02003131",
+  "createdAt": "2026-09-08T11:04:38.027Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -486,7 +486,7 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "79b17180e8ba73f9ca44f3891d3689b781ff7b1f9a0c1c2ca6ff62913aaf235b"
+      "sha256": "e9538896e208650eb59cfcad316d539a49a9a1de8e661858ebc8332a5d3c6c0d"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -2078,7 +2078,7 @@
     },
     {
       "path": "src/lib/app-services/expressions.ts",
-      "sha256": "3560899eb17b9f3f62de08ab455df2d10f5f01a5b85e4c8651cdea5113167f38"
+      "sha256": "a9a92892b35aaa8ef553ff0b53ac6961c915a889876866c072e39d1885d800b2"
     },
     {
       "path": "src/lib/app-services/index.ts",
@@ -2726,7 +2726,7 @@
     },
     {
       "path": "tests/integration/light-current-material.integration.test.ts",
-      "sha256": "a5969447c27a3626e5b2b0a023fb5211eadcac2ba54ef0802bdf4749da634ef1"
+      "sha256": "dace14a5f8ff83d2fa4f8d7ff62476dc981df024b7863c5cc2de409018cb597c"
     },
     {
       "path": "tests/integration/light-study-upgrade.integration.test.ts",

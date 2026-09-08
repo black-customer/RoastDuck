@@ -17,7 +17,7 @@ export function createExpressionService(database:DatabasePort,allowMock=false){
     return cards.filter(card=>normalizeKey(card.english+' '+card.chinese+' '+card.sentenceEn).includes(query))
       .map(card=>({...card,sources:card.sources??[],progress:progress.get(card.itemId)??null,note:notes.find(note=>note.source_id===card.itemId)??null,preference:preferences.find(p=>p.learning_item_id===card.itemId)??emptyPreference()}));
   });}
-  /** Read-only current-item projection; hidden/self-known preferences never create study credit. */
+  /** Lifetime exposure and current-material completion are separate projections. */
   async function summary(scope:LightScope={type:'all'},now=new Date()):Promise<ExpressionSummary>{return database.read(async tx=>{
     const {cards,progress}=await createLightCatalogue(tx,allowMock).readLightCatalogue(scope,true,true);
     const preferences=new Map((await tx.all<ExpressionPreference&{learning_item_id:string}>(sql`SELECT * FROM expression_preferences`)).map(p=>[p.learning_item_id,p]));
@@ -34,6 +34,16 @@ export function createExpressionService(database:DatabasePort,allowMock=false){
       if(!studied)result.new++;
       else if(new Date(studied.due_at).getTime()<=now.getTime())result.due++;
     }
+    const sourceScope=scope.type==='question'?sql`pm.question_id=${scope.id}`:scope.type==='material'?sql`pm.id=${scope.id}`:scope.type==='collection'?sql`pm.source_type=${scope.id==='ielts'?'ielts_practice':'free_talk'}`:sql`1=1`;
+    const filters=scope.type==='collection'&&scope.id==='ielts'?scope:null;
+    const [{count}]=await tx.all<{count:number}>(sql`SELECT COUNT(DISTINCT lp.learning_item_id) count FROM light_study_progress lp
+      JOIN practice_material_items mi ON mi.learning_item_id=lp.learning_item_id JOIN practice_materials pm ON pm.id=mi.material_id
+      LEFT JOIN questions q ON q.id=pm.question_id LEFT JOIN topics t ON t.id=q.topic_id
+      WHERE ${sourceScope}
+      AND (${filters?.questionId?sql`pm.question_id=${filters.questionId}`:sql`1=1`})
+      AND (${filters?.topicId?(filters.topicId==='unmarked'?sql`q.topic_id IS NULL OR t.id IS NULL`:sql`q.topic_id=${filters.topicId}`):sql`1=1`})
+      AND (${filters?.seasonId?(filters.seasonId==='unmarked'?sql`NOT EXISTS(SELECT 1 FROM question_set_links qsl JOIN question_sets qs ON qs.id=qsl.question_set_id WHERE qsl.question_id=q.id)`:sql`EXISTS(SELECT 1 FROM question_set_links qsl JOIN question_sets qs ON qs.id=qsl.question_set_id WHERE qsl.question_id=q.id AND qs.id=${filters.seasonId})`):sql`1=1`})`);
+    result.studied=Number(count); // A material revision must not erase the learner's past work.
     return result;
   });}
   async function update(raw:unknown){

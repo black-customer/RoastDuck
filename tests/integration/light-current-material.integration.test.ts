@@ -50,6 +50,17 @@ it('all, question, collection, and explicit material scopes project only the new
   expect(await db.all(sql`SELECT * FROM practice_material_items WHERE material_id=${old.materialId}`)).toHaveLength(1);
 });
 
+it('replacing a material preserves cumulative exposure without awarding completion to its replacements',async()=>{
+  const fixture=await currentMaterialFixture(db,'lifetime-revision',[['fold a towel','叠毛巾'],['hang a towel','挂毛巾']]);
+  const old=await fixture.publish('old');await stamp(old.materialId,'2026-08-01T00:00:00Z');
+  const scope:LightScope={type:'question',id:fixture.questionId};
+  await rate(await light.createLightSession({scope,mode:'learn',clientRequestId:'lifetime-old'},now),'lifetime');
+  const expressions=(await import('@/lib/app-services/web')).webExpressions;
+  expect(await expressions.summary(scope,now)).toMatchObject({studied:1,eligibleStudied:1});
+  const current=await fixture.publish('new');await stamp(current.materialId,'2026-08-02T00:00:00Z');
+  expect(await expressions.summary(scope,now)).toMatchObject({studied:1,eligibleStudied:0,new:2});
+});
+
 it('equal created_at timestamps use descending stable material id, regardless of updated_at',async()=>{
   const fixture=await currentMaterialFixture(db,'tie-breaker',[['charge my phone','给手机充电'],['turn off the light','关灯']]);
   const versions=[await fixture.publish('old'),await fixture.publish('new')].sort((a,b)=>a.materialId<b.materialId?1:-1);
