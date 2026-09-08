@@ -1,0 +1,22 @@
+{
+  "version": "four-step-golden-v1",
+  "privacy": "以下均为人工编写的合成验收样本，不含私人回答；测试契约，不冒充真实 AI 语义验收。",
+  "normalization": [
+    {"id":"case-space","a":"  Keep   in touch! ","b":"keep in touch","equal":true},
+    {"id":"curly-quote","a":"I’m ready.","b":"I'm ready","equal":true},
+    {"id":"fullwidth","a":"Ｗｅ ｋｅｅｐ ｉｎ ｔｏｕｃｈ．","b":"we keep in touch","equal":true},
+    {"id":"substring","a":"keep","b":"keep in touch","equal":false},
+    {"id":"long-wrong","a":"this is a very long unrelated sentence about the weather today","b":"keep in touch","equal":false},
+    {"id":"negation","a":"I do not agree","b":"I do agree","equal":false},
+    {"id":"gibberish","a":"asdf qwer zxcv","b":"keep in touch","equal":false},
+    {"id":"synonym-needs-judge","a":"stay connected","b":"keep in touch","equal":false}
+  ],
+  "spans": [
+    {"id":"whole-word","text":"We keep in touch.","targets":["keep in touch"],"surface":"keep in touch"},
+    {"id":"not-substring","text":"I uncovered it.","targets":["cover"],"surface":null},
+    {"id":"case","text":"Please KEEP IN TOUCH.","targets":["keep in touch"],"surface":"KEEP IN TOUCH"},
+    {"id":"reviewed-inflection","text":"She kept in touch.","targets":["keep in touch","kept in touch"],"surface":"kept in touch"},
+    {"id":"unreviewed-inflection","text":"She kept in touch.","targets":["keep in touch"],"surface":null},
+    {"id":"escaped-literal","text":"Use a+b here.","targets":["a+b"],"surface":"a+b"}
+  ]
+}

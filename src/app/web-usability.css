@@ -1,0 +1,37 @@
+/* New Web task views share the existing blue-white tokens, not a second theme. */
+.material-result { display:grid; gap:var(--space-section,24px); margin-top:24px; }
+.material-summary { display:grid; gap:16px; padding:clamp(20px,4vw,40px); }
+.material-summary h1 { font-size:clamp(24px,3vw,34px); line-height:1.35; margin:0; }
+.material-summary p { margin:0; max-width:70ch; }
+.material-summary>.primary-button { justify-self:start; }
+.material-feedback { color:var(--muted-strong); }
+.material-result details>summary { cursor:pointer; min-height:44px; padding:12px 0; color:var(--primary-strong); font-weight:600; }
+.material-result .materials-table-wrapper { margin-top:24px; }
+.expression-filters { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0 24px; }
+.expression-filters input { flex:1 1 240px; min-width:0; }
+.expression-filters select { flex:0 1 220px; max-width:100%; }
+.expression-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr)); gap:16px; }
+.expression-row { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.expression-row-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.expression-row-heading h3 { font-size:21px; margin:4px 0 0; }
+.expression-row p { margin:0; overflow-wrap:anywhere; }
+.expression-row details { margin-top:auto; }
+.expression-row details>summary { cursor:pointer; min-height:44px; padding:10px 0; color:var(--primary-strong); }
+.row-actions { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.row-actions>button:not(.primary-button):not(.secondary-button),.row-actions>a:not(.primary-button):not(.secondary-button) { padding:10px 4px; min-height:44px; color:var(--primary-strong); }
+.speech-control { display:inline-flex; flex-wrap:wrap; align-items:center; gap:8px; max-width:100%; }
+.speech-control-status { display:block; color:var(--muted-strong); font-size:var(--text-small); max-width:36ch; overflow-wrap:anywhere; }
+.settings-field { display:grid; gap:10px; margin:16px 0; }
+.settings-field input,.settings-field select { width:100%; max-width:480px; min-height:44px; border:1px solid var(--border-strong); border-radius:var(--radius-control); padding:10px 12px; background:var(--card); color:var(--foreground); }
+.recap-range { margin:8px 24px; min-width:0; }
+.recap-range summary { min-height:44px; cursor:pointer; padding:10px 0; }
+.recap-range label { display:flex; gap:12px; margin:8px 0; align-items:center; }
+.recap-range select { width:100%; min-width:0; padding:10px; border:1px solid var(--border); border-radius:var(--radius-control); }
+.material-result article { margin:16px 0; }
+.studio-editor-panel>h1 { font-size:24px; line-height:1.4; font-weight:650; margin:0 0 24px; }
+.studio-editor-panel label:has(input[type="checkbox"]) { display:flex; align-items:center; gap:8px; min-height:44px; }
+@media(max-width:640px) {
+  .material-summary>.primary-button { justify-self:stretch; }
+  .material-result .materials-table-wrapper { display:none; } /* Same four fields are readable in expression cards. */
+  .recap-range { margin:8px 16px; }
+}

@@ -1,0 +1,43 @@
+# 依赖与构建产物
+node_modules/
+.next/
+.next-desktop/
+.next-e2e/
+out/
+dist/
+*.tsbuildinfo
+
+# 运行时数据（可由 pipeline 从 sources 重建）
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+# 私人历史回答、导入中间产物与聊天录音（不得提交）
+data/imports/private/
+data/audio/private/
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 测试与覆盖率
+coverage/
+playwright-report/
+test-results/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log
+npm-debug.log*
+
+# WorkBuddy 项目数据
+.workbuddy/
+
+# 独立公开快照：绝不把嵌套仓库或本机历史重新加入源仓库
+.publish/

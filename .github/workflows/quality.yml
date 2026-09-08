@@ -1,0 +1,27 @@
+name: 工程质量门
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  app-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: 安装 Chromium
+        run: npx playwright install --with-deps chromium
+      - name: 执行完整质量门（E2E 隔离数据库）
+        run: npm run check

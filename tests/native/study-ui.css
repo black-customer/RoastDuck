@@ -1,0 +1,15 @@
+/* Internal native viewport uses the incumbent Web tokens, not a new product world. */
+body:has(.native-study-test) { margin:0; padding:0; background:var(--background); color:var(--foreground); font-family:Roboto,"Noto Sans",sans-serif; }
+.native-study-test { padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); }
+.native-study-test * { box-sizing:border-box; }
+.native-study-test button,.native-study-test select,.native-study-test summary { font:inherit; cursor:pointer; min-height:48px; }
+.native-study-test button { background:none; color:inherit; border:0; }
+.native-study-test a { color:var(--primary); }
+.native-study-test .primary-button,.native-study-test .secondary-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid var(--primary); border-radius:var(--radius-control); padding:12px 16px; font-weight:650; text-decoration:none; }
+.native-study-test .primary-button { background:var(--primary); color:var(--card); }
+.native-study-test .secondary-button { background:var(--card); color:var(--primary); }
+.native-study-test [aria-label="这次回想情况"] { gap:8px; }
+.native-study-test [aria-label="这次回想情况"] button { padding-inline:4px; }
+.native-study-test button:disabled { opacity:.55; cursor:wait; }
+.native-study-test :focus-visible { outline:3px solid var(--primary); outline-offset:3px; }
+.native-study-test ::selection { background:var(--primary-soft-strong); }

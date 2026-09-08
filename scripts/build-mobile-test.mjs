@@ -1,0 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
+import {build} from "vite";
+const name=process.env.ROASTDUCK_QA_DB||`roastduck_qa_${Date.now()}`;
+if(!/^roastduck_qa_[a-z0-9_]+$/.test(name))throw new Error("只允许独立QA库");
+const out=path.resolve("test-results/mobile-test-dist");
+await build({root:path.resolve("tests/mobile"),configFile:false,envFile:false,base:"./",esbuild:{jsx:"automatic"},resolve:{alias:{"@":path.resolve("src"),"@db":path.resolve("db"),"@public-question-bank":path.resolve("data/generated/mobile-question-bank.json")}},define:{__NATIVE_TEST_DB__:JSON.stringify(name)},build:{outDir:out,emptyOutDir:true,target:"es2022"}});
+const audio=Buffer.alloc(44+4800);audio.write("RIFF");audio.writeUInt32LE(audio.length-8,4);audio.write("WAVEfmt ",8);audio.writeUInt32LE(16,16);audio.writeUInt16LE(1,20);audio.writeUInt16LE(1,22);audio.writeUInt32LE(24000,24);audio.writeUInt32LE(48000,28);audio.writeUInt16LE(2,32);audio.writeUInt16LE(16,34);audio.write("data",36);audio.writeUInt32LE(4800,40);
+fs.writeFileSync(path.join(out,"synthetic-tone.wav"),audio);
+fs.writeFileSync(path.join(out,"native-build.json"),JSON.stringify({profile:"qa",database:name,runtimeCalls:0}));
+fs.writeFileSync("test-results/mobile-test-run.json",JSON.stringify({database:name,outDir:out}));
+console.log(JSON.stringify({profile:"qa",database:name,runtimeCalls:0}));

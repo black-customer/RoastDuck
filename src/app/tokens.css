@@ -1,0 +1,35 @@
+:root {
+  color-scheme: light;
+  --background: #f5f7fb;
+  --foreground: #1e304e;
+  --card: #ffffff;
+  --card-elevated: #f1f5fc;
+  --primary: #2465c5;
+  --primary-strong: #205aaf;
+  --primary-soft: #edf3fd;
+  --primary-soft-strong: #dce9fd;
+  --muted: #586a84;
+  --muted-strong: #455975;
+  --border: #e0e6ef;
+  --border-strong: #aabbd2;
+  --success: #287754;
+  --success-soft: #eff7f2;
+  --warning: #805813;
+  --warning-soft: #fff5db;
+  --danger: #b3343f;
+  --danger-soft: #fff0f0;
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --surface-raised: 0 16px 48px #173e7629;
+  --radius-control: 9px;
+  --radius-panel: 14px;
+  --radius-card: 14px;
+  --font-body: "Plus Jakarta Sans", "Aptos", "Segoe UI Variable Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --text-body: 1rem;
+  --text-small: .875rem;
+  --text-title: clamp(1.6rem, 2.2vw, 1.85rem);
+  --space-page: clamp(24px, 3vw, 48px);
+}

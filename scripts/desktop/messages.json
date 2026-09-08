@@ -1,0 +1,12 @@
+{
+  "title": "鱼块学英语",
+  "starting": "正在启动鱼块学英语，首次打开可能需要稍等片刻。",
+  "failure": "暂时无法打开鱼块学英语。\n\n请把下面的信息发给开发 Agent：\n",
+  "portBusy": "本地端口已被其他程序占用，未停止任何程序。",
+  "missingNode": "找不到 Node.js，请先安装项目运行环境。",
+  "missingDependencies": "项目依赖尚未安装，请先在项目目录执行 npm ci。",
+  "timeout": "本地服务启动超时。日志保存在项目的 data/desktop 目录。",
+  "serverExited": "本地服务启动失败。日志保存在项目的 data/desktop 目录。",
+  "shortcutName": "鱼块学英语.lnk",
+  "description": "鱼块学英语 · 双击启动并打开本地学习软件"
+}

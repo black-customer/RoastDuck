@@ -1,0 +1,22 @@
+# 数据模型
+状态：现行；2026-09-07。数据库实现以db/schema.ts及连续编号迁移为准，旧结构保留兼容，不执行db:push替代生产迁移。
+## 当前实体
+- v29：light_study_successions/batches保存旧会话继任、原切换版本与未学队列；speech_requests保存真实请求/未知结果，不写假ai_runs。
+- v30：speech_lane为同库多Web进程的全局合成租约；v31：expression_preferences与material_feedback保存个人偏好、原材料哈希和反馈证据。隐藏不更新学习成绩。
+- answer_drafts与runtime_requests复用v26记录。网页普通双语作答与独立英文封存/新版本编辑共用稳定提交链，不创建同步身份。重答比较存ai_jobs＋runtime_requests，引用新旧原句，不写掌握状态。
+- questions/topic/source与个人原回答保持稳定ID；speaking_question_attempts保存实际作答，practice_answer_sources映射历史回答而不重复计数。
+- practice_materials/stages/revisions保存evidence_v2输入、审核和版本；practice_material_items关联learning_items；practice_offline_runs保存开发离线证据。
+- practice_source_revisions追加修订切分，不覆盖父原文。
+- four_step_sessions/events/settlements及learning_item_schedule属于兼容强化，不能被轻学习更新。
+## v24轻学习
+light_study_sessions：唯一创建请求、scope/mode、材料快照队列、游标、揭晓、状态与版本。
+light_study_events：会话＋客户端事件ID唯一，输入哈希/类型/自评/结果类型/时间；重试返回最新会话，不重复结算。
+light_study_progress：learning_item_id唯一，首次接触/最后接触/到期、可空FSRS、自评次数/版本。首次due24小时，不为接触生成成功评分。
+范围只是投影，不复制学习项。会话快照携带版本哈希和来源；过期/撤销不能发布。更新三个轻学习表时短事务原子提交，复习并发检查进度版本。
+## 冻结的V2/安卓/同步历史说明
+v25已实现experience_version默认V1保留旧记录、round_json与事件phase，V2队列独立表达/巩固阶段分离。初次诊断、接触、组内巩固与正式自评分别存证，不重复结算FSRS。真实库是否应用以PROJECT_STATUS只读核查为准。
+安卓全新库结构由隔离空库导出为版本25快照（177条DDL），校验固定哈希后事务初始化，独立_native_schema_bootstrap记录；不写入虚假的桌面历史迁移回执。未知非空库拒绝覆盖，后续原生编号升级仍需实施。
+共享平台存储端口、设备/数据集ID、事件同步来源/序号/回执与任务所有权按实现逐步登记；安卓本地SQLite不靠整体覆盖桌面数据库同步。未实现不填写虚假DDL。
+## 迁移与隐私
+v24先在临时库验证，再通过已有init备份应用；不导入旧完成标签、不静默删除历史。测试必须启动前指定test-results数据库。私人原文不入Git。
+历史模型说明：archive/pre-light-study-2026-09-07/DATA_MODEL.md。

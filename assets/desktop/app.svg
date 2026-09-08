@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>鱼块学英语</title>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#f3f8ff"/>
+  <rect x="9" y="9" width="238" height="238" rx="55" fill="none" stroke="#dce8f7" stroke-width="2"/>
+  <path d="M49 98c-4-3-8-1-8 4v52c0 5 4 7 8 4l34-25c4-3 4-7 0-10Z" fill="#173e76"/>
+  <path d="M112 77h39c29 0 53 23 53 51s-24 51-53 51h-39c-12 0-22-10-22-22V99c0-12 10-22 22-22Z" fill="#2875df"/>
+  <circle cx="169" cy="115" r="7" fill="#fff"/>
+</svg>

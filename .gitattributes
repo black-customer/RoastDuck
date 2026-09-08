@@ -1,0 +1,5 @@
+# 新诊断 Prompt 使用字节哈希绑定，Windows checkout 不得转换为 CRLF。
+pipeline/prompts/personal_gap.generator.v1.md text eol=lf
+pipeline/prompts/personal_gap.reviewer.v1.md text eol=lf
+pipeline/prompts/speaking_gap.generator.v2.md text eol=lf
+pipeline/prompts/speaking_gap.reviewer.v2.md text eol=lf

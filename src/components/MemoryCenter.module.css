@@ -1,0 +1,30 @@
+.frame { width: min(100%, 980px); margin: 0 auto; }
+.controls { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px 14px; margin-bottom: 20px; }
+.controls label { grid-column: 1 / -1; color: var(--muted-strong); font-size: .78rem; font-weight: 700; }
+.controls input { min-height: 46px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); padding: 10px 14px; background: var(--card); }
+.controls span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.list { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); }
+.list > li { padding: 23px 25px; }
+.list > li + li { border-top: 1px solid var(--border); }
+.meta, .provenance, .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; }
+.meta { justify-content: space-between; color: var(--muted); font-size: .76rem; }
+.meta > span { padding: 3px 9px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-strong); font-weight: 700; }
+.list p { max-width: 72ch; margin-top: 13px; font-size: 1rem; line-height: 1.75; }
+.provenance { margin-top: 12px; color: var(--muted); font-size: .72rem; }
+.actions { justify-content: flex-end; margin-top: 14px; }
+.actions button { min-height: 40px; color: var(--primary); font-weight: 650; }
+.actions button:last-child { color: var(--danger); }
+.editor { display: grid; gap: 8px; margin-top: 14px; }
+.editor label { color: var(--muted); font-size: .76rem; font-weight: 700; }
+.editor textarea { resize: vertical; border: 1px solid var(--border-strong); border-radius: 12px; padding: 11px 13px; background: var(--background); }
+.editor > div { display: flex; justify-content: flex-end; gap: 10px; }
+.empty { padding: 70px 24px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); text-align: center; }
+.empty svg { width: 48px; margin: 0 auto 18px; fill: none; stroke: var(--primary); stroke-width: 1.5; }
+.empty h2 { font-size: 1.2rem; font-weight: 700; }
+.empty p { max-width: 48ch; margin: 8px auto 0; color: var(--muted); }
+@media (max-width: 600px) {
+  .controls { grid-template-columns: 1fr; }
+  .controls span { justify-self: end; }
+  .list > li { padding: 20px 18px; }
+  .actions { justify-content: flex-start; }
+}
