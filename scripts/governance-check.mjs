@@ -59,7 +59,7 @@ check("2. PRODUCT.md Schema 声明", () => {
 // 3. PROJECT_STATUS.md 记录分支、最后验证 Commit、命令与结果
 check("3. PROJECT_STATUS.md 状态记录完整性", () => {
   const content = fs.readFileSync(path.join(ROOT, "docs/PROJECT_STATUS.md"), "utf8");
-  if (!content.includes("分支") || !content.includes("Commit") || !content.includes("命令") || !content.includes("退出码")) {
+  if (!content.includes("分支") || !/Commit/i.test(content) || !/\bnpm\s+(?:run|test|ci)\b/.test(content) || !/退出(?:码)?\s*[:：]?\s*\d/.test(content)) {
     return "docs/PROJECT_STATUS.md 缺少分支、最后验证 Commit、命令或退出码记录";
   }
   return null;

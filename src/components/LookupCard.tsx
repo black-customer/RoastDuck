@@ -42,15 +42,17 @@ export function LookupCard({ annotationId, onClose }: { annotationId: string | n
   useEffect(() => {
     if (!annotationId) return;
     const controller = new AbortController();
+    let focusFrame=0;
     setData(null);
     setError("");
     void fetch(`/api/lookups/${encodeURIComponent(annotationId)}`, { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
         const body = (await response.json()) as LookupData & { error?: string };
+        if(controller.signal.aborted)return;
         if (!response.ok) throw new Error(body.error || "英文小卡加载失败");
         setData(body);
         setRemark(body.userRemark || "");
-        requestAnimationFrame(() => closeRef.current?.focus());
+        focusFrame=requestAnimationFrame(() => {if(!controller.signal.aborted)closeRef.current?.focus();});
 
         // 查询接口始终保持只读；只有用户主动打开自动收集后，客户端才显式创建难点。
         if (!body.noteId) {
@@ -78,7 +80,7 @@ export function LookupCard({ annotationId, onClose }: { annotationId: string | n
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "英文小卡加载失败");
       });
-    return () => controller.abort();
+    return () => {controller.abort();cancelAnimationFrame(focusFrame);};
   }, [annotationId, loadVersion]);
 
   useEffect(() => {

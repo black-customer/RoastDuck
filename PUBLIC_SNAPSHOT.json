@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "1555993c234b0f892e444600cfa436ec02003131",
-  "createdAt": "2026-09-08T11:04:38.027Z",
+  "sourceCommit": "8627898daba119e67fec43155d56a062821b84ab",
+  "createdAt": "2026-09-08T11:11:28.379Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -486,7 +486,7 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "e9538896e208650eb59cfcad316d539a49a9a1de8e661858ebc8332a5d3c6c0d"
+      "sha256": "559be8020ac669cc59854bf2b76fa9bf3349e2414f4db9d9e770cdf5f6970402"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -1278,7 +1278,7 @@
     },
     {
       "path": "scripts/governance-check.mjs",
-      "sha256": "657af6abe311cf2b0099651a142790fbe30b1853488710abc610ad9e31d808fb"
+      "sha256": "4e40763fc27dd1bd188bf6137d204a8fa6f3ad84c8626c755902d72ab69991d0"
     },
     {
       "path": "scripts/init.ts",
@@ -1874,7 +1874,7 @@
     },
     {
       "path": "src/components/LookupCard.tsx",
-      "sha256": "660104ccf736097d5a54dc3cfb56516835827f7500a639b6835ca8157bdc94d2"
+      "sha256": "3835f7acc1a40fab5102190ee45fd90d95dc5adde1b2eb1125871f70cf292de7"
     },
     {
       "path": "src/components/MaterialResult.tsx",
@@ -1962,7 +1962,7 @@
     },
     {
       "path": "src/components/home/HomeDashboard.tsx",
-      "sha256": "8688cecc5cd2058a2d53dd711ac3f2ce8fd5ed6dce00ba0fa7fcfd7158306398"
+      "sha256": "1269ac14ef2aea23d453e42e2e5b54956b04cfefec976a12e9bcdbab3c5d2d1b"
     },
     {
       "path": "src/components/home/HomeExpressionCollections.tsx",
@@ -2614,7 +2614,7 @@
     },
     {
       "path": "tests/e2e/home.spec.ts",
-      "sha256": "9d4ba725ade5c09943f55f63fba26be3733745e16d90c7bd5424886eed25d7f8"
+      "sha256": "90cb292d9fb0a365c5fcabf4dd14043f8a9ee864cfd378b62c856ae89fdba341"
     },
     {
       "path": "tests/e2e/learning.spec.ts",

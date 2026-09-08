@@ -25,7 +25,8 @@ export function HomeDashboard({ overview,allowLightStudy=true }: { overview: Hom
   };
   const closeLookup = () => {
     setAnnotationId(null);
-    lookupTrigger.current?.focus();
+    const trigger=lookupTrigger.current;
+    requestAnimationFrame(()=>{if(trigger?.isConnected)trigger.focus();});
   };
   const changeQuestion = async () => {
     if (randomLock.current) return;

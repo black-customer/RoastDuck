@@ -85,6 +85,8 @@ test("随机题失败可重试，查询英文不记笔记或创建回答", async
   await page.unroute("**/api/questions/random");
   await page.getByRole("button", { name: "重新抽取", exact: true }).click();
   await expect(randomPanel.getByRole("alert")).toHaveCount(0);
+  // Wait for the new card, not just for the old error to clear at request start.
+  await expect(randomPanel.getByRole('button',{name:'换一题',exact:true})).toBeEnabled();
   await expect(page.getByRole("link", { name: "去回答", exact: true })).toHaveAttribute("href", /\/questions\/.+\?from=random/);
   const annotation = page.getByRole("region", { name: "来聊一道题" }).getByRole("button", { name: /^查看 .* 的解释$/ }).first();
   await annotation.click();
