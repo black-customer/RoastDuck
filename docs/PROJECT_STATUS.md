@@ -22,9 +22,11 @@
 - 该次governance/lint/typecheck/unit/Golden/build/材料审计均退出0；318单测与40个Golden通过。一个集成worker在用例前IPC退出，相关6项定向重跑通过。
 - E2E服务器以0xC0000005退出：15项通过，其后无法连接。因此该次完整check最终退出1，不能宣称Windows全量通过。证据e2e-server-1788864459747/exit.json、integration-1788864348774保留；独立系统CI结果另记。
 - Windows原生退出仍为既有风险，不归因用户重复打开，不以换Node或一次通过宣布修复。开发/自动化Mock、隔离库、Runtime网络0。
+- 后续仅一次带原生探针的题库路线：1项通过、69请求全部200，未重现异常，未取得崩溃模块或栈；不能据此关闭风险。证据.publish/github/test-results/native-route-probe-20260908-01。
+- GitHub对5068794检查发现npm10校验缺少两个间接依赖锁条目。已按官方注册表精确补@emnapi/core与runtime 1.11.3，既有依赖版本未变；npm10 Linux目标ci dry-run退出0。后续CI结果待回执，不将dry-run冒充真实安装通过。
 - 真实Dean听感、新回答Runtime端到端及学习提效待用户体验；安卓真机不在本轮范围。
 
 ## GitHub与接续
 - https://github.com/black-customer/RoastDuck：main首个快照7da196c，GitHub author已确认为black-customer；暂不授予项目MIT/GPL许可。
 - 原仓库无公开remote；.publish/github是清洁公开历史。私人数据/环境值/录音/旧Git历史/未授权教材及衍生内容不上传。751安全源文件+清单，含冻结mobile/android代码，依赖junction与测试产物被忽略。
-- 下一步只收束最终推送与GitHub CI结果，不扩大功能。若继续处理原生退出，沿已有故障模块/退出证据定位，不恢复旧词书或安卓开发。
+- 开发后快照5068794已公开推送，仍不携带私人历史。当前只收束锁文件修复的CI回执，不扩大功能。若继续处理原生退出，沿已有证据定位，不恢复旧词书或安卓开发。
