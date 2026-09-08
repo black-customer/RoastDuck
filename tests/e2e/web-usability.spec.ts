@@ -1,13 +1,11 @@
 import {expect,test} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const question='question_e2e_habits';
-test('双语草稿刷新恢复、提交丢响应原地恢复，不创建第二份回答',async({page,request})=>{
+test('单框混合草稿刷新恢复、提交丢响应原地恢复，不创建第二份回答',async({page,request})=>{
   await page.goto(`/questions/${question}/practice`);
-  await page.getByLabel('我的英文尝试',{exact:true}).fill('I saw a 井盖 outside.');
-  await page.getByLabel('我真正想表达的中文意思',{exact:true}).fill('我在外面看到了一个井盖。');
+  await page.getByLabel('我的回答与想法',{exact:true}).fill('I saw a 井盖 outside.\n我在外面看到了一个井盖。');
   await expect(page.getByText('已保存到本机',{exact:true})).toBeVisible();
-  await page.reload();await expect(page.getByLabel('我的英文尝试',{exact:true})).toHaveValue('I saw a 井盖 outside.');
-  await expect(page.getByLabel('我真正想表达的中文意思',{exact:true})).toHaveValue('我在外面看到了一个井盖。');
+  await page.reload();await expect(page.getByLabel('我的回答与想法',{exact:true})).toHaveValue('I saw a 井盖 outside.\n我在外面看到了一个井盖。');
   for(const width of [1440,390,320]){await page.setViewportSize({width,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);if(width!==320)await page.screenshot({path:`test-results/visual/web-draft-${width}.png`,fullPage:true});}
   expect((await new AxeBuilder({page}).include('main').analyze()).violations).toEqual([]);
   let attemptId='',dropped=false;
@@ -24,7 +22,7 @@ test('双语草稿刷新恢复、提交丢响应原地恢复，不创建第二�
 test('服务器不可用时先展示本机救援文字，不用空白覆盖',async({page})=>{
   await page.addInitScript(({question})=>localStorage.setItem(`roastduck_answer_draft:${question}:practice:`,JSON.stringify({clientId:'local-recovery-id',values:{english:'Keep my unsaved answer.',chinese:'保留我的原意。',englishUnknown:false}})),{question});
   await page.route('**/api/answer-drafts?*',route=>route.fulfill({status:503,json:{error:'模拟离线'}}));
-  await page.goto(`/questions/${question}/practice`);await expect(page.getByLabel('我的英文尝试',{exact:true})).toHaveValue('Keep my unsaved answer.');await expect(page.locator('main').getByRole('alert')).toContainText('模拟离线');
+  await page.goto(`/questions/${question}/practice`);await expect(page.getByLabel('我的回答与想法',{exact:true})).toHaveValue('Keep my unsaved answer.\n\n保留我的原意。');await expect(page.locator('main').getByRole('alert')).toContainText('模拟离线');
   expect(await page.evaluate(({question})=>JSON.parse(localStorage.getItem(`roastduck_answer_draft:${question}:practice:`)!).values.chinese,{question})).toBe('保留我的原意。');
 });
 test('当前材料可查找收藏、隐藏及恢复，隐藏不更新学习进度',async({page,request})=>{

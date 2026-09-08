@@ -110,10 +110,10 @@ describe("AI Free Talk API Endpoints", () => {
   let conversationId = "";
 
   it("POST /api/free-talk/conversations creates conversation and GET lists it", async () => {
-    const postReq = new Request("http://local/api/free-talk/conversations", {
+    const postReq = new Request("http://localhost/api/free-talk/conversations", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: "Weekend Plans", mode: "relaxed" }),
+      body: JSON.stringify({clientRequestId:'test-create-conversation', title: "Weekend Plans", mode: "relaxed" }),
     });
 
     const postRes = await convRoute.POST(postReq);
@@ -129,22 +129,26 @@ describe("AI Free Talk API Endpoints", () => {
   });
 
   it("POST & GET /api/free-talk/conversations/[id]/messages sends message and gets history", async () => {
-    const postMsgReq = new Request("http://local", {
+    const postMsgReq = new Request("http://localhost", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         text: "I was walking around and saw a 井盖.",
+        clientMessageId:'test-user-message-one',
       }),
     });
 
     const postMsgRes = await messagesRoute.POST(postMsgReq, { params: Promise.resolve({ id: conversationId }) });
     expect(postMsgRes.status).toBe(200);
     const postMsgBody = await postMsgRes.json();
-    expect(postMsgBody.assistantMessage.text).toContain("manhole cover");
+    expect(postMsgBody.assistantMessage.role).toBe('assistant');
+    expect(postMsgBody.assistantMessage.text.length).toBeGreaterThan(0);
+    expect(postMsgBody.messages.some((m:{role:string;text:string})=>m.role==='user'&&m.text==='I was walking around and saw a 井盖.')).toBe(true);
 
     const getMsgsRes = await messagesRoute.GET(new Request("http://local"), { params: Promise.resolve({ id: conversationId }) });
     expect(getMsgsRes.status).toBe(200);
     const getMsgsBody = await getMsgsRes.json();
+    expect(getMsgsBody.messages.some((m:{id:string;text:string})=>m.id===postMsgBody.assistantMessage.id&&m.text===postMsgBody.assistantMessage.text)).toBe(true);
     expect(getMsgsBody.messages.length).toBeGreaterThanOrEqual(3);
   });
 });

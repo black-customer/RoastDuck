@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it,vi } from "vitest";
 import { assertInsideTestResults, prepareTestDatabase } from "../helpers/temp-db";
 
 const testDatabase = prepareTestDatabase("questions-api.integration");
@@ -198,8 +198,14 @@ describe("IELTS 题库 HTTP 接口", () => {
     expect(detail.question.sources).toHaveLength(2);
     expect(detail.question.setNames).toEqual(["2026 年 1–4 月", "2026 年 5–8 月"]);
 
-    const sourceResponse = await sourceRoute.GET(new Request("http://local/api/question-sources/part1_new_2026q1"), { params: Promise.resolve({ slug: "part1_new_2026q1" }) });
-    expect(sourceResponse.headers.get("content-type")).toBe("application/pdf");
+    // Public CI must not depend on privately held commercial PDFs. Exercise the file transport with synthetic bytes.
+    const files=await import('node:fs/promises');
+    const read=vi.spyOn(files.default,'readFile').mockResolvedValueOnce(Buffer.from('%PDF-1.4\n% synthetic source transport fixture\n%%EOF'));
+    try{
+      const sourceResponse = await sourceRoute.GET(new Request("http://local/api/question-sources/part1_new_2026q1"), { params: Promise.resolve({ slug: "part1_new_2026q1" }) });
+      expect(sourceResponse.headers.get("content-type")).toBe("application/pdf");
+      expect(read).toHaveBeenCalledTimes(1);
+    }finally{read.mockRestore();}
     const rejected = await sourceRoute.GET(new Request("http://local/api/question-sources/.."), { params: Promise.resolve({ slug: ".." }) });
     expect(rejected.status).toBe(400);
   });

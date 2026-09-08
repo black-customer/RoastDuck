@@ -34,7 +34,7 @@ it("new sessions have five hidden prompts; reveal cannot settle; exact event ret
   const event={type:"rate",rating:"forgot",version:view.version,clientEventId:"same-rating"};
   view=await service.applyLightEvent(view.id,event,now);
   expect((await service.applyLightEvent(view.id,event,now)).version).toBe(view.version);
-  expect(await db.all(sql`SELECT * FROM light_study_progress`)).toMatchObject([{due_at:"2026-09-08T08:00:00.000Z",fsrs_json:null,review_count:0,last_rating:null}]);
+  expect(await db.all(sql`SELECT * FROM light_study_progress`)).toMatchObject([{due_at:"2026-09-08T08:00:00.000Z",fsrs_json:expect.any(String),review_count:0,last_rating:'forgot',scheduler_version:'light-fsrs-days-v1'}]);
   expect(await db.all(sql`SELECT * FROM light_study_events WHERE outcome='diagnostic_exposure'`)).toHaveLength(1);
   expect(network).not.toHaveBeenCalled();
 });
@@ -53,7 +53,8 @@ it("five forgotten items add at most three spaced encounters, never loop or crea
 it("formal review settles FSRS once per item; consolidation leaves its entire scheduling snapshot unchanged",async()=>{
   let view=await create("v2-expose");
   while(view.status==="active")view=await rate(view,"remembered");
-  const due=new Date(now.getTime()+86400001);
+  const [{due_at}]=await db.all<{due_at:string}>(sql`SELECT MAX(due_at) AS due_at FROM light_study_progress`);
+  const due=new Date(Date.parse(due_at)+1);
   view=await create("v2-due","review",due);
   for(let index=0;index<5;index++)view=await rate(view,"forgot",due);
   const before=await db.all<{review_count:number;fsrs_json:string|null}>(sql`SELECT * FROM light_study_progress ORDER BY learning_item_id`);

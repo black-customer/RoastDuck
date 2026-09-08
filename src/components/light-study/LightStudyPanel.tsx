@@ -28,7 +28,7 @@ export function LightStudyPanel({scope,initialSessionId,initialError,initialMode
   const [timerPaused,setTimerPaused]=useState(false);
   const [hidden,setHidden]=useState(false);
   const [autoPlay,setAutoPlay]=useState(true);
-  const [voice,setVoice]=useState<VoicePresetId>("us-female");
+  const [voice,setVoice]=useState<VoicePresetId>("us-male");
   const [audioState,setAudioState]=useState<LightAudioState>({phase:"idle",provider:null,message:""});
   const player=useRef<LightAudioController|null>(null);
   const active=useRef(true),locked=useRef(false),interacted=useRef(false);
@@ -150,7 +150,7 @@ export function LightStudyPanel({scope,initialSessionId,initialError,initialMode
   const resumable=overview?.resumable[mode];
   const inSession=view?.status==="active";
   const v2=view?.experienceVersion==="light_study_v2";
-  const ratingNames={remembered:"想起来了",uncertain:"有点模糊",forgot:"没想起来"};
+  const ratingNames={remembered:"脱口而出",uncertain:"想了一会儿",forgot:"没想出来"};
   const sourceQuestion=scope.type==="question"?scope.id:scope.type==="material"?view?.questionId??card?.questionId:null;
   const settings=<details className={styles.settings}><summary>播放与揭晓设置</summary><div className={styles.preferences}>
     <label><input type="checkbox" checked={autoPlay} onChange={e=>{const value=e.target.checked;setAutoPlay(value);void client.setAutoPlay?.(value).catch(reason=>{setAutoPlay(!value);setError(reason.message);});}} />自动播放示范声音</label>
@@ -201,11 +201,11 @@ export function LightStudyPanel({scope,initialSessionId,initialError,initialMode
               {autoReveal&&<div className={styles.timer}><span>{hidden?"已暂停":timerPaused?"倒计时暂停":`${seconds} 秒后揭晓`}</span><button className={styles.textButton} onClick={()=>setTimerPaused(p=>!p)}>{timerPaused?"继续计时":"暂停计时"}</button></div>}
               <button className={`primary-button ${styles.mainAction}`} disabled={actionDisabled} onClick={()=>void perform({type:"reveal"})}>{busy?"正在读取…":"揭晓表达"}</button>
             </>:!v2&&view.mode==="learn"?<button className={`primary-button ${styles.mainAction}`} disabled={actionDisabled} onClick={()=>void perform({type:"advance"})}>{busy?"正在保存…":"下一条"}<Icon name="arrow" /></button>:<>
-              <p className={styles.ratingHint}>揭晓之前，你想起来了吗？</p>
+              <p className={styles.ratingHint}>评价揭晓前的表现；想了一会儿也要自己想对。</p>
               <div className={styles.ratings} aria-label="这次回想情况">
-                <button className="primary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"remembered"})}>想起来了</button>
-                <button className="secondary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"uncertain"})}>有点模糊</button>
-                <button className="secondary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"forgot"})}>没想起来</button>
+                <button className="primary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"remembered"})}>脱口而出</button>
+                <button className="secondary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"uncertain"})}>想了一会儿</button>
+                <button className="secondary-button" disabled={actionDisabled} onClick={()=>void perform({type:"rate",rating:"forgot"})}>没想出来</button>
               </div>
             </>}
           </div>

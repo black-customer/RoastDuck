@@ -1340,6 +1340,7 @@ export const lightStudyProgress = sqliteTable("light_study_progress", {
   learningItemId: text("learning_item_id").primaryKey(), firstSeenAt: text("first_seen_at").notNull(), lastSeenAt: text("last_seen_at").notNull(),
   dueAt: text("due_at").notNull(), fsrsJson: text("fsrs_json"), reviewCount: integer("review_count").notNull().default(0),
   version: integer("version").notNull().default(1), lastRating: text("last_rating"),
+  schedulerVersion: text("scheduler_version").notNull().default("legacy-24h"),
 }, (t) => [index("light_study_due").on(t.dueAt,t.learningItemId)]);
 
 export const appDevice=sqliteTable("app_device",{
@@ -1353,6 +1354,7 @@ export const answerDrafts=sqliteTable("answer_drafts",{
   id:text("id").primaryKey(),questionId:text("question_id").notNull(),englishText:text("english_text").notNull().default(""),chineseText:text("chinese_text").notNull().default(""),
   englishUnknown:integer("english_unknown").notNull().default(0),version:integer("version").notNull().default(0),submittedAttemptId:text("submitted_attempt_id"),sourceAttemptId:text("source_attempt_id"),
   kind:text("kind").notNull().default("practice"),englishCommittedAt:text("english_committed_at"),
+  rawInput:text("raw_input").notNull().default(""),inputFormat:text("input_format").notNull().default("legacy"),
   createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
 },t=>[index("answer_drafts_question").on(t.questionId,t.updatedAt)]);
 
@@ -1396,6 +1398,7 @@ export const speechLane=sqliteTable('speech_lane',{
   singleton:integer('singleton').primaryKey(),owner:text('owner').notNull(),expiresAt:text('expires_at').notNull(),
 });
 export const expressionPreferences=sqliteTable('expression_preferences',{
+  selfKnown:integer('self_known').notNull().default(0),
   learningItemId:text('learning_item_id').primaryKey(),hidden:integer('hidden').notNull().default(0),favorite:integer('favorite').notNull().default(0),note:text('note').notNull().default(''),version:integer('version').notNull().default(0),updatedAt:text('updated_at').notNull(),
 });
 export const materialFeedback=sqliteTable('material_feedback',{

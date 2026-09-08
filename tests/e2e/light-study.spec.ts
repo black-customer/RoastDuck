@@ -47,7 +47,7 @@ test("轻学新项：只点击、丢响应不重复记录、暂停刷新恢复�
     }else await route.continue();
   });
   await page.getByRole("button",{name:"揭晓表达",exact:true}).click();
-  await page.getByRole("button",{name:"想起来了",exact:true}).click();
+  await page.getByRole("button",{name:"脱口而出",exact:true}).click();
   await expect(page.getByRole("button",{name:"重试保存"})).toBeVisible();
   await page.getByRole("button",{name:"重试保存"}).click();
   await expect(page.getByText("新表达 · 2 / 5",{exact:true})).toBeVisible();
@@ -64,7 +64,7 @@ test("轻学新项：只点击、丢响应不重复记录、暂停刷新恢复�
   await expect(page.getByText("新表达 · 2 / 5",{exact:true})).toBeVisible();
   for(let index=0;index<4;index++){
     await page.getByRole("button",{name:"揭晓表达",exact:true}).click();
-    await page.getByRole("button",{name:"想起来了",exact:true}).click();
+    await page.getByRole("button",{name:"脱口而出",exact:true}).click();
   }
   await expect(page.getByRole("heading",{name:"本批已结束"})).toBeVisible();
   expect(await readCounts()).toEqual(before);
@@ -116,15 +116,15 @@ test("轻复习：默认手动、计时可暂停和提前揭晓、三档自评�
   await page.clock.fastForward(6000);
   await expect(region.locator('[lang="en"]')).toHaveCount(0);
   await page.getByRole("button",{name:"揭晓表达",exact:true}).click();
-  await expect(page.getByRole("button",{name:"想起来了",exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"脱口而出",exact:true})).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button",{name:"想起来了",exact:true})).toBeVisible();
-  await page.getByRole("button",{name:"想起来了",exact:true}).click();
+  await expect(page.getByRole("button",{name:"脱口而出",exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"脱口而出",exact:true}).click();
   await expect(page.getByText("到期复习 · 2 / 3",{exact:true})).toBeVisible();
   await page.clock.fastForward(5000);
-  await expect(page.getByRole("button",{name:"有点模糊",exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"想了一会儿",exact:true})).toBeVisible();
   await expect(page.getByText("到期复习 · 2 / 3",{exact:true})).toBeVisible();
-  await page.getByRole("button",{name:"有点模糊",exact:true}).click();
+  await page.getByRole("button",{name:"想了一会儿",exact:true}).click();
   await expect(page.getByText("到期复习 · 3 / 3",{exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"揭晓表达",exact:true})).toBeVisible();
   await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"));});
@@ -136,7 +136,7 @@ test("轻复习：默认手动、计时可暂停和提前揭晓、三档自评�
   await page.evaluate(()=>window.scrollTo(0,0));
   for(const width of [390,320]){
     await page.setViewportSize({width,height:844});
-    for(const name of ["想起来了","有点模糊","没想起来"]){
+    for(const name of ["脱口而出","想了一会儿","没想出来"]){
       const button=page.getByRole("button",{name,exact:true});
       await expect(button).toBeInViewport();
       expect(await button.evaluate(element=>{
@@ -147,7 +147,7 @@ test("轻复习：默认手动、计时可暂停和提前揭晓、三档自评�
   }
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:"test-results/visual/light-study-review-390.png",fullPage:true});
-  await page.getByRole("button",{name:"没想起来",exact:true}).click();
+  await page.getByRole("button",{name:"没想出来",exact:true}).click();
   await expect(page.getByRole("heading",{name:"本批已结束"})).toBeVisible();
   await expect(page.getByRole("textbox")).toHaveCount(0);
 });
@@ -167,12 +167,12 @@ test("V2五项新学最多再见三次，失败不强制循环，揭晓/移动�
     if(index===0){
       for(const width of [1440,390,320]){
         await page.setViewportSize({width,height:844});
-        await expect(page.getByRole("button",{name:"没想起来",exact:true})).toBeInViewport();
+        await expect(page.getByRole("button",{name:"没想出来",exact:true})).toBeInViewport();
         expect((await new AxeBuilder({page}).include("main").analyze()).violations).toEqual([]);
         if(width!==320)await page.screenshot({path:`test-results/visual/light-study-revealed-${width}.png`,fullPage:true});
       }
     }
-    await page.getByRole("button",{name:"没想起来",exact:true}).click();
+    await page.getByRole("button",{name:"没想出来",exact:true}).click();
   }
   await expect(page.getByRole("heading",{name:"本批已结束"})).toBeVisible();
   await expect(page.getByRole("link",{name:"回到这道题",exact:true})).toHaveAttribute("href","/questions/light-e2e-weak");

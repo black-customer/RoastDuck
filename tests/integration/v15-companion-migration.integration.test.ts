@@ -2,11 +2,13 @@ import { createClient } from "@libsql/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ensureSchema } from "../../db/migrate";
 import { assertInsideTestResults, prepareTestDatabase } from "../helpers/temp-db";
+import { migrationHistory, removePostV25Schema } from "../helpers/legacy-schema";
 
 const database = prepareTestDatabase("v15-companion-migration.integration");
 assertInsideTestResults(database.file);
 process.env.ROASTDUCK_SKIP_DB_BACKUP = "1";
 const client = createClient({ url: database.url });
+let originalHistory: Array<{ version: number; checksum: string }>;
 
 async function execute(sql: string, args: Array<string | number | null> = []) {
   return client.execute({ sql, args });
@@ -14,6 +16,8 @@ async function execute(sql: string, args: Array<string | number | null> = []) {
 
 beforeAll(async () => {
   await ensureSchema(client, database.url);
+  originalHistory = await migrationHistory(client, 14);
+  await removePostV25Schema(client, database.url);
 
   await execute("INSERT INTO books (id,title_zh,title_en,source_type,status) VALUES ('book_v15','迁移测试','Migration','question_bank','beta')");
   await execute("INSERT INTO topics (id,book_id,name_zh,name_en,status) VALUES ('topic_v15','book_v15','迁移','Migration','audited')");
@@ -48,6 +52,12 @@ beforeAll(async () => {
 afterAll(() => client.close());
 
 describe("v15 Gap 提取与 Chloe 统一记忆迁移", () => {
+  it("从连续 v14 升级到 v32，并完整保留旧迁移校验和", async () => {
+    const history = await migrationHistory(client);
+    expect(history.map(row => row.version)).toEqual(Array.from({ length: 32 }, (_, index) => index + 1));
+    expect(history.slice(0, 14)).toEqual(originalHistory);
+  });
+
   it("把同一道题的旧口语消息按时间回填到同一个 Chloe 线程", async () => {
     const threads = await execute("SELECT id,scope_key,scope_type,scope_id FROM companion_threads");
     expect(threads.rows).toEqual([

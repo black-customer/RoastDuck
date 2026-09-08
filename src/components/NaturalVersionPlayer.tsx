@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { getTTS, splitSentencesForTts } from "@/lib/tts";
 import { VoiceSelector } from "./VoiceSelector";
+import type {SpeechStyle} from '@/lib/speech/contracts';
 
 type PlayMode = "continuous" | "loop_single" | "shadowing";
 
 interface NaturalVersionPlayerProps {
   naturalVersion: string;
+  style?:SpeechStyle;
 }
 
-export function NaturalVersionPlayer({ naturalVersion }: NaturalVersionPlayerProps) {
+export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation' }: NaturalVersionPlayerProps) {
+  const ownerId=useId();
   const sentences = useMemo(() => {
     const list = splitSentencesForTts(naturalVersion);
     return list.length > 0 ? list : [naturalVersion];
@@ -40,10 +43,10 @@ export function NaturalVersionPlayer({ naturalVersion }: NaturalVersionPlayerPro
     return () => {
       isPlayingRef.current = false;
       invalidatePlayback();
-      getTTS().stop();
+      getTTS().stop(ownerId);
       if (shadowingTimerRef.current) clearTimeout(shadowingTimerRef.current);
     };
-  }, [naturalVersion, invalidatePlayback]);
+  }, [naturalVersion, invalidatePlayback,ownerId]);
 
   function stopAll() {
     isPlayingRef.current = false;
@@ -52,7 +55,7 @@ export function NaturalVersionPlayer({ naturalVersion }: NaturalVersionPlayerPro
       clearTimeout(shadowingTimerRef.current);
       shadowingTimerRef.current = null;
     }
-    getTTS().stop();
+    getTTS().stop(ownerId,true);
     setIsPlaying(false);
     setIsShadowingWaiting(false);
   }
@@ -76,6 +79,7 @@ export function NaturalVersionPlayer({ naturalVersion }: NaturalVersionPlayerPro
 
     const sentence = sentences[index];
     getTTS().speak(sentence, {
+      ownerId,style,
       onEnd: () => {
         if (!isPlayingRef.current || playbackEpoch.current !== generation) return;
 

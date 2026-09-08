@@ -12,7 +12,7 @@ if(!process.argv.includes('--execute-four-samples'))throw new Error('需要明�
 if(process.env.VITEST||process.env.ROASTDUCK_E2E==='1'||process.env.AI_PROVIDER==='mock'||process.env.NODE_ENV==='test')throw new Error('自动化环境禁止真实试听');
 const require=createRequire(import.meta.url);
 require('@next/env').loadEnvConfig(process.cwd(),true,{info(){},error(){}});
-if(process.env.AI_PROVIDER==='mock'||process.env.ROASTDUCK_E2E==='1'||process.env.VITEST||process.env.NODE_ENV==='test')throw new Error('本机配置选择了自动化模式，不执行真实试听');
+if(process.env.AI_PROVIDER==='mock'||process.env.ROASTDUCK_E2E==='1'||process.env.VITEST||String(process.env.NODE_ENV)==='test')throw new Error('本机配置选择了自动化模式，不执行真实试听');
 const config=readSpeechEnvironment();
 if(!config.apiKey||new URL(config.baseUrl).origin!=='https://api.xiaomimimo.com')throw new Error('需要本机已配置的官方 MiMo 服务；未发出请求');
 const root=path.resolve('data/audio/prosody-preview-20260908');

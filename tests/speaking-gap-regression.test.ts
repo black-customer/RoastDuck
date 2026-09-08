@@ -84,7 +84,8 @@ describe("IELTS Speaking Gap Detection Regression Suite (Spec Section 64)", () =
       intendedMeaningZh: "我是大四学生，在青岛读计算机，之前从化学转到了计算机专业。",
     });
 
-    expect(attempt.gapCount).toBeGreaterThanOrEqual(2);
+    expect(attempt.gapCount).toBe(0); // Clear preparation intentions are not confirmed mistakes.
+    expect(attempt.analysis.learningTargetCount).toBeGreaterThanOrEqual(2);
     const unexpressed = attempt.analysis.gaps.find((g) => g.gapType === "unexpressed_intention");
     expect(unexpressed).toBeDefined();
     expect(attempt.analysis.learningItems.some((li) => li.targetEnglish.includes("switch majors"))).toBe(true);

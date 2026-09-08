@@ -4,6 +4,7 @@ import snapshot from "@/lib/platform/android/generated/schema.json";
 import {V29_DDL} from '../../db/migrations/v29-web-usability';
 import {V30_DDL} from '../../db/migrations/v30-web-speech-lock';
 import {V31_DDL} from '../../db/migrations/v31-web-material-controls';
+import {V32_DDL} from '../../db/migrations/v32-expression-study';
 /** Real SQLite in memory, native schema, no production paths and no libsql worker lifecycle. */
 export function portableTestDatabase(){
   const connection=new DatabaseSync(":memory:");
@@ -12,6 +13,7 @@ export function portableTestDatabase(){
   for(const statement of V29_DDL)connection.exec(statement);
   for(const statement of V30_DDL)connection.exec(statement);
   for(const statement of V31_DDL)connection.exec(statement);
+  for(const statement of V32_DDL)connection.exec(statement);
   const driver:TransactionDriver={
     async begin(mode){connection.exec("BEGIN");if(mode==="read")connection.exec("PRAGMA query_only=ON");},
     async commit(){connection.exec("PRAGMA query_only=OFF; COMMIT");},

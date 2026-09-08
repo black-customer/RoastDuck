@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | [README](README.md) | 现行 | 本索引 |
 | [WEB_USABILITY](WEB_USABILITY.md) | 现行 | 网页收敛执行范围与优先级 |
+| [PUBLIC_WEB_EXECUTION](PUBLIC_WEB_EXECUTION.md) | 现行 | 最新公开快照、覆盖选材、日级FSRS和男声执行契约，冲突时优先 |
 | [LIGHT_STUDY_V2_ANDROID](LIGHT_STUDY_V2_ANDROID.md) | 冻结 | 安卓与同步旧执行范围，保留参考，不开工 |
 | [DEVICE_SYNC](DEVICE_SYNC.md) | 冻结 | 既有安卓/同步实现记录，不作为网页任务 |
 | [PRODUCT](PRODUCT.md) | 现行 | 产品范围与默认值 |

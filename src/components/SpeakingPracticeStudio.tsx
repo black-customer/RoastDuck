@@ -7,10 +7,13 @@ import type {AnswerDraft} from '@/lib/app-services/answers';
 import {credentialValue} from '@/lib/app-services/shared';
 import {SpeakButton} from './SpeakButton';
 import {z} from 'zod';
-type Values={english:string;chinese:string;englishUnknown:boolean};
-const localDraftSchema=z.object({clientId:z.string().min(1).max(160),draftId:z.string().optional(),version:z.number().int().optional(),values:z.object({english:z.string().max(16000),chinese:z.string().max(16000),englishUnknown:z.boolean()})});
+type Values={english:string;chinese:string;englishUnknown:boolean;inputText?:string};
+const localDraftSchema=z.object({clientId:z.string().min(1).max(160),draftId:z.string().optional(),version:z.number().int().optional(),values:z.object({english:z.string().max(16000),chinese:z.string().max(16000),englishUnknown:z.boolean(),inputText:z.string().max(16000).optional()})});
 type LocalDraft=z.infer<typeof localDraftSchema>;
 const empty:Values={english:'',chinese:'',englishUnknown:false};
+const combined=(v:Values)=>[v.englishUnknown?'':v.english,v.chinese].filter(Boolean).join('\n\n');
+const fromDraft=(d:AnswerDraft):Values=>({english:d.english_text,chinese:d.chinese_text,englishUnknown:!!d.english_unknown,...(d.input_format==='mixed-v1'?{inputText:d.raw_input??''}:{})});
+const sensitive=(v:Values)=>credentialValue((v.inputText??'')+'\n'+v.english+'\n'+v.chinese);
 async function request(url:string,method='GET',body?:unknown){
   const response=await fetch(url,{method,cache:'no-store',headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=await response.json();if(!response.ok)throw Object.assign(new Error(data.error??'保存未成功，请重试'),{code:data.code});return data;
@@ -20,7 +23,7 @@ export function SpeakingPracticeStudio({question,sourceAttemptId,kind='practice'
   const router=useRouter(),key=`roastduck_answer_draft:${question.id}:${kind}:${sourceAttemptId??''}`;
   const [values,setValues]=useState<Values>(empty),[draft,setDraft]=useState<AnswerDraft|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState('');
   const row=useRef<AnswerDraft|null>(null),recovery=useRef<AnswerDraft|null>(null),input=useRef(values),clientId=useRef(''),saving=useRef<Promise<AnswerDraft>|null>(null),mounted=useRef(true),locked=useRef(false),changed=useRef(false);
-  const store=useCallback((next:Values)=>{try{if(!credentialValue(next.english+'\n'+next.chinese))localStorage.setItem(key,JSON.stringify({clientId:clientId.current,draftId:row.current?.id,version:row.current?.version,values:next}));}catch{/* Server save stays authoritative. */}},[key]);
+  const store=useCallback((next:Values)=>{try{if(!sensitive(next))localStorage.setItem(key,JSON.stringify({clientId:clientId.current,draftId:row.current?.id,version:row.current?.version,values:next}));}catch{/* Server save stays authoritative. */}},[key]);
   useEffect(()=>{
     mounted.current=true;let cancelled=false;
     void(async()=>{try{
@@ -35,9 +38,9 @@ export function SpeakingPracticeStudio({question,sourceAttemptId,kind='practice'
       let original:Values=empty;
       if(!local&&!found&&kind==='edit'&&sourceAttemptId){const source=await request(`/api/speaking-practice/attempts/${encodeURIComponent(sourceAttemptId)}`);if(source.attempt.questionId!==question.id)throw new Error('原回答不属于当前题目');original={english:source.attempt.answerText,chinese:source.attempt.intendedMeaningZh,englishUnknown:!source.attempt.answerText.trim()};}
       if(cancelled)return;
-      const next=local?.values??(found?{english:found.english_text,chinese:found.chinese_text,englishUnknown:!!found.english_unknown}:original);
+      const next=local?.values??(found?fromDraft(found):original);
       row.current=found??null;setDraft(found??null);input.current=next;setValues(next);
-      if(local?.values&&found&&local.version!==undefined&&found.version>local.version&&JSON.stringify(next)!==JSON.stringify({english:found.english_text,chinese:found.chinese_text,englishUnknown:!!found.english_unknown})){
+      if(local?.values&&found&&local.version!==undefined&&found.version>local.version&&JSON.stringify(next)!==JSON.stringify(fromDraft(found))){
         setError('另一窗口已更新草稿。你的未保存文字已保留，请先复制需要的内容，再恢复服务器版本。');locked.current=true;recovery.current=found;
       }
       setStatus(local?'已恢复本机草稿，请确认内容':found?'已恢复保存的草稿':'输入后自动保存；不会自动调用 AI');
@@ -50,10 +53,10 @@ export function SpeakingPracticeStudio({question,sourceAttemptId,kind='practice'
     if(row.current?.submitted_attempt_id)return row.current;
     const snapshot={...input.current};
     const work=(async()=>{
-      if(credentialValue(snapshot.english+'\n'+snapshot.chinese))throw new Error('输入疑似包含密钥或凭证，请移除后保存');
+      if(sensitive(snapshot))throw new Error('输入疑似包含密钥或凭证，请移除后保存');
       if(!row.current){const created=await request('/api/answer-drafts','POST',{questionId:question.id,clientId:clientId.current,kind,sourceAttemptId:sourceAttemptId??null});row.current=created.draft;store(input.current);}
       let response;
-      try{response=await request(`/api/answer-drafts/${row.current!.id}`,'PATCH',{...snapshot,version:row.current!.version});}
+      try{response=await request(`/api/answer-drafts/${row.current!.id}`,'PATCH',kind==='independent'?{english:snapshot.english,chinese:snapshot.chinese,englishUnknown:snapshot.englishUnknown,version:row.current!.version}:{inputText:snapshot.inputText??combined(snapshot),version:row.current!.version});}
       catch(error){if(error instanceof Error&&'code' in error){
         if(error.code==='draft_submitted'){const latest=await request(`/api/answer-drafts/${row.current!.id}`);row.current=latest.draft;return latest.draft as AnswerDraft;}
         if(error.code==='draft_version_conflict'||error.code==='english_committed'){locked.current=true;const latest=await request(`/api/answer-drafts/${row.current!.id}`);recovery.current=latest.draft;}
@@ -75,11 +78,11 @@ export function SpeakingPracticeStudio({question,sourceAttemptId,kind='practice'
   }
   const independent=kind==='independent',committed=!!draft?.english_committed_at;
   return <div className="studio-shell"><div className="studio-frame"><header className="studio-header"><Link href={`/questions/${question.id}`} className="exit-button">← 返回题目</Link><span>{independent?'无提示重答':kind==='edit'?'编辑回答':'本次作答'}</span></header>
-    <div className="studio-layout"><aside className="studio-question-panel"><div className="panel-badge">IELTS Speaking · Part {question.part}</div><h2 className="studio-question-title" lang="en">{question.textEn}</h2><p>{question.textZh}</p><SpeakButton text={question.textEn} label="播放题目"/><p className="guidance-box">{independent?'只看题目，先用自己的英文回答。这里不会展示旧答案或提示。':'不需要写得完美。让 AI 对照你的真实尝试与中文意思，找出值得学习的表达。'}</p></aside>
+    <div className="studio-layout"><aside className="studio-question-panel"><p className="quiet">IELTS Speaking · Part {question.part}</p><h2 className="studio-question-title" lang="en">{question.textEn}</h2><p>{question.textZh}</p><SpeakButton text={question.textEn} label="播放题目"/><p className="guidance-box">{independent?'只看题目，先用自己的英文回答。这里不会展示旧答案或提示。':'先说清你想表达什么。中文、英文，或者混着说都可以；不用把同一份答案再写一遍。'}</p></aside>
     <section className="studio-editor-panel" aria-busy={loading||busy}><h1>{independent?'先记录这一次的英文':'你想表达什么？'}</h1>{loading?<p role="status">正在恢复草稿…</p>:<>
-      {error&&<div className="error-banner" role="alert"><p>{error}</p>{locked.current?<button type="button" onClick={()=>{const current=recovery.current;if(current){const next={english:current.english_text,chinese:current.chinese_text,englishUnknown:!!current.english_unknown};row.current=current;setDraft(current);recovery.current=null;locked.current=false;update(next);setError('');}else window.location.reload();}}>恢复服务器版本（先复制未保存文字）</button>:<button type="button" disabled={busy} onClick={()=>void save().then(saved=>{if(saved.submitted_attempt_id)router.push(`/questions/${question.id}/attempts/${saved.submitted_attempt_id}`);else setError('');}).catch(reason=>setError(reason.message))}>重试保存草稿</button>}</div>}
-      <div className="input-group"><label htmlFor="input-answer"><strong>我的英文尝试</strong></label><textarea id="input-answer" value={values.english} rows={6} maxLength={16000} disabled={busy||committed||values.englishUnknown} onChange={e=>update({...values,english:e.target.value})} placeholder="用你现在会的英文回答。不完整、卡住都没关系。"/><label><input type="checkbox" disabled={busy||committed} checked={values.englishUnknown} onChange={e=>update({...values,englishUnknown:e.target.checked})}/>暂时不会用英文表达</label><p className="quiet">可使用 Win + H 或输入法麦克风。应用不会主动请求录音权限。</p></div>
-      {(!independent||committed)&&<div className="input-group"><label htmlFor="input-intention"><strong>我真正想表达的中文意思{independent?'（可选）':''}</strong></label><textarea id="input-intention" value={values.chinese} rows={5} maxLength={16000} disabled={busy} onChange={e=>update({...values,chinese:e.target.value})} placeholder="写下你自己的事实、观点和细节，不必逐字翻译。"/>{independent&&<p>不填写时，只分析这次英文能证明的问题，不借用旧中文答案。</p>}</div>}
-      <p role="status" className="quiet">{status}</p><div className="studio-submit-row"><button className="primary-button" disabled={busy||locked.current||(!values.english.trim()&&!values.englishUnknown)||(!independent&&!values.chinese.trim())} onClick={()=>void act(independent&&!committed?'commitEnglish':'submit')}>{busy?'正在保存…':independent&&!committed?'封存英文，再继续':'保存并分析我的表达'}</button></div><p className="quiet">原回答先保存，再分析；分析使用你的 API，页面可以离开后再回来。</p>
+      {error&&<div className="error-banner" role="alert"><p>{error}</p>{locked.current?<button type="button" onClick={()=>{const current=recovery.current;if(current){const next=fromDraft(current);row.current=current;setDraft(current);recovery.current=null;locked.current=false;update(next);setError('');}else window.location.reload();}}>恢复服务器版本（先复制未保存文字）</button>:<button type="button" disabled={busy} onClick={()=>void save().then(saved=>{if(saved.submitted_attempt_id)router.push(`/questions/${question.id}/attempts/${saved.submitted_attempt_id}`);else setError('');}).catch(reason=>setError(reason.message))}>重试保存草稿</button>}</div>}
+      {!independent?<div className="input-group"><label htmlFor="input-thoughts"><strong>我的回答与想法</strong></label><textarea id="input-thoughts" value={values.inputText??combined(values)} rows={10} maxLength={16000} disabled={busy} onChange={e=>update({...values,inputText:e.target.value})} placeholder="可以先用中文说清自己的想法，也可以加入英文尝试。只写中文也能开始。"/><p className="quiet">可用 Win + H 或输入法麦克风直接说。应用不会主动请求录音权限。</p></div>:<div className="input-group"><label htmlFor="input-answer"><strong>我的英文尝试</strong></label><textarea id="input-answer" value={values.english} rows={6} maxLength={16000} disabled={busy||committed||values.englishUnknown} onChange={e=>update({...values,english:e.target.value})} placeholder="用你现在会的英文回答。不完整、卡住都没关系。"/><label><input type="checkbox" disabled={busy||committed} checked={values.englishUnknown} onChange={e=>update({...values,englishUnknown:e.target.checked})}/>暂时不会用英文表达</label><p className="quiet">可使用 Win + H 或输入法麦克风。应用不会主动请求录音权限。</p></div>}
+      {independent&&committed&&<div className="input-group"><label htmlFor="input-intention"><strong>我真正想表达的中文意思（可选）</strong></label><textarea id="input-intention" value={values.chinese} rows={5} maxLength={16000} disabled={busy} onChange={e=>update({...values,chinese:e.target.value})} placeholder="写下你自己的事实、观点和细节，不必逐字翻译。"/><p>不填写时，只分析这次英文能证明的问题，不借用旧中文答案。</p></div>}
+      <p role="status" className="quiet">{status}</p><div className="studio-submit-row"><button className="primary-button" disabled={busy||locked.current||(independent?(!values.english.trim()&&!values.englishUnknown):!(values.inputText??combined(values)).trim())} onClick={()=>void act(independent&&!committed?'commitEnglish':'submit')}>{busy?'正在保存…':independent&&!committed?'封存英文，再继续':'保存并分析我的表达'}</button></div><p className="quiet">原回答先保存，再分析；分析使用你的 API，页面可以离开后再回来。</p>
     </>}</section></div></div></div>;
 }

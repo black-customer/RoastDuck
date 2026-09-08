@@ -4,6 +4,7 @@ import {createHash} from "node:crypto";
 import { V20_DDL } from "../../db/migrations/v20-material-evidence";
 import { V19_DDL } from "../../db/migrations/v19-four-step";
 import { prepareTestDatabase,assertInsideTestResults } from "../helpers/temp-db";
+import {migrationHistory,removePostV25Schema} from '../helpers/legacy-schema';
 
 it("v20 旧分析原样归档，旧快照默认旧版本，无任何学习进度删除",async()=>{
   const temp=prepareTestDatabase("v20-archive-fixture");assertInsideTestResults(temp.file);
@@ -28,8 +29,11 @@ it("连续迁移可重跑；v20 校验和被篡改时拒绝启动",async()=>{
   process.env.ROASTDUCK_SKIP_DB_BACKUP="1";
   try {
     const {ensureSchema}=await import("../../db/migrate");
-    await ensureSchema(client,temp.url);await ensureSchema(client,temp.url);
-    expect((await client.execute("SELECT MAX(version) AS version FROM _schema_migrations")).rows[0].version).toBe(26);
+    await ensureSchema(client,temp.url);
+    const before=await migrationHistory(client);
+    await ensureSchema(client,temp.url);
+    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:32},(_,index)=>index+1));
+    expect(await migrationHistory(client)).toEqual(before);
     await client.execute("UPDATE _schema_migrations SET checksum='synthetic-tamper' WHERE version=20");
     await expect(ensureSchema(client,temp.url)).rejects.toThrow("checksum");
   }finally{client.close();}
@@ -42,6 +46,7 @@ it("真实早期 v19 漏版本表的历史结构由 v21 补齐，保留原 check
   try {
     const {ensureSchema}=await import("../../db/migrate");
     await ensureSchema(client,temp.url);
+    await removePostV25Schema(client,temp.url);
     // 仅此显式创建的临时库：重建缺表的早期 v19 迁移状态，不碰真实库。
     await client.execute("DROP TABLE practice_material_revisions");
     await client.execute("DELETE FROM _schema_migrations WHERE version>=21");
@@ -49,7 +54,10 @@ it("真实早期 v19 漏版本表的历史结构由 v21 补齐，保留原 check
     const earlyChecksum=createHash("sha256").update(V19_DDL.filter((s)=>!s.includes("practice_material_revisions")).join("\n")).digest("hex");
     expect(earlyChecksum).toBe("2f19dafb503e4ceadb5e34cdd8f9caee20f5a7e98adfd50081223192f4041900");
     await client.execute({sql:"UPDATE _schema_migrations SET checksum=? WHERE version=19",args:[earlyChecksum]});
+    const previousHistory=await migrationHistory(client,20);
     await ensureSchema(client,temp.url);
+    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:32},(_,index)=>index+1));
+    expect(await migrationHistory(client,20)).toEqual(previousHistory);
     expect((await client.execute("SELECT name FROM sqlite_master WHERE name='practice_material_revisions'")).rows).toHaveLength(1);
     expect((await client.execute("SELECT checksum FROM _schema_migrations WHERE version=19")).rows[0].checksum).toBe(earlyChecksum);
     await ensureSchema(client,temp.url);

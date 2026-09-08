@@ -1,10 +1,13 @@
 import { sql } from "drizzle-orm";
 import { getDbReady } from "@db/client";
+import {currentReadyMaterialPredicate} from '@/lib/light-study/current-material';
 
 export type QuestionState =
   | "unanswered"
   | "learning_incomplete"
   | "learning_completed"
+  | "self_assessed"
+  | "learning_paused"
   | "mastered"
   | "analysis_pending"
   | "analysis_failed"
@@ -18,6 +21,8 @@ export const QUESTION_STATE_LABELS: Record<QuestionState, string> = {
   unanswered: "未作答",
   learning_incomplete: "有新表达待学",
   learning_completed: "已过首轮（非掌握）",
+  self_assessed: "已处理（含自评已掌握）",
+  learning_paused: "已暂不学",
   mastered: "自评已掌握",
   analysis_pending: "分析中",
   analysis_failed: "分析失败",
@@ -42,6 +47,8 @@ export function questionPrimaryAction(id: string, state: QuestionState, latestAn
   switch (state) {
     case "unanswered": return { label: "开始回答", href: `/questions/${question}/practice` };
     case "mastered": return { label: "自评已掌握 · 查看", href: `/questions/${question}` };
+    case "self_assessed": return { label: "查看表达与自评", href: `/questions/${question}` };
+    case "learning_paused": return { label: "查看与恢复表达", href: `/questions/${question}` };
     case "learning_completed": return { label: "定期复习", href: `/questions/${question}/practice` };
     case "learning_incomplete": return { label: "查看本题材料", href: `/questions/${question}` };
     case "analysis_pending": return { label: "查看分析", href: answer ? `/answer-studio/${answer}` : `/questions/${question}` };
@@ -140,14 +147,16 @@ export const questionActivityCte = sql`
     FROM questions q
   ), resolved_question_metrics AS (
     SELECT m.*,
-      (SELECT pm.id FROM practice_materials pm WHERE pm.source_type='ielts_practice' AND pm.source_id=m.latestAnswerId ORDER BY (pm.contract_version='evidence_v2') DESC,julianday(pm.created_at) DESC,pm.id DESC LIMIT 1) AS currentMaterialId,
+      (SELECT pm.id FROM practice_materials pm WHERE pm.source_type='ielts_practice' AND pm.source_id=m.latestAnswerId ORDER BY (pm.contract_version='evidence_v2') DESC,(pm.status='ready') DESC,julianday(pm.created_at) DESC,pm.id DESC LIMIT 1) AS currentMaterialId,
       (SELECT status FROM speaking_question_attempts sqa WHERE sqa.id=m.latestAnswerId) AS attemptStatus
     FROM question_metrics m
   ), light_question_metrics AS (
     SELECT m.*,
       (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN learning_items i ON i.id=mi.learning_item_id WHERE mi.material_id=m.currentMaterialId AND i.status='active' AND NOT EXISTS(SELECT 1 FROM expression_preferences p WHERE p.learning_item_id=i.id AND p.hidden=1)) AS lightTotal,
       (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN learning_items i ON i.id=mi.learning_item_id JOIN light_study_progress p ON p.learning_item_id=i.id WHERE mi.material_id=m.currentMaterialId AND i.status='active' AND NOT EXISTS(SELECT 1 FROM expression_preferences ep WHERE ep.learning_item_id=i.id AND ep.hidden=1)) AS lightSeen,
-      (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN practice_materials pm ON pm.id=mi.material_id JOIN light_study_progress p ON p.learning_item_id=mi.learning_item_id JOIN learning_items i ON i.id=mi.learning_item_id WHERE pm.question_id=m.id AND pm.status='ready' AND i.status='active' AND julianday(p.due_at)<=julianday('now') AND NOT EXISTS(SELECT 1 FROM expression_preferences ep WHERE ep.learning_item_id=i.id AND ep.hidden=1)) AS lightDueCount
+      (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN learning_items i ON i.id=mi.learning_item_id JOIN expression_preferences ep ON ep.learning_item_id=i.id WHERE mi.material_id=m.currentMaterialId AND i.status='active' AND ep.hidden=0 AND ep.self_known=1 AND NOT EXISTS(SELECT 1 FROM light_study_progress p WHERE p.learning_item_id=i.id)) AS lightSelfKnownUnstudied,
+      (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN learning_items i ON i.id=mi.learning_item_id JOIN expression_preferences ep ON ep.learning_item_id=i.id WHERE mi.material_id=m.currentMaterialId AND i.status='active' AND ep.hidden=1) AS lightHidden,
+      (SELECT COUNT(DISTINCT mi.learning_item_id) FROM practice_material_items mi JOIN practice_materials pm ON pm.id=mi.material_id JOIN light_study_progress p ON p.learning_item_id=mi.learning_item_id JOIN learning_items i ON i.id=mi.learning_item_id WHERE pm.question_id=m.id AND pm.status='ready' AND ${sql.raw(currentReadyMaterialPredicate)} AND i.status='active' AND julianday(p.due_at)<=julianday('now') AND NOT EXISTS(SELECT 1 FROM expression_preferences ep WHERE ep.learning_item_id=i.id AND (ep.hidden=1 OR ep.self_known=1))) AS lightDueCount
     FROM resolved_question_metrics m
   ), question_activity AS (
     SELECT *,
@@ -160,10 +169,14 @@ export const questionActivityCte = sql`
       CASE
         WHEN totalAnswerCount = 0 THEN 'unanswered'
         WHEN latestAnswerType='ielts_practice' THEN CASE
-          WHEN attemptStatus='processing' THEN 'analysis_pending'
-          WHEN attemptStatus='failed' THEN 'analysis_failed'
+          WHEN attemptStatus='processing' AND NOT EXISTS(SELECT 1 FROM practice_materials pm WHERE pm.id=currentMaterialId AND pm.status='ready') THEN 'analysis_pending'
+          WHEN attemptStatus='failed' AND NOT EXISTS(SELECT 1 FROM practice_materials pm WHERE pm.id=currentMaterialId AND pm.status='ready') THEN 'analysis_failed'
           WHEN currentMaterialId IS NULL OR NOT EXISTS (SELECT 1 FROM practice_materials pm WHERE pm.id=currentMaterialId AND pm.status='ready') THEN 'materials_pending'
-          WHEN EXISTS (SELECT 1 FROM light_study_sessions ls WHERE ls.status IN ('active','paused') AND NOT EXISTS(SELECT 1 FROM light_study_successions s WHERE s.legacy_session_id=ls.id) AND (json_extract(ls.scope_json,'$.type')='question' AND json_extract(ls.scope_json,'$.id')=resolved_question_metrics.id OR json_extract(ls.scope_json,'$.type')='material' AND json_extract(ls.scope_json,'$.id')=currentMaterialId)) THEN 'learning'
+          WHEN lightTotal>0 AND lightSelfKnownUnstudied>0 AND lightSeen+lightSelfKnownUnstudied=lightTotal THEN 'self_assessed'
+          WHEN lightTotal=0 AND lightHidden>0 THEN 'learning_paused'
+          WHEN EXISTS (SELECT 1 FROM light_study_sessions ls WHERE ls.status IN ('active','paused') AND NOT EXISTS(SELECT 1 FROM light_study_successions s WHERE s.legacy_session_id=ls.id)
+            AND EXISTS(SELECT 1 FROM json_each(ls.queue_json) queued JOIN learning_items qi ON qi.id=json_extract(queued.value,'$.itemId') JOIN practice_materials pm ON pm.id=json_extract(queued.value,'$.materialId') WHERE qi.status='active' AND pm.status='ready' AND ${sql.raw(currentReadyMaterialPredicate)} AND NOT EXISTS(SELECT 1 FROM expression_preferences ep WHERE ep.learning_item_id=qi.id AND (ep.hidden=1 OR ep.self_known=1)))
+            AND (json_extract(ls.scope_json,'$.type')='question' AND json_extract(ls.scope_json,'$.id')=resolved_question_metrics.id OR json_extract(ls.scope_json,'$.type')='material' AND json_extract(ls.scope_json,'$.id')=currentMaterialId)) THEN 'learning'
           WHEN lightTotal>0 AND lightSeen=lightTotal OR (SELECT json_array_length(pm.analysis_json,'$.learningMaterials') FROM practice_materials pm WHERE pm.id=currentMaterialId)=0 THEN 'learning_completed'
           ELSE 'learning_incomplete' END
         WHEN isMastered = 1 THEN 'mastered'
@@ -199,6 +212,8 @@ export interface QuestionActivity {
   state: QuestionState;
   lightTotal:number;
   lightSeen:number;
+  lightSelfKnownUnstudied:number;
+  lightHidden:number;
   lightDueCount:number;
 }
 

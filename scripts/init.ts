@@ -30,6 +30,8 @@ async function scalar(client: ReturnType<typeof createClient>, sql: string): Pro
 
 async function main() {
   const databasePath = localDbPath(dbUrl);
+  // Fresh public clones intentionally contain no data directory or private database.
+  if(databasePath)fs.mkdirSync(path.dirname(databasePath),{recursive:true});
   const client = createClient({ url: dbUrl });
   let initBackup: string | null = null;
 

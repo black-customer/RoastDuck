@@ -37,6 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className={styles.sidebarBottom}>
           <p className={styles.sidebarNote}>把想说的话，<br />变成会用的英语。</p>
           <nav aria-label="工具导航">
+            <Link className={styles.navLink} aria-current={pathname === "/expressions" || pathname === "/quick-review" ? "page" : undefined} href="/expressions" onClick={close}><Icon name="answers" />我的表达</Link>
             <Link className={styles.navLink} aria-current={pathname === "/companion-memories" ? "page" : undefined} href="/companion-memories" onClick={close}><Icon name="memory" />Chloe 记得什么</Link>
             <Link className={styles.navLink} aria-current={pathname === "/search" ? "page" : undefined} href="/search" onClick={close}><Icon name="search" />搜索表达</Link>
             <Link className={styles.navLink} aria-current={["/settings", "/review-content"].includes(pathname) ? "page" : undefined} href="/settings" onClick={close}><Icon name="settings" />学习设置</Link>

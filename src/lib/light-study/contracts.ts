@@ -6,7 +6,8 @@ export const scopeSchema = z.discriminatedUnion("type", [
   z.object({type:z.literal("all")}).strict(),
   z.object({type:z.literal("question"),id}).strict(),
   z.object({type:z.literal("material"),id}).strict(),
-]);
+  z.object({type:z.literal("collection"),id:z.enum(["ielts","free_talk"]),questionId:id.optional(),topicId:id.optional(),seasonId:id.optional()}).strict(),
+]).refine(scope=>scope.type!=='collection'||scope.id==='ielts'||(!scope.questionId&&!scope.topicId&&!scope.seasonId),'来源筛选仅适用于雅思表达');
 export type LightScope = z.infer<typeof scopeSchema>;
 export const modeSchema = z.enum(["learn","review"]);
 export type LightMode = z.infer<typeof modeSchema>;
@@ -20,10 +21,16 @@ export const lightEventSchema = z.discriminatedUnion("type", [
 ]);
 export type LightEvent = z.infer<typeof lightEventSchema>;
 export const LIGHT_RATINGS = {remembered:"good",uncertain:"hard",forgot:"again"} as const;
+export interface LightSource {
+  materialId:string;sourceType:"ielts_practice"|"free_talk";sourceId:string;
+  title:string;href:string;questionId:string|null;
+  questionTitle?:string;topicId?:string|null;topicTitle?:string;seasons?:Array<{id:string;title:string}>;
+}
 export interface LightCard {
   itemId:string; materialId:string; materialHash:string; rowIndex:number; progressVersion:number;
   chinese:string; english:string; sentenceZh:string; sentenceEn:string;
   originalEnglish:string; reasonZh:string; sourceTitle:string; sourceHref:string; questionId:string|null;
+  sourceType?:LightSource["sourceType"];sources?:LightSource[];
 }
 export interface LightView {
   id:string; scope:LightScope; mode:LightMode; status:"active"|"paused"|"completed"; version:number;

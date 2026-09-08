@@ -4,6 +4,8 @@ export interface MaterialInput {
   mode: string; actualAnswer: string; intendedMeaningZh: string;
   /** Bound to this material snapshot; old snapshots keep their original generation contract. */
   spokenStyleVersion?: 'personal-spoken-v1';
+  inputFormat?: 'mixed-v1';
+  rawInput?: string;
   sourceMessages?: Array<{ id: string; role: string; text: string }>;
 }
 export interface MaterialRow {

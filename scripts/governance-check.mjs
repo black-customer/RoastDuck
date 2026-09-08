@@ -86,7 +86,7 @@ check("5. Prompt 版本化管理", () => {
   if (files.length === 0) return "pipeline/prompts 中没有 Prompt 文件";
   const pipeline = fs.readFileSync(path.join(ROOT, "src/lib/four-step/stage-contracts.ts"), "utf8");
   const requiredPersonalPrompts = [...pipeline.matchAll(/prompt:\s*["']([^"']+\.md)["']/g)].map(m => m[1]);
-  if (requiredPersonalPrompts.length !== 4) return "现行材料阶段Prompt声明缺失";
+  if (requiredPersonalPrompts.length < 4 || requiredPersonalPrompts.length % 4 !== 0) return "材料版本缺少完整四阶段Prompt声明";
   const missing = requiredPersonalPrompts.filter((file) => !files.includes(file));
   if (missing.length > 0) return `缺少个人内容 Prompt：${missing.join(", ")}`;
   return null;

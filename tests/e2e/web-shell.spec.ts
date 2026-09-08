@@ -108,14 +108,14 @@ test("手机导航可展开、Escape 收起；搜索失败明确且可重试", a
   await page.keyboard.press("Escape");
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await page.route("**/api/search?*", route => route.fulfill({ status: 503, json: { error: "搜索服务暂时不可用" } }));
-  await page.getByLabel("搜索英文或中文表达").fill("progress");
-  await page.getByRole("button", { name: "搜索", exact: true }).click();
+  await page.route("**/api/expressions?*", route => route.fulfill({ status: 503, json: { error: "搜索服务暂时不可用" } }));
+  await page.reload();
+  await page.getByLabel("搜索当前中文或英文表达").fill("brush my teeth");
   await expect(page.getByRole("main").getByRole("alert")).toContainText("搜索服务暂时不可用");
-  await page.unroute("**/api/search?*");
-  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await page.unroute("**/api/expressions?*");
+  await page.getByRole("button", { name: "重新读取", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /make steady progress/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: 'brush my teeth',exact:true })).toBeVisible();
 });
 
 test("切分修复旧链接只读，缺失原问句不显示伪造英文或播放按钮", async ({ page }) => {

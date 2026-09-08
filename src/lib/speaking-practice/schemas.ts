@@ -2,6 +2,7 @@ import { z } from "zod";
 import { materialEvidenceSchema } from "@/lib/four-step/selection-contracts";
 
 export const gapItemSchema = z.object({
+  learningBasis:z.enum(['confirmed_error','preparation']).optional(),
   key: z.string().trim().min(1).max(120),
   intentZh: z.string().trim().min(1).max(800),
   targetEnglish: z.string().trim().min(1).max(800),
@@ -50,6 +51,7 @@ export const examFeedbackSchema = z.object({
 export type ExamFeedback = z.infer<typeof examFeedbackSchema>;
 
 export const learningMaterialRowSchema = z.object({
+  learningBasis:z.enum(['confirmed_error','preparation']).optional(),senseKey:z.string().optional(),
   gapId:z.string().optional(), sentenceId:z.string().optional(), intentUnitIds:z.array(z.string()).optional(),
   surfaceInSentence:z.string().optional(), originalEnglish:z.string().optional(), originalChinese:z.string().optional(), inclusionReasonZh:z.string().optional(),
   chineseChunk: z.string().trim().min(1).max(500),
@@ -61,6 +63,7 @@ export const learningMaterialRowSchema = z.object({
 export type LearningMaterialRow = z.infer<typeof learningMaterialRowSchema>;
 
 export const speakingAttemptAnalysisSchema = z.object({
+  learningTargetCount:z.number().int().min(0).optional(),needsAttention:z.array(z.object({intentZh:z.string(),reasonZh:z.string()})).optional(),
   contractVersion:z.literal("evidence_v2").optional(), evidence:materialEvidenceSchema.optional(), answerIntentZh:z.string().max(16000).optional(),
   naturalVersion: z.string().trim().max(8000),
   gaps: z.array(gapItemSchema).default([]),

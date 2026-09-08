@@ -16,9 +16,15 @@ export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,inp
   }
   const encountered=new Set<string>(),timestamp=now.toISOString();
   for(const [rowIndex,row] of analysis.learningMaterials.entries()){
-    const item=analysis.learningItems.find(value=>normalizeExpression(value.targetEnglish)===normalizeExpression(row.englishChunk));
+    const item=analysis.learningItems[rowIndex];
     if(!item)throw new TrainingError("材料中的表达没有对应训练项",422,"material_alignment");
-    const key=normalizeExpression(item.canonicalKey||item.targetEnglish),itemId=`li_${hash(key).slice(0,24)}`;
+    let key=normalizeExpression(item.canonicalKey||item.targetEnglish);
+    if(input.spokenStyleVersion){
+      // Reuse legacy progress only when both reviewed expression and meaning match, not by spelling alone.
+      const legacy=await tx.all<{canonical_key:string;target_english:string;intention_zh:string}>(sql`SELECT canonical_key,target_english,intention_zh FROM learning_items WHERE canonical_key=${normalizeExpression(row.englishChunk)}`);
+      if(legacy.some(i=>normalizeExpression(i.target_english)===normalizeExpression(row.englishChunk)&&normalizeExpression(i.intention_zh)===normalizeExpression(row.chineseChunk)))key=legacy[0].canonical_key;
+    }
+    const itemId=`li_${hash(key).slice(0,24)}`;
     const inserted=await tx.run(sql`INSERT INTO learning_items(id,canonical_key,target_english,intention_zh,item_type,example_sentence,first_source_type,first_source_id,created_at,updated_at)
       VALUES(${itemId},${key},${row.englishChunk},${row.chineseChunk},${item.itemType},${row.naturalEnglishSentence},${input.sourceType},${input.sourceId},${timestamp},${timestamp}) ON CONFLICT(canonical_key) DO NOTHING`);
     const [actual]=await tx.all<{id:string}>(sql`SELECT id FROM learning_items WHERE canonical_key=${key}`);
@@ -26,7 +32,7 @@ export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,inp
     if(!inserted.changes&&!encountered.has(key))await tx.run(sql`UPDATE learning_items SET encounter_count=encounter_count+1,updated_at=${timestamp} WHERE id=${actual.id}`);
     encountered.add(key);
     await tx.run(sql`INSERT INTO practice_material_items(material_id,learning_item_id,row_index) VALUES(${material.id},${actual.id},${rowIndex}) ON CONFLICT DO NOTHING`);
-    const gap=analysis.gaps.find(value=>normalizeExpression(value.targetEnglish)===normalizeExpression(row.englishChunk));
+    const gap=analysis.gaps.find(value=>value.key===row.gapId)??analysis.gaps.find(value=>normalizeExpression(value.targetEnglish)===normalizeExpression(row.englishChunk));
     await tx.run(sql`INSERT INTO gap_events(id,learning_item_id,source_type,source_id,question_id,evidence_text,intent_zh,target_english,explanation_zh,gap_type,created_at)
       VALUES(${`ge_${hash(material.id,String(rowIndex)).slice(0,24)}`},${actual.id},${input.sourceType},${input.sourceId},${input.question?.id??null},${gap?.evidence??input.actualAnswer},${row.chineseChunk},${row.englishChunk},${gap?.explanationZh??""},${gap?.gapType??"lexical_gap"},${timestamp}) ON CONFLICT DO NOTHING`);
   }

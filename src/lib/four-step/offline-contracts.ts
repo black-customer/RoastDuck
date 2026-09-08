@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { hash } from "./shared";
-import { diagnosisSchema, materialDraftSchema, selectionReviewSchema, evidenceReviewSchema, validateDiagnosis } from "./selection-contracts";
+import { diagnosisSchema, materialDraftSchema, selectionReviewSchema, evidenceReviewSchema,spokenEvidenceReviewSchema, validateDiagnosis } from "./selection-contracts";
 
 const t=z.string().min(1);
 export const recoverySourceSchema=z.object({
   key:t,kind:z.enum(["attempt","personal_answer"]),createdAt:t,questionId:t,questionEn:z.string(),questionZh:z.string(),part:z.number(),english:z.string(),chinese:z.string(),mode:t,index:z.number(),hash:t,
+  spokenStyleVersion:z.literal('personal-spoken-v1').optional(),
   en:z.array(z.object({index:z.number(),start:z.number(),end:z.number(),text:z.string()})),
   zh:z.array(z.object({index:z.number(),start:z.number(),end:z.number(),text:z.string()})),
 });
@@ -17,13 +18,13 @@ export const authoredMaterialSchema=z.object({
     enQuotes:z.array(t).default([]),zhQuotes:z.array(t).default([]),
     intent:t,status:z.enum(["natural","repair","missing","uncertain","non_answer"]),reason:t,
     english:z.string().default(""),
-    gaps:z.array(z.object({cue:t,target:t,quote:t,why:t,surface:t,variants:z.array(t).default([])})).default([]),
+    gaps:z.array(z.object({cue:t,target:t,quote:t,why:t,surface:t,variants:z.array(t).default([]),senseKey:z.string().min(1).max(100).optional()})).default([]),
   })).min(1),
 });
 export type AuthoredMaterial=z.infer<typeof authoredMaterialSchema>;
 export const offlineReviewSchema=z.object({
   authorHash:t,model:t,contextId:t,
-  selection:selectionReviewSchema,review:evidenceReviewSchema,
+  selection:selectionReviewSchema,review:z.union([spokenEvidenceReviewSchema,evidenceReviewSchema]),
 });
 export type OfflineReview=z.infer<typeof offlineReviewSchema>;
 export function authorHash(author:AuthoredMaterial){return hash(JSON.stringify(authoredMaterialSchema.parse(author)));}
@@ -43,8 +44,8 @@ export function expandAuthored(source:RecoverySource,author:AuthoredMaterial){
       return {text,occurrence:original.slice(0,span.start).split(text).length-1};
     }),...quotes.map(text=>({text,occurrence:0}))];
   };
-  const diagnosis=diagnosisSchema.parse({units:author.units.map((u,i)=>({id:`u${i}`,intentZh:u.intent,english:refs(u.en,u.enQuotes,"en"),chinese:refs(u.zh,u.zhQuotes,"zh"),status:u.status,reasonZh:u.reason,gaps:u.gaps.map((g,j)=>({id:`g${i}_${j}`,kind:g.quote&&source.chinese.includes(g.quote)&&!source.english.includes(g.quote)?"unexpressed_intention":/语法|时态|复数|单数|冠词|比较级|主谓/.test(g.why)?"grammar_gap":"lexical_gap",cueZh:g.cue,targetEnglish:g.target,acceptableVariants:g.variants,evidenceQuote:g.quote,whyNeededZh:g.why}))}))});
-  validateDiagnosis({actualAnswer:source.english,intendedMeaningZh:source.chinese},diagnosis);
+  const diagnosis=diagnosisSchema.parse({units:author.units.map((u,i)=>({id:`u${i}`,intentZh:u.intent,english:refs(u.en,u.enQuotes,"en"),chinese:refs(u.zh,u.zhQuotes,"zh"),status:u.status,reasonZh:u.reason,gaps:u.gaps.map((g,j)=>({id:`g${i}_${j}`,kind:u.status==='missing'||g.quote&&source.chinese.includes(g.quote)&&!source.english.includes(g.quote)?"unexpressed_intention":/语法|时态|复数|单数|冠词|比较级|主谓/.test(g.why)?"grammar_gap":"lexical_gap",cueZh:g.cue,targetEnglish:g.target,acceptableVariants:g.variants,evidenceQuote:g.quote,whyNeededZh:g.why,...(source.spokenStyleVersion?{senseKey:g.senseKey}:{})}))}))});
+  validateDiagnosis({actualAnswer:source.english,intendedMeaningZh:source.chinese,spokenStyleVersion:source.spokenStyleVersion},diagnosis);
   const draft=materialDraftSchema.parse({sentences:author.units.flatMap((u,i)=>["non_answer","uncertain"].includes(u.status)?[]:[{id:`s${i}`,intentUnitIds:[`u${i}`],english:u.english||u.en.map(n=>source.en[n].text).join("")+u.enQuotes.join(" ")}]),rows:author.units.flatMap((u,i)=>u.gaps.map((g,j)=>({gapId:`g${i}_${j}`,sentenceId:`s${i}`,surfaceInSentence:g.surface}))),examFeedback:null});
   return {diagnosis,draft};
 }

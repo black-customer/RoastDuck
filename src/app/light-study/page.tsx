@@ -1,10 +1,10 @@
 import { LightStudy } from "@/components/light-study/LightStudy";
-import { scopeSchema } from "@/lib/light-study/contracts";
+import {expressionScope} from '@/lib/light-study/scope-links';
 import {getLightView} from "@/lib/light-study/service";
 export const dynamic="force-dynamic";
 export default async function LightStudyPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const params=await searchParams;
-  const parsed=scopeSchema.safeParse(!params.scope||params.scope==="all"?{type:"all"}:{type:params.scope,id:params.id});
+  const parsed=expressionScope({...params,scope:params.scope||'all'});
   let scope=parsed.success?parsed.data:{type:"all" as const};
   let error=parsed.success?undefined:"学习范围不正确，请返回首页重新进入。";
   const sessionId=typeof params.session==="string"?params.session:undefined;

@@ -23,7 +23,7 @@ export function readSpeechEnvironment(env: Record<string, string | undefined> = 
     MIMO_API_KEY: env.MIMO_API_KEY?.trim() ?? "",
     MIMO_BASE_URL: (env.MIMO_BASE_URL?.trim() || "https://api.xiaomimimo.com/v1").replace(/\/+$/, ""),
     MIMO_TTS_MODEL: env.MIMO_TTS_MODEL?.trim() || MIMO_TTS_MODEL,
-    MIMO_TTS_VOICE: env.MIMO_TTS_VOICE?.trim() || "Chloe",
+    MIMO_TTS_VOICE: env.MIMO_TTS_VOICE?.trim() || "Dean",
     MIMO_TTS_ACCENT: env.MIMO_TTS_ACCENT?.trim() || "en-US",
   });
   return {
@@ -51,7 +51,7 @@ export function getSpeechHealth(env: Record<string, string | undefined> = proces
       configured: false,
       provider: "mimo" as const,
       model: MIMO_TTS_MODEL,
-      voice: "Chloe" as const,
+      voice: "Dean" as const,
       accent: "en-US" as const,
       status: "invalid_configuration" as const,
     };

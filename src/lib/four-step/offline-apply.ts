@@ -4,7 +4,7 @@ import { speakingAttemptAnalysisSchema } from "@/lib/speaking-practice/schemas";
 import { authoredMaterialSchema, authorHash, expandAuthored, offlineReviewSchema, recoverySourceSchema, type AuthoredMaterial, type OfflineReview, type RecoverySource } from "./offline-contracts";
 import { compileEvidence, validateEvidenceReview } from "./selection-contracts";
 import { getMaterial, prepareMaterial, publishMaterialItems, validateMaterial, type MaterialInput } from "./materials";
-import { STAGE_CONTRACTS } from "./diagnostic-pipeline";
+import { materialStageContracts } from "./stage-contracts";
 import { hash, TrainingError } from "./shared";
 
 /** 离线作品和独立裁决的确定性编译；不创建 Provider，也不调用模型。 */
@@ -14,8 +14,9 @@ export function compileOfflineMaterial(rawSource:RecoverySource,rawAuthor:Author
   const candidate=expandAuthored(source,author);
   const draft={...candidate.draft,rows:candidate.draft.rows.filter(r=>review.selection.gaps.some(g=>g.gapId===r.gapId&&g.decision==="train"))};
   const evidence={diagnosis:candidate.diagnosis,selection:review.selection,draft};
-  const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence({actualAnswer:source.english,intendedMeaningZh:source.chinese},evidence));
-  validateEvidenceReview(evidence,review.review);
+  const context={actualAnswer:source.english,intendedMeaningZh:source.chinese,...(source.spokenStyleVersion?{spokenStyleVersion:source.spokenStyleVersion}:{})};
+  const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence(context,evidence));
+  validateEvidenceReview(evidence,review.review,context);
   return {source,author,review,analysis};
 }
 
@@ -39,7 +40,7 @@ export async function applyOfflineMaterial(rawSource:RecoverySource,rawAuthor:Au
     }
     const [original]=await db.all<{answer_text:string;intended_meaning_zh:string;question_id:string}>(sql`SELECT answer_text,intended_meaning_zh,question_id FROM speaking_question_attempts WHERE id=${attemptId}`);
     if(!original||original.answer_text!==source.english||original.intended_meaning_zh!==source.chinese||original.question_id!==source.questionId)throw new TrainingError("回答来源已变化",409,"offline_source_changed");
-    const input:MaterialInput={sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:source.mode,actualAnswer:source.english,intendedMeaningZh:source.chinese};
+    const input:MaterialInput={sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:source.mode,actualAnswer:source.english,intendedMeaningZh:source.chinese,...(source.spokenStyleVersion?{spokenStyleVersion:source.spokenStyleVersion}:{})};
     validateMaterial(analysis,input);
     const material=await prepareMaterial(input);
     if(material.status==="ready"){
@@ -58,7 +59,7 @@ export async function applyOfflineMaterial(rawSource:RecoverySource,rawAuthor:Au
     };
     const now=new Date().toISOString();
     await db.run(sql`UPDATE practice_material_stages SET status='rejected' WHERE material_id=${material.id} AND status='completed'`);
-    for(const [stage,spec] of Object.entries(STAGE_CONTRACTS)){
+    for(const [stage,spec] of Object.entries(materialStageContracts(input))){
       const record=stages[stage as keyof typeof stages];
       const inputJson=JSON.stringify(record.input),outputJson=JSON.stringify(record.output);
       const actor=stage==="selection"||stage==="review"?review:author;

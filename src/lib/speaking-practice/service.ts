@@ -100,7 +100,9 @@ export async function prepareAttemptReanalysis(attemptId: string) {
     if (running) throw new SpeakingPracticeError("原分析仍在运行，请稍后再按新标准分析",409,"legacy_analysis_running");
     await db.run(sql`INSERT INTO practice_legacy_analyses(attempt_id,analysis_json,natural_version,archived_at)
       SELECT id,analysis_json,natural_version,${new Date().toISOString()} FROM speaking_question_attempts WHERE id=${attemptId} AND analysis_json!='{}' ON CONFLICT DO NOTHING`);
-    const material = await prepareMaterial({sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh});
+    const [previous]=await db.all<{input_json:string}>(sql`SELECT input_json FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} AND contract_version='evidence_v2' ORDER BY created_at DESC,id DESC LIMIT 1`);
+    // Recover the exact saved version, including mixed-input and spoken-style markers.
+    const material = await prepareMaterial(previous?JSON.parse(previous.input_json):{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION});
     if (material.status!=="ready") await db.update(speakingQuestionAttempts).set({status:"processing"}).where(eq(speakingQuestionAttempts.id,attemptId));
     return (await getSpeakingAttempt(attemptId))!;
   });

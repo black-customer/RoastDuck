@@ -21,6 +21,7 @@ export default defineConfig([
     "playwright-report/**",
     "test-results/**",
     "data/**",
+    ".publish/**",
     "android/**",
     "next-env.d.ts",
   ]),

@@ -47,8 +47,9 @@ it("离线历史材料原子发布，不消耗API、不复制回答统计、不�
       view=await training.applyTrainingEvent(view.id,{type:"continue",stepVersion:view.stepVersion,clientEventId:`next-${view.stepVersion}`});
     }
     expect([...steps]).toEqual([1,2,3,4]);
-    expect((await getQuestionActivity(source.questionId))?.state).toBe("learning_completed");
-    expect((await(await import("@/lib/questions/learning-pack-service")).getQuestionLearningPack(source.questionId))?.summary.requiredCompleted).toBe(1);
+    // Four-step completion is retained, but cannot fabricate first-round light-study progress.
+    expect((await getQuestionActivity(source.questionId))?.state).toBe("learning_incomplete");
+    expect((await(await import("@/lib/questions/learning-pack-service")).getQuestionLearningPack(source.questionId))?.summary.requiredCompleted).toBe(0);
     expect((await db.all<{raw_text:string}>(sql`SELECT raw_text FROM personal_answers WHERE id=${source.key}`))[0].raw_text).toBe(en);
     expect(network).not.toHaveBeenCalled();
   }finally{network.mockRestore();}

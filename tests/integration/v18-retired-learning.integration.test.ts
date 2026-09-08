@@ -2,14 +2,18 @@ import { createClient } from "@libsql/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ensureSchema } from "../../db/migrate";
 import { prepareTestDatabase } from "../helpers/temp-db";
+import { migrationHistory, removePostV25Schema } from "../helpers/legacy-schema";
 
 const temporary = prepareTestDatabase("v18-retired");
 process.env.ROASTDUCK_DB = temporary.url;
 process.env.ROASTDUCK_SKIP_DB_BACKUP = "1";
 process.env.AI_PROVIDER = "mock";
 const client = createClient({ url: temporary.url });
+let originalHistory: Array<{ version: number; checksum: string }>;
 beforeAll(async () => {
   await ensureSchema(client, temporary.url);
+  originalHistory = await migrationHistory(client, 17);
+  await removePostV25Schema(client, temporary.url);
   // 仅此隔离库模拟连续 v17，移除后续新增的 v20 结构后重放迁移。
   await client.execute("DELETE FROM _schema_migrations WHERE version>=18");
   for (const table of ["light_study_events","light_study_sessions","light_study_progress"]) await client.execute(`DROP TABLE ${table}`);
@@ -25,6 +29,12 @@ beforeAll(async () => {
 afterAll(() => client.close());
 
 describe("词书退役后的非破坏性修复", () => {
+  it("从连续 v17 升级到 v32，并完整保留旧迁移校验和", async () => {
+    const history = await migrationHistory(client);
+    expect(history.map(row => row.version)).toEqual(Array.from({ length: 32 }, (_, index) => index + 1));
+    expect(history.slice(0, 17)).toEqual(originalHistory);
+  });
+
   it("完整归档旧进度，不恢复任何旧内容或删除 review 历史", async () => {
     expect((await client.execute("SELECT * FROM chunks")).rows).toHaveLength(0);
     expect((await client.execute("SELECT * FROM books WHERE id='removed_book'")).rows).toHaveLength(0);

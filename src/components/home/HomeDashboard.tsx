@@ -10,6 +10,7 @@ import styles from "./HomeDashboard.module.css";
 
 import { Icon } from "@/components/ui/Icon";
 import { HomeLearningAction } from "./HomeLearningAction";
+import { HomeExpressionCollections } from "./HomeExpressionCollections";
 
 export function HomeDashboard({ overview,allowLightStudy=true }: { overview: HomeOverview | null;allowLightStudy?:boolean }) {
   const [question, setQuestion] = useState<QuestionListItem | null>(overview?.question ?? null);
@@ -70,6 +71,7 @@ export function HomeDashboard({ overview,allowLightStudy=true }: { overview: Hom
                 </details>
               </section>
 
+              <HomeExpressionCollections />
               <section className={styles.packs} aria-labelledby="packs-title">
                 <div className={styles.sectionHeading}>
                   <div><h2 id="packs-title">最近的回答</h2><p>材料和历史都在这里，按自己的节奏继续。</p></div>

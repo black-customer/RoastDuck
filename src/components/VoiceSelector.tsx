@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type VoicePresetId, VOICE_PRESETS } from "@/lib/speech/contracts";
+import { DEFAULT_VOICE_PRESET, type VoicePresetId, VOICE_PRESETS } from "@/lib/speech/contracts";
 import { getTTS } from "@/lib/tts";
 
 interface VoiceSelectorProps {
@@ -12,7 +12,7 @@ interface VoiceSelectorProps {
 
 export function VoiceSelector({ currentVoice, onVoiceChange, compact = false }: VoiceSelectorProps) {
   const [selectedVoice, setSelectedVoice] = useState<VoicePresetId>(
-    currentVoice ?? "us-female",
+    currentVoice ?? DEFAULT_VOICE_PRESET,
   );
 
   useEffect(() => {

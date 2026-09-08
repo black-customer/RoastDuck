@@ -1,8 +1,16 @@
 import { z } from "zod";
 
 export const MIMO_TTS_MODEL = "mimo-v2.5-tts" as const;
-export const MIMO_TTS_VERSION = "mimo-tts-v1" as const;
+export const MIMO_TTS_VERSION = "mimo-tts-prosody-v2" as const;
 export const MIMO_TTS_VOICES = ["Mia", "Chloe", "Milo", "Dean"] as const;
+export const DEFAULT_VOICE_PRESET = "us-male" as const;
+export const SPEECH_STYLES = ["short-expression", "daily-conversation", "ielts-answer"] as const;
+export type SpeechStyle = typeof SPEECH_STYLES[number];
+
+/** Callers with source context choose explicitly; unlabelled short snippets keep a compact cadence. */
+export function resolveSpeechStyle(input: { text: string; style?: SpeechStyle }): SpeechStyle {
+  return input.style ?? (input.text.trim().split(/\s+/).length <= 16 ? "short-expression" : "daily-conversation");
+}
 
 export type VoicePresetId = "us-female" | "us-male" | "uk-female" | "uk-male";
 
@@ -29,6 +37,7 @@ export const speechSynthesisInputSchema = z.object({
   voice: z.enum(MIMO_TTS_VOICES).optional(),
   accent: z.enum(["en-US", "en-GB"]).default("en-US"),
   rate: z.number().min(0.65).max(1.25).default(0.95),
+  style: z.enum(SPEECH_STYLES).optional(),
 });
 
 export type SpeechSynthesisInput = z.infer<typeof speechSynthesisInputSchema>;

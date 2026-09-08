@@ -89,6 +89,16 @@
 .loadError { background: var(--card); padding: 32px; border: 1px solid var(--border); border-radius: 12px; }
 .loadError h2 { font-size: 22px; font-weight: 600; }
 .loadError p { margin: 12px 0 22px; color: var(--muted); }
+.collections { padding:22px 24px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-panel); }
+.collections h2 { font-size:17px; font-weight:650; }
+.collections>p { color:var(--muted); margin-top:4px; font-size:13px; }
+.collectionRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; }
+.collectionRow+.collectionRow { border-top:1px solid var(--border); }
+.collectionRow>div { min-width:0; }
+.collectionRow p { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:4px; }
+.collectionTitle { display:inline-flex; align-items:center; min-height:36px; color:var(--primary-strong); font-weight:600; }
+.collectionTitle:hover { text-decoration:underline; text-underline-offset:4px; }
+.collectionRow>.textLink { flex-shrink:0; }
 
 @media (min-width: 1600px) {
   .columns { grid-template-columns: minmax(0, 1fr) 310px; gap: 40px; }
@@ -135,6 +145,9 @@
   .textLink { min-height: 44px; }
   .secondaryButton, .shuffleButton { min-height: 48px; }
   .loadError { padding: 22px; }
+  .collections { padding:18px 16px 4px; }
+  .collectionRow { flex-wrap:wrap; gap:4px 14px; }
+  .collectionTitle { min-height:44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

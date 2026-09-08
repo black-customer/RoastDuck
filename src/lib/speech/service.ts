@@ -1,27 +1,14 @@
 import { createHash,randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, eq,inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDbReady } from "@db/client";
 import { audioAssets } from "@db/schema";
 import { readSpeechEnvironment } from "./config";
-import { MIMO_TTS_VERSION, SpeechProviderError, type SpeechSynthesisInput, type SpeechSynthesisResult } from "./contracts";
+import { SpeechProviderError, type SpeechSynthesisInput, type SpeechSynthesisResult } from "./contracts";
 import { MimoTtsProvider } from "./mimo-provider";
 import {createSpeechRequests,WEB_AUDIO_VERSION} from './request-service';
 import {nodeDatabase} from '@/lib/platform/node/database';
-import {buildMimoBody} from './wire';
-
-function contentHash(input: SpeechSynthesisInput, model: string, voice: string): string {
-  return createHash("sha256").update(JSON.stringify({
-    text: input.text,
-    purpose: input.purpose,
-    accent: input.accent,
-    rate: input.rate,
-    model,
-    voice,
-    version: MIMO_TTS_VERSION,
-  })).digest("hex");
-}
 
 function safeAssetPath(relativePath: string): string {
   const root = path.resolve("data/audio/cache");
@@ -45,13 +32,8 @@ function requests(){
 export async function synthesizeSpeech(input:SpeechSynthesisInput,options:SpeechOptions={}):Promise<SpeechSynthesisResult>{
   if(process.env.ROASTDUCK_E2E==="1"||process.env.AI_PROVIDER==="mock"||process.env.NODE_ENV==="test"||process.env.VITEST)throw new SpeechProviderError("测试模式不调用真实语音服务","invalid_configuration",false,503);
   const config=readSpeechEnvironment(),voice=input.voice??config.voice;
-  // Reuse compatible pre-v2 cache entries; changed cache-key rules alone must not cost another synthesis.
-  const purposes:SpeechSynthesisInput["purpose"][]=["example","chunk","question","teacher_message","learning_context"];
-  const rates=[...new Set([input.rate,.95,1])].filter(rate=>JSON.stringify(buildMimoBody({...input,rate},voice))===JSON.stringify(buildMimoBody(input,voice)));
-  const keys=purposes.flatMap(purpose=>rates.map(rate=>contentHash({...input,purpose,rate},config.model,voice)));
-  const db=await getDbReady();
-  const legacy=await db.select().from(audioAssets).where(and(inArray(audioAssets.contentHash,keys),eq(audioAssets.status,"ready"),eq(audioAssets.version,MIMO_TTS_VERSION)));
-  for(const asset of legacy){try{const file=safeAssetPath(asset.relativePath),stat=await fs.stat(file);if(stat.size<44||stat.size>20*1024*1024)continue;const bytes=await fs.readFile(file);if(bytes.subarray(0,4).toString()!=="RIFF"||bytes.subarray(8,12).toString()!=="WAVE")continue;return {assetId:asset.id,audioUrl:`/api/speech/assets/${asset.id}`,provider:"mimo",model:config.model,voice,accent:input.accent,format:"wav",cached:true};}catch{/* Keep unavailable legacy files intact. */}}
+  // The old teaching prompt is not equivalent to the approved conversational styles.
+  // Old assets remain available by ID; new synthesis only reuses the exact request hash.
   return requests().synthesize({...input,voice},options);
 }
 

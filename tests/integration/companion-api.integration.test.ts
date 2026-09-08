@@ -54,6 +54,8 @@ describe("Chloe API", () => {
     expect(await service.listCompanionMemories()).toHaveLength(1);
     const cleared = await memoryRoute.DELETE(request("http://local/api/companion/memories", "DELETE", { all: true }));
     expect(cleared.status).toBe(200);
-    expect((await cleared.json()).deleted).toBe(1);
+    // Editing appends a revision. Clearing revokes both versions, not just the active projection.
+    expect((await cleared.json()).deleted).toBe(2);
+    expect(await service.listCompanionMemories()).toHaveLength(0);
   });
 });

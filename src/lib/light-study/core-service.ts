@@ -19,6 +19,13 @@ interface SessionRow {
 }
 const scopeKey=(scope:LightScope)=>JSON.stringify(scope);
 const queue=(row:SessionRow)=>JSON.parse(row.queue_json) as LightCard[];
+function remainingCards(row:SessionRow){
+  const cards=queue(row);
+  if(row.experience_version!=="light_study_v2")return cards.slice(row.cursor);
+  const round=lightRoundSchema.parse(JSON.parse(row.round_json!));
+  return round.queue.slice(round.cursor).map(item=>cards[item.sourceIndex]);
+}
+function availableSnapshotKeys(cards:LightCard[]){return new Set(cards.flatMap(card=>(card.sources?.length?card.sources:[{materialId:card.materialId}]).map(source=>card.itemId+':'+source.materialId)));}
 async function session(db:SqlReader,id:string) {
   const [row]=await db.all<SessionRow>(sql`SELECT * FROM light_study_sessions WHERE id=${id}`);
   if(!row)throw new LightStudyError("轻学习记录不存在",404,"session_not_found");
@@ -54,8 +61,11 @@ async function lightOverview(scope:LightScope,now=options.now()):Promise<LightOv
   const dueCount=cards.filter(c=>(progress.get(c.itemId)?.due_at??"9999")<=now.toISOString()).length;
   const rows=await db.all<SessionRow>(sql`SELECT * FROM light_study_sessions WHERE scope_key=${scopeKey(scope)} AND status IN ('active','paused') AND ${notSuperseded} AND ${localOwnerFilter('light_study_sessions','light_study_sessions.id')} ORDER BY julianday(updated_at) DESC,id`);
   const resumable:LightOverview["resumable"]={};
-  for(const row of rows)if(!resumable[row.mode])resumable[row.mode]={id:row.id,index:row.cursor,
-    total:row.experience_version==="light_study_v2"?lightRoundSchema.parse(JSON.parse(row.round_json!)).queue.length:queue(row).length};
+  const eligibleIds=availableSnapshotKeys(cards);
+  for(const row of rows){
+    const cards=queue(row),round=row.experience_version==="light_study_v2"?lightRoundSchema.parse(JSON.parse(row.round_json!)):null;
+    if(!resumable[row.mode]&&remainingCards(row).some(card=>eligibleIds.has(card.itemId+':'+card.materialId)))resumable[row.mode]={id:row.id,index:row.cursor,total:round?.queue.length??cards.length};
+  }
   return {enabled:options.enabled(),scope,newCount,dueCount,totalCount:cards.length,unavailableCount,
     defaultMode:dueCount>0?"review":"learn",resumable};
   });
@@ -76,7 +86,11 @@ async function createLightSession(raw:unknown,now=options.now()):Promise<LightVi
       }return duplicate.session_id;
     }
     const catalogue=await createLightCatalogue(tx,options.allowMock).readLightCatalogue(input.scope);
-    const [active]=await tx.all<SessionRow>(sql`SELECT * FROM light_study_sessions WHERE scope_key=${key} AND mode=${input.mode} AND status IN ('active','paused') AND ${notSuperseded} AND ${localOwnerFilter('light_study_sessions','light_study_sessions.id')} ORDER BY (status='active') DESC,julianday(updated_at) DESC,id LIMIT 1`);
+    const candidates=await tx.all<SessionRow>(sql`SELECT * FROM light_study_sessions WHERE scope_key=${key} AND mode=${input.mode} AND status IN ('active','paused') AND ${notSuperseded} AND ${localOwnerFilter('light_study_sessions','light_study_sessions.id')} ORDER BY (status='active') DESC,julianday(updated_at) DESC,id`);
+    const eligibleIds=availableSnapshotKeys(catalogue.cards);
+    const active=candidates.find(row=>row.experience_version==='light_study_v1'||remainingCards(row).some(card=>eligibleIds.has(card.itemId+':'+card.materialId)));
+    // A stopped snapshot remains recoverable, but cannot monopolize this scope's active slot.
+    for(const row of candidates)if(row.status==='active'&&row.id!==active?.id)await tx.run(sql`UPDATE light_study_sessions SET status='paused',version=version+1,updated_at=${now.toISOString()} WHERE id=${row.id}`);
     let id=active?.id;
     if(input.resumeSessionId){
       const requested=await session(tx,input.resumeSessionId);
@@ -92,7 +106,7 @@ async function createLightSession(raw:unknown,now=options.now()):Promise<LightVi
       if(resumed.experience_version==='light_study_v2'&&resumed.status==='paused')await tx.run(sql`UPDATE light_study_sessions SET status='active',version=version+1,updated_at=${now.toISOString()} WHERE id=${id}`);
     }else if(active?.experience_version==='light_study_v1')id=await continueLegacy(tx,active,now,options.allowMock);
     else if(active){
-      if(active.status==="paused")await tx.run(sql`UPDATE light_study_sessions SET status='active',version=version+1,updated_at=${now.toISOString()} WHERE id=${id}`);
+      if(active.status==="paused")await tx.run(sql`UPDATE light_study_sessions SET status='active',version=version+1,updated_at=${now.toISOString()} WHERE id=${active.id}`);
     }else{
       const [backlog]=await tx.all<LegacySession>(sql`SELECT l.* FROM light_study_sessions l JOIN light_study_successions s ON s.legacy_session_id=l.id WHERE l.scope_key=${key} AND l.mode=${input.mode} AND s.remaining_json!='[]' ORDER BY s.updated_at DESC LIMIT 1`);
       if(backlog)id=await continueLegacy(tx,backlog,now,options.allowMock);

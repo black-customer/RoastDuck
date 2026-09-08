@@ -6,7 +6,7 @@ import {VOICE_PRESETS,type VoicePresetId} from '@/lib/speech/contracts';
 type Health={configured:boolean;status:string;lastResult?:{status:string;error_code:string|null}|null};
 export function SpeechSettings(){
   const ownerId=useId(),[audio,setAudio]=useState<LightAudioState|null>(null);
-  const [speech,setSpeech]=useState<Health|null>(null),[text,setText]=useState<Health|null>(null),[provider,setProvider]=useState<'mimo'|'deepseek'|null>(null),[secret,setSecret]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[voice,setVoice]=useState<VoicePresetId>('us-female');
+  const [speech,setSpeech]=useState<Health|null>(null),[text,setText]=useState<Health|null>(null),[provider,setProvider]=useState<'mimo'|'deepseek'|null>(null),[secret,setSecret]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[voice,setVoice]=useState<VoicePresetId>('us-male');
   async function load(){const [s,t]=await Promise.all([fetch('/api/speech/health').then(r=>r.json()),fetch('/api/ai/health').then(r=>r.json())]);setSpeech(s);setText(t);}
   useEffect(()=>{setVoice(getStoredVoicePreference());void load().catch(()=>setMessage('暂时无法读取服务状态，请重试'));return()=>getTTS().stop(ownerId);},[ownerId]);
   const sample=(retryUnknown=false)=>getTTS().speak("I'd like to reschedule my test.",{voiceId:voice,ownerId,retryUnknown,onState:setAudio,onEnd:()=>void load().catch(()=>undefined),onError:()=>setMessage('声音暂不可用，可以继续文字学习')});

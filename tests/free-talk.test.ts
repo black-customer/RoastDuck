@@ -143,7 +143,7 @@ describe("AI Free Talk Suite (Spec Section 65)", () => {
     const [itemBefore] = await db
       .select()
       .from(schema.learningItems)
-      .where(eq(schema.learningItems.canonicalKey, "manhole cover"));
+      .where(eq(schema.learningItems.targetEnglish, "manhole cover"));
 
     expect(itemBefore).toBeDefined();
     const countBefore = itemBefore.encounterCount;
@@ -159,13 +159,13 @@ describe("AI Free Talk Suite (Spec Section 65)", () => {
     expect((await db.select().from(schema.learningItems).where(eq(schema.learningItems.id, itemBefore.id)))[0].encounterCount).toBe(countBefore);
     const materials = await import("@/lib/four-step/materials");
     const messages = (await freeTalkService.getFreeTalkMessages(conv.id)).map(({ id, role, text }) => ({ id, role, text }));
-    const material = await materials.prepareMaterial({ sourceType: "free_talk", sourceId: conv.id, question: null, mode: "relaxed", intendedMeaningZh: "", actualAnswer: "I saw a 井盖 again.", sourceMessages: messages });
+    const material = await materials.prepareMaterial({ sourceType: "free_talk", sourceId: conv.id, question: null, mode: "relaxed", intendedMeaningZh: "", actualAnswer: "I saw a 井盖 again.", sourceMessages: messages,spokenStyleVersion:'personal-spoken-v1' });
     expect((await materials.processMaterial(material.id)).status).toBe("ready");
 
     const [itemAfter] = await db
       .select()
       .from(schema.learningItems)
-      .where(eq(schema.learningItems.canonicalKey, "manhole cover"));
+      .where(eq(schema.learningItems.id, itemBefore.id));
 
     expect(itemAfter).toBeDefined();
     // Encounter count incremented rather than creating a duplicate row

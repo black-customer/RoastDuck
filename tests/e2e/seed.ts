@@ -227,7 +227,8 @@ for (const [index,[target,meaning]] of [["take a break","休息一下"],["wash m
   await publishLightFixture(db,`light-e2e-review-${index}`,target,meaning,"light-e2e-review");
 }
 const light = await import("../../src/lib/light-study/service");
-const earlier = new Date(Date.now()-2*86400000);
+// Old-enough real self-rating fixture: do not assume all first ratings have a 24h interval.
+const earlier = new Date(Date.now()-14*86400000);
 await publishLightFixture(db,"light-e2e-recovery-0","make an appointment","预约","light-e2e-recovery");
 let introduction = await light.createLightSession({scope:{type:"question",id:"light-e2e-review"},mode:"learn",clientRequestId:"e2e-seed-exposure"},earlier);
 while(introduction.status==="active") {

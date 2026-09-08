@@ -93,7 +93,9 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
             ) : (
               <Link href={`/questions/${encodeURIComponent(question.id)}/practice`} className="primary-button">开始回答这道题</Link>
             )}
-            {currentPractice&&<Link href={`/questions/${question.id}/practice?kind=independent&source=${currentPractice.attemptId}`} className="secondary-button">不看提示，重新回答</Link>}
+            {currentPractice&&!learningPack?.primaryAction.href?.includes('kind=independent')&&<Link href={`/questions/${question.id}/practice?kind=independent&source=${currentPractice.attemptId}`} className="secondary-button">不看提示，重新回答</Link>}
+            {!!learningPack?.summary.requiredTotal&&!learningPack.primaryAction.href?.startsWith('/light-study')&&<Link href={`/light-study?scope=question&id=${question.id}`} className="secondary-button">轻松学本题</Link>}
+            {currentPractice&&<Link href={`/quick-review?scope=question&id=${question.id}`} className="secondary-button">快速回顾本题</Link>}
             {!!learningPack?.summary.dueCount&&<Link href={`/light-study?scope=question&id=${question.id}&mode=review`} className="secondary-button">复习本题到期表达（{learningPack.summary.dueCount}）</Link>}
             {speakingAttempts.length > 0 ? (
               <Link href={`/questions/${encodeURIComponent(question.id)}/attempts/${encodeURIComponent(speakingAttempts[0].id)}`} className="secondary-button">

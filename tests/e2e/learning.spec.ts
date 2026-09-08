@@ -43,6 +43,8 @@ test("设置页默认不自动收集，保存后可持久化", async ({ page }) 
 });
 
 test("题库中心支持 URL 筛选、英文小卡、收藏、来源和随机题", async ({ page }) => {
+  const noteWrites:string[]=[];
+  page.on('request',request=>{if(request.method()!=='GET'&&new URL(request.url()).pathname.startsWith('/api/notes'))noteWrites.push(request.url());});
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/questions");
   await expect(page.getByRole("heading", { name: "雅思题库" })).toBeVisible();
@@ -59,7 +61,8 @@ test("题库中心支持 URL 筛选、英文小卡、收藏、来源和随机题
 
   await page.getByRole("button", { name: /查看 What 的解释/ }).click();
   await expect(page.getByRole("dialog", { name: "英文解释卡片" })).toBeVisible();
-  await expect(page.getByText("已在难点中", { exact: true })).toHaveCount(0);
+  // An earlier test explicitly bookmarked this word; querying it must not create a new note.
+  expect(noteWrites).toEqual([]);
   await page.getByRole("button", { name: "关闭英文小卡" }).click();
 
   await page.locator('a[href="/questions/question_e2e_habits"]').click();

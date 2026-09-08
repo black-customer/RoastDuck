@@ -10,7 +10,8 @@ export function validateMaterial(analysis: SpeakingAttemptAnalysis, source?: Mat
     const compiled = speakingAttemptAnalysisSchema.parse(compileEvidence(source,analysis.evidence));
     if (JSON.stringify(compiled)!==JSON.stringify(speakingAttemptAnalysisSchema.parse(analysis))) throw new TrainingError("四列材料与审核证据不一致",422,"material_evidence_drift");
   }
-  if (analysis.gapCount !== analysis.gaps.length) throw new TrainingError("问题数与账本不一致", 422, "material_coverage");
+  const expectedProblems=source?.spokenStyleVersion?analysis.gaps.filter(g=>g.learningBasis==='confirmed_error').length:analysis.gaps.length;
+  if (analysis.gapCount !== expectedProblems) throw new TrainingError("问题数与账本不一致", 422, "material_coverage");
   if (!analysis.gaps.length) {
     if (analysis.learningItems.length) throw new TrainingError("没有确认问题却生成必练项", 422, "material_coverage");
     return;

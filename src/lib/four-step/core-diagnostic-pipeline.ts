@@ -52,7 +52,7 @@ export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:Di
       validateDiagnosis(source,diagnosis.data);
     }
     const selection=await stage("selection",selectionReviewSchema,{source,diagnosis:diagnosis.data,diagnosisRunId:diagnosis.runId});
-    validateSelection(diagnosis.data,selection.data);
+    validateSelection(diagnosis.data,selection.data,source);
     const draft=await stage("material",materialDraftSchema,{source,diagnosis:diagnosis.data,selection:selection.data,selectionRunId:selection.runId});
     const evidence={diagnosis:diagnosis.data,selection:selection.data,draft:draft.data};
     // 在最终审核之前校验实际下游契约，避免长引用/句子导致审核后发布失败且永久复用坏检查点。

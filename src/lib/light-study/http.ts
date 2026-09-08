@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { LightStudyError,scopeSchema,type LightScope } from "./contracts";
+import { LightStudyError,type LightScope } from "./contracts";
+import {expressionScope} from './scope-links';
 export function scopeFromUrl(url:string):LightScope {
   const params=new URL(url).searchParams;
-  const type=params.get("scope")??"all";
-  return scopeSchema.parse(type==="all"?{type}:{type,id:params.get("id")});
+  const parsed=expressionScope({scope:'all',...Object.fromEntries(params)});
+  if(!parsed.success)throw parsed.error;
+  return parsed.data;
 }
 export function lightError(error:unknown) {
   if(error instanceof ZodError || error instanceof SyntaxError)return NextResponse.json({error:"请求格式不正确，请刷新后重试",code:"invalid_request"},{status:400});

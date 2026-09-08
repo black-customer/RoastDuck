@@ -1,0 +1,43 @@
+import {beforeAll,expect,it} from 'vitest';
+import {sql} from 'drizzle-orm';
+import {prepareTestDatabase} from '../helpers/temp-db';
+const temporary=prepareTestDatabase('expression-activity');
+process.env.ROASTDUCK_DB=temporary.url;process.env.ROASTDUCK_SKIP_DB_BACKUP='1';process.env.AI_PROVIDER='mock';
+let db:Awaited<ReturnType<typeof import('@db/client').getDbReady>>;
+let activity:typeof import('@/lib/questions/activity');
+let expressions:ReturnType<typeof import('@/lib/app-services/expressions').createExpressionService>;
+let light:typeof import('@/lib/light-study/service');
+beforeAll(async()=>{
+  db=await(await import('@db/client')).getDbReady();activity=await import('@/lib/questions/activity');light=await import('@/lib/light-study/service');
+  const {nodeDatabase}=await import('@/lib/platform/node/database');
+  expressions=(await import('@/lib/app-services/expressions')).createExpressionService(nodeDatabase,true);
+});
+it('all self-known queued items finish the question projection without fabricating a studied or objective mastery record',async()=>{
+  const {publishLightFixture}=await import('../helpers/light-material');
+  const material=await publishLightFixture(db,'self-known-activity','brush my teeth','刷牙','self-known-q');
+  const scope={type:'question' as const,id:material.questionId};
+  const view=await light.createLightSession({scope,mode:'learn',clientRequestId:'queued-known'});
+  expect((await activity.getQuestionActivity(material.questionId))?.state).toBe('learning');
+  const card=(await expressions.list('',scope))[0];
+  let preference=await expressions.update({itemId:card.itemId,materialId:card.materialId,version:0,selfKnown:true});
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({state:'self_assessed',lightTotal:1,lightSeen:0,lightSelfKnownUnstudied:1,lightDueCount:0,isMastered:0});
+  expect((await light.getLightView(view.id)).card).toBeNull();
+  expect(await db.all(sql`SELECT * FROM light_study_progress WHERE learning_item_id=${card.itemId}`)).toEqual([]);
+  preference=await expressions.update({itemId:card.itemId,materialId:card.materialId,version:preference.version,selfKnown:false,hidden:true});
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({state:'learning_paused',lightTotal:0,lightSeen:0,lightHidden:1,isMastered:0});
+  await expressions.update({itemId:card.itemId,materialId:card.materialId,version:preference.version,hidden:false});
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({state:'learning',lightTotal:1,lightSeen:0,lightHidden:0});
+});
+it('a self-known studied item remains studied and stops its due prompt without changing its legacy schedule',async()=>{
+  const {publishLightFixture}=await import('../helpers/light-material');
+  const material=await publishLightFixture(db,'self-known-due','wash my hands','洗手','self-known-due-q');
+  const card=(await expressions.list('',{type:'question',id:material.questionId}))[0];
+  await db.run(sql`INSERT INTO light_study_progress(learning_item_id,first_seen_at,last_seen_at,due_at,version) VALUES(${card.itemId},'2026-08-01','2026-08-01','2026-08-02',7)`);
+  const before=await db.all(sql`SELECT * FROM light_study_progress WHERE learning_item_id=${card.itemId}`);
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({state:'learning_completed',lightSeen:1,lightDueCount:1});
+  const preference=await expressions.update({itemId:card.itemId,materialId:card.materialId,version:0,selfKnown:true});
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({state:'learning_completed',lightSeen:1,lightSelfKnownUnstudied:0,lightDueCount:0,isMastered:0});
+  await expressions.update({itemId:card.itemId,materialId:card.materialId,version:preference.version,selfKnown:false});
+  expect(await db.all(sql`SELECT * FROM light_study_progress WHERE learning_item_id=${card.itemId}`)).toEqual(before);
+  expect(await activity.getQuestionActivity(material.questionId)).toMatchObject({lightDueCount:1});
+});

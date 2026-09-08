@@ -1,9 +1,9 @@
 import { query as sql } from "@/lib/platform/sql";
 import type { DatabasePort,SqlReader } from "@/lib/platform/database";
-import { grade, newCard, type Card } from "@/lib/learning/fsrs";
 import { hash } from "@/lib/four-step/shared";
 import type { MaterialRow } from "@/lib/four-step/material-types";
-import { LIGHT_RATINGS, LightStudyError, type LightCard, type LightEvent, type LightScope, type LightView } from "./contracts";
+import { LightStudyError, type LightCard, type LightEvent, type LightScope, type LightView } from "./contracts";
+import {gradeLightCard,LIGHT_SCHEDULER_VERSION} from "./scheduler";
 import { materialFingerprint, createLightCatalogue, type ProgressRow } from "./core-catalogue";
 import { advanceLightRound, consolidationIsEligible, initialWasAssessed, lightRoundSchema, revealLightRound, type LightRound } from "./round";
 import {assertLocalOwnership} from '@/lib/device-sync/ownership';
@@ -88,16 +88,15 @@ async function applyV2LightEvent(id:string,event:LightEvent,now:Date):Promise<Li
         rating=event.rating;
         if(occurrence.phase==="consolidation")outcome="consolidation";
         else if(row.mode==="learn"){
-          await db.run(sql`INSERT INTO light_study_progress(learning_item_id,first_seen_at,last_seen_at,due_at)
-            VALUES(${item.itemId},${now.toISOString()},${now.toISOString()},${new Date(now.getTime()+86400000).toISOString()})`);
+          const next=gradeLightCard(null,event.rating,now);
+          await db.run(sql`INSERT INTO light_study_progress(learning_item_id,first_seen_at,last_seen_at,due_at,fsrs_json,last_rating,scheduler_version)
+            VALUES(${item.itemId},${now.toISOString()},${now.toISOString()},${next.due.toISOString()},${JSON.stringify(next)},${event.rating},${LIGHT_SCHEDULER_VERSION})`);
           outcome="diagnostic_exposure";
         }else {
           if(!progress)throw new LightStudyError("复习记录不存在",409,"invalid_progress");
-          const prior:Card=progress.fsrs_json?JSON.parse(progress.fsrs_json):newCard(now);
-          prior.due=new Date(prior.due);if(prior.last_review)prior.last_review=new Date(prior.last_review);
-          const next=grade(prior,LIGHT_RATINGS[event.rating],now).card;
+          const next=gradeLightCard(progress.fsrs_json,event.rating,now);
           await db.run(sql`UPDATE light_study_progress SET fsrs_json=${JSON.stringify(next)},due_at=${next.due.toISOString()},
-            last_seen_at=${now.toISOString()},review_count=review_count+1,version=version+1,last_rating=${event.rating} WHERE learning_item_id=${item.itemId}`);
+            last_seen_at=${now.toISOString()},review_count=review_count+1,version=version+1,last_rating=${event.rating},scheduler_version=${LIGHT_SCHEDULER_VERSION} WHERE learning_item_id=${item.itemId}`);
           outcome="self_report";
         }
         round=advanceLightRound(round,event.rating);

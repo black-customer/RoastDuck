@@ -95,9 +95,10 @@ test("自然表达不因升级措辞制卡，零项提示不宣称完全掌握",
   const {attempt}=await (await request.post(`/api/speaking-practice/questions/${question}/attempts`,{data:{clientRequestId:"e2e-selection-natural",mode:"practice",answerText:"I really like my major.",intendedMeaningZh:"我很喜欢我的专业。"}})).json();
   await expect.poll(async()=>(await(await request.get(`/api/speaking-practice/attempts/${attempt.id}`)).json()).attempt.status).toBe("completed");
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await expect(page.getByText("没有确认的必练表达，可以继续作答。不确定内容不会被强行编成学习材料。")).toBeVisible();
+  await expect(page.getByRole('heading',{name:'本次没有确认的学习表达',exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"可选：四步强化",exact:true})).toHaveCount(0);
-  await expect(page.locator(".natural-full-paragraph")).toHaveText("I really like my major.");
+  await page.getByText('自然表达全文与逐句试听',{exact:true}).click();
+  await expect(page.locator('details[open] > p[lang="en"]').first()).toHaveText("I really like my major.");
   await expect(page.getByText(/非常自然完整|意图表达非常完整自然/)).toHaveCount(0);
 });
 
@@ -188,31 +189,40 @@ test("恢复期间服务端仍在处理时自动读取结果，不永久锁住�
 });
 
 test("逐句循环停止及离开后不再自动播放", async ({ page, request }) => {
+  const browserErrors:string[]=[];page.on('pageerror',error=>browserErrors.push(error.message));
   const question = "question_e2e_habits";
   const { attempt } = await (await request.post(`/api/speaking-practice/questions/${question}/attempts`, { data: { clientRequestId: "e2e-player-synthetic", mode: "practice", answerText: "I saw a 井盖 outside.", intendedMeaningZh: "我在外面看到了井盖。" } })).json();
   await expect.poll(async () => (await (await request.get(`/api/speaking-practice/attempts/${attempt.id}`)).json()).attempt.status).toBe("completed");
   await page.addInitScript(() => {
     class SyntheticAudio extends EventTarget {
       currentTime = 0;
+      src='';onended:(()=>void)|null=null;onerror:(()=>void)|null=null;
       private timer?: ReturnType<typeof setTimeout>;
-      async play() { this.timer = setTimeout(() => this.dispatchEvent(new Event("ended")), 50); }
+      async play() { const target=window as unknown as {syntheticPlays?:number};target.syntheticPlays=(target.syntheticPlays??0)+1;this.timer = setTimeout(() => this.onended?.(), 50); }
       pause() { clearTimeout(this.timer); }
+      load(){}
+      removeAttribute(name:string){if(name==='src')this.src='';}
     }
     Object.defineProperty(window, "Audio", { configurable: true, value: SyntheticAudio });
   });
-  let plays = 0;
-  await page.route("**/api/speech/synthesis", async (route) => { plays++; await route.fulfill({ json: { audio: { audioUrl: "/synthetic-test.opus" } } }); });
+  let syntheses = 0,assets=0;
+  await page.route("**/api/speech/synthesis", async (route) => { syntheses++; await route.fulfill({ json: { audio: { audioUrl: "/api/speech/assets/synthetic-loop",voice:route.request().postDataJSON().voice } } }); });
+  const wav=Buffer.alloc(524);wav.write('RIFF');wav.writeUInt32LE(516,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(24000,24);wav.writeUInt32LE(48000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(480,40);
+  await page.route('**/api/speech/assets/synthetic-loop',route=>{assets++;return route.fulfill({body:wav,contentType:'audio/wav'});});
+  const plays=()=>page.evaluate(()=>(window as unknown as {syntheticPlays?:number}).syntheticPlays??0);
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await page.getByRole("button", { name: "🎧 逐句跟读模式", exact: true }).click();
+  await page.getByText('自然表达全文与逐句试听',{exact:true}).click();
+  await page.getByText('逐句播放（可选）',{exact:true}).click();
   await page.getByRole("button", { name: "🔂 单句循环", exact: true }).click();
   await page.getByRole("button", { name: "▶️ 播放", exact: true }).click();
-  await expect.poll(() => plays).toBe(1);
+  await expect.poll(async()=>({plays:await plays(),syntheses,assets,browserErrors})).toEqual({plays:1,syntheses:1,assets:1,browserErrors:[]});
+  await page.waitForTimeout(80); // The synthetic audio ended; the 350ms loop timer now exists.
   await page.getByRole("button", { name: "⏸️ 暂停", exact: true }).click();
   await page.waitForTimeout(800); // 特意越过循环间隔，以检验定时器没有复活。
-  expect(plays).toBe(1);
+  expect(await plays()).toBe(1);
   await page.getByRole("button", { name: "▶️ 播放", exact: true }).click();
-  await expect.poll(() => plays).toBe(2);
-  await page.getByRole("button", { name: "收起逐句播放器 ✕", exact: true }).click();
+  await expect.poll(plays).toBe(2);
+  await page.getByText('逐句播放（可选）',{exact:true}).click();
   await page.waitForTimeout(800);
-  expect(plays).toBe(2);
+  expect(await plays()).toBe(2);expect(syntheses).toBe(1);
 });
