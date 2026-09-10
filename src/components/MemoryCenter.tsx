@@ -17,6 +17,8 @@ export function MemoryCenter({ initialMemories }: { initialMemories: Memory[] })
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [undone,setUndone]=useState<Memory|null>(null);
+  const [evidence,setEvidence]=useState<Record<string,Array<{messageId:string;sourceText:string;quote:string;correction:string;reasonZh:string;assisted:boolean;assistance?:string;kind?:string;createdAt:string}>>>({});
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("zh-CN");
     return needle ? memories.filter((memory) => memory.summary.toLocaleLowerCase("zh-CN").includes(needle)) : memories;
@@ -28,11 +30,25 @@ export function MemoryCenter({ initialMemories }: { initialMemories: Memory[] })
       const response = await fetch("/api/companion/memories", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, ...patch }) });
       const body = (await response.json()) as { memory?: Memory; error?: string };
       if (!response.ok || !body.memory) throw new Error(body.error || "记忆没有保存成功");
-      if (patch.status === "dismissed") setMemories((items) => items.filter((item) => item.id !== id));
+      if (patch.status === "dismissed") {setUndone(memories.find(item=>item.id===id)??null);setMemories((items) => items.filter((item) => item.id !== id));}
       else setMemories((items) => items.map((item) => item.id === id ? { ...item, ...body.memory } : item));
       setEditingId(null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "记忆没有保存成功"); }
     finally { setBusy(false); }
+  }
+
+  async function restoreLast(){
+    if(!undone)return;setBusy(true);setError('');
+    try{const response=await fetch('/api/companion/memories',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:undone.id,status:'active'})});
+      if(!response.ok)throw new Error((await response.json()).error??'未能恢复记忆');
+      setMemories(items=>[undone,...items.filter(item=>item.id!==undone.id)]);setUndone(null);
+    }catch(reason){setError(reason instanceof Error?reason.message:'未能恢复记忆');}finally{setBusy(false);}
+  }
+  async function loadEvidence(id:string){
+    if(evidence[id])return;
+    try{const response=await fetch('/api/coaching/memories?id='+encodeURIComponent(id),{cache:'no-store'}),body=await response.json();
+      if(!response.ok)throw new Error(body.error??'依据暂时无法读取');setEvidence(current=>({...current,[id]:body.evidence}));
+    }catch(reason){setError(reason instanceof Error?reason.message:'依据暂时无法读取');}
   }
 
   async function remove(id: string) {
@@ -52,6 +68,7 @@ export function MemoryCenter({ initialMemories }: { initialMemories: Memory[] })
       const response = await fetch("/api/companion/memories", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ all: true }) });
       if (!response.ok) throw new Error(((await response.json()) as { error?: string }).error || "记忆没有清空成功");
       setMemories([]);
+      setUndone(null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "记忆没有清空成功"); }
     finally { setBusy(false); }
   }
@@ -64,13 +81,17 @@ export function MemoryCenter({ initialMemories }: { initialMemories: Memory[] })
       <span>{visible.length} 条</span>
     </div>
     {error ? <div className="error-banner" role="alert"><span>{error}</span><button type="button" onClick={() => setError("")}>关闭</button></div> : null}
+    {undone?<div className={styles.undo} role="status"><span>已停止使用这条记忆。</span><button type="button" disabled={busy} onClick={()=>void restoreLast()}>撤销这个操作</button></div>:null}
     {visible.length ? <ul className={styles.list}>{visible.map((memory) => <li key={memory.id}>
       <div className={styles.meta}><span>{categoryLabels[memory.category] ?? memory.category}</span><time dateTime={memory.updatedAt}>{new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(memory.updatedAt))}</time></div>
       {editingId === memory.id ? <div className={styles.editor}>
         <label htmlFor={`memory-${memory.id}`}>记忆内容</label><textarea id={`memory-${memory.id}`} value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} />
         <div><button type="button" disabled={busy} onClick={() => setEditingId(null)}>取消</button><button type="button" className="primary-button" disabled={busy || draft.trim().length < 2} onClick={() => void patchMemory(memory.id, { summary: draft.trim() })}>保存修改</button></div>
       </div> : <p>{memory.summary}</p>}
-      <div className={styles.provenance}><span>来源：{memory.sourceType === "learning_event" ? "学习事件" : "Chloe 对话"}</span><span>置信度 {Math.round(memory.confidence * 100)}%</span></div>
+      <div className={styles.provenance}><span>来源：{memory.sourceType === 'reviewed_answer'?'经过独立核对的原回答':memory.sourceType === 'coaching_output'?'经过独立核对的表达练习':memory.sourceType === "learning_event" ? "学习事件" : "Chloe 对话"}</span><span>置信度 {Math.round(memory.confidence * 100)}%</span></div>
+      {memory.category==='learning'?<details className={styles.evidence} onToggle={event=>{if(event.currentTarget.open)void loadEvidence(memory.id);}}><summary>查看原话和问题依据</summary>
+        {!evidence[memory.id]?<p>正在读取依据…</p>:!evidence[memory.id].length?<p>这是早期学习记录，当前没有可展示的逐句输出依据。</p>:evidence[memory.id].map(item=><div key={item.messageId}><p><strong>{item.assistance==='unknown'?'原回答（提示情况未知）':item.assisted?'有提示的练习':'无提示输出'}</strong> · {new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium'}).format(new Date(item.createdAt))}</p><blockquote>{item.quote}</blockquote><p>{item.kind==='correct_form_observed'?'已观察到的正确形式：':'建议表达：'}{item.correction}</p><p>{item.reasonZh}</p><details><summary>查看这次完整输出</summary><p>{item.sourceText}</p></details></div>)}
+      </details>:null}
       {editingId !== memory.id ? <div className={styles.actions}><button type="button" disabled={busy} onClick={() => { setEditingId(memory.id); setDraft(memory.summary); }}>修改</button><button type="button" disabled={busy} onClick={() => void patchMemory(memory.id, { status: "dismissed" })}>撤销使用</button><button type="button" disabled={busy} onClick={() => void remove(memory.id)}>删除</button></div> : null}
     </li>)}</ul> : <section className={styles.empty}>
       <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M16 8h16a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H16a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6Z" /><path d="M17 18h14M17 25h10" /></svg>

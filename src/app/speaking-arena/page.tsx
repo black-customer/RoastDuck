@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SpeakingArena } from "@/components/SpeakingArena";
+import {LegacyModeGate,extensionHref} from '@/components/sentence-study/LegacyModeGate';
 import { getPersonalAnswer } from "@/lib/answers/service";
 import { getQuestionDetail } from "@/lib/questions/service";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "口语输出训练｜鱼块学英语" };
 
-export default async function SpeakingArenaPage({ searchParams }: { searchParams: Promise<{ question?: string; answer?: string; session?: string }> }) {
+export default async function SpeakingArenaPage({ searchParams }: { searchParams: Promise<{ question?: string; answer?: string; session?: string; extension?: string }> }) {
   const params = await searchParams;
+  if(params.extension!=='1')return <LegacyModeGate title="旧口语输出训练" href={extensionHref('/speaking-arena',params)}/>;
   const answer = params.answer ? await getPersonalAnswer(params.answer) : null;
   const questionId = answer?.questionId ?? params.question;
   const question = questionId ? await getQuestionDetail(questionId) : null;

@@ -146,9 +146,10 @@ export async function executeAuditedAiCall<T>(
         model: provider.model,
         promptVersion: request.promptVersion,
         schemaVersion: request.schemaVersion,
-        thinkingMode: AI_ROLE_CONFIG[request.role].thinking,
+        thinkingMode: request.thinking??AI_ROLE_CONFIG[request.role].thinking,
         inputHash,
         responseId: result.responseId,
+        responseModel: result.responseModel??null,
         latencyMs: result.latencyMs,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
@@ -168,14 +169,18 @@ export async function executeAuditedAiCall<T>(
         model: provider.model,
         promptVersion: request.promptVersion,
         schemaVersion: request.schemaVersion,
-        thinkingMode: AI_ROLE_CONFIG[request.role].thinking,
+        thinkingMode: request.thinking??AI_ROLE_CONFIG[request.role].thinking,
         inputHash,
         latencyMs: Date.now() - startedAt,
-        status: "failed",
+        status: ['network_error','timeout'].includes(error.code)?'unknown':'failed',
         errorCode: error.code,
         errorSummary: safeErrorSummary(error),
+        errorDetailsJson:JSON.stringify(error.details??{}),
+        responseId:error.response?.responseId,responseModel:error.response?.responseModel,
+        inputTokens:error.response?.usage.inputTokens,outputTokens:error.response?.usage.outputTokens,
+        reasoningTokens:error.response?.usage.reasoningTokens,cachedTokens:error.response?.usage.cachedTokens,
       }));
-      if (!error.retryable || attempt >= maxAttempts) break;
+      if (!error.retryable || attempt >= maxAttempts || ['network_error','timeout'].includes(error.code)) break;
       const delay = Math.min(30_000, 500 * (2 ** (attempt - 1)) + Math.floor(random() * 250));
       await sleep(delay);
     }

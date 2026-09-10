@@ -4,6 +4,7 @@ import type {SpeakingAttemptAnalysis} from "@/lib/speaking-practice/schemas";
 import type {MaterialInput,MaterialRow} from "./material-types";
 import {normalizeExpression} from "./contracts";
 import {hash,TrainingError} from "./shared";
+import {publishSentenceMaterials} from '@/lib/sentence-study/materials';
 
 /** Caller holds the publication transaction and has validated independent review evidence. */
 export interface ReviewedItemContinuity {learningItemId:string;canonicalKey:string}
@@ -42,4 +43,6 @@ export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,inp
   }
   await tx.run(sql`UPDATE practice_materials SET status='ready',lease_token=NULL,lease_until=NULL,error_code=NULL,updated_at=${timestamp} WHERE id=${material.id}`);
   if(input.sourceType==="ielts_practice")await tx.run(sql`UPDATE speaking_question_attempts SET status='completed',analysis_json=${JSON.stringify(analysis)},natural_version=${analysis.naturalVersion},gap_count=${analysis.gapCount},updated_at=${timestamp} WHERE id=${input.sourceId}`);
+  const [published]=await tx.all<MaterialRow>(sql`SELECT * FROM practice_materials WHERE id=${material.id}`);
+  await publishSentenceMaterials(tx,published,input,analysis,now);
 }

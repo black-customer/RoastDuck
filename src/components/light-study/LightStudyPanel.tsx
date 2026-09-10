@@ -104,6 +104,12 @@ export function LightStudyPanel({scope,initialSessionId,initialError,initialMode
       session=await currentExperience(session);
       if(active.current){
         pending.current=null;acceptView(session);rememberUrl(session.id);
+        // Confirmed creations must never reuse their request receipt for a later batch.
+        createRequest.current=null;
+        if(session.status==='completed'&&!request.resumeSessionId){
+          const latest=await loadOverview();
+          setError((nextMode==='learn'?latest.newCount:latest.dueCount)>0?'这一组已经结束，可以重新选择下一组。':'这个范围暂时没有更多可学项目。');
+        }
       }
     }catch(reason){if(active.current){if(reason instanceof PendingSaveError)pending.current=reason.operation;setError(reason instanceof Error?reason.message:"开始失败，请重试");}}
     finally{locked.current=false;if(active.current)setBusy(false);}
@@ -243,7 +249,7 @@ export function LightStudyPanel({scope,initialSessionId,initialError,initialMode
         {overview&&!overview.totalCount?<p>这个范围还没有可学表达。可以回题目查看已保存的回答；这里不会自动生成材料。</p>:null}
         {resumable||count?<button className={`primary-button ${styles.mainAction}`} disabled={actionDisabled||(!overview?.enabled&&!resumable)} onClick={()=>void begin(mode)}>{busy?"正在准备…":resumable?"继续上次位置":view?.status==="completed"?"再学一组":mode==="review"?"开始复习":"开始轻松学"}</button>:<p>{mode==="review"?"暂时没有到期表达，稍后再来，或学一点新的。":"这个范围的新表达已接触过，之后可以到期复习。"}</p>}
         {overview&&!overview.enabled&&!resumable&&<p>新批次暂未开放，历史记录仍保留。</p>}
-        {scope.type!=="all"&&<Link href="/light-study" className={styles.allLink}>查看全部表达</Link>}
+        {scope.type!=="all"&&<Link href="/light-study?extension=1" className={styles.allLink}>查看全部表达</Link>}
         <Link href={`/study?mode=${mode}`} className={styles.allLink}>返回选择范围</Link>
       </section>}
     </>}

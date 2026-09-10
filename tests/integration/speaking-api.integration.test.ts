@@ -1,5 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach,beforeAll, describe, expect, it,vi } from "vitest";
 import { assertInsideTestResults, prepareTestDatabase } from "../helpers/temp-db";
+import {MockAiProvider} from '@/lib/ai/mock-provider';
+import {AiProviderError} from '@/lib/ai/errors';
 
 const testDatabase = prepareTestDatabase("speaking-api.integration");
 assertInsideTestResults(testDatabase.file);
@@ -15,6 +17,15 @@ let lookupRoute: typeof import("@/app/api/lookups/[annotationId]/route");
 
 const questionId = "question_speaking_api";
 const requestId = "77777777-7777-4777-8777-777777777777";
+afterEach(()=>vi.restoreAllMocks());
+/** One transport failure, not the old fixture's three failures consumed by automatic retry. */
+function failNextSchema(schemaName:string){
+  const original=MockAiProvider.prototype.generate;let failed=false;
+  return vi.spyOn(MockAiProvider.prototype,'generate').mockImplementation(async function(this:MockAiProvider,request){
+    if(request.schemaName===schemaName&&!failed){failed=true;throw new AiProviderError('模拟单次网络中断','network_error',true);}
+    return original.call(this,request);
+  });
+}
 
 beforeAll(async () => {
   const [{ getDbReady }, schema] = await Promise.all([import("@db/client"), import("@db/schema")]);
@@ -126,7 +137,7 @@ describe("口语输出与纠错 HTTP 接口", () => {
     const db = await getDbReady();
     const runs = await db.select().from(schema.aiRuns);
     expect(runs.map((run) => run.role)).toEqual(expect.arrayContaining(["hint", "corrector", "generator", "reviewer"]));
-    expect(runs.every((run) => run.model === "deepseek-v4-flash")).toBe(true);
+    expect(runs.every((run) => run.model === "deepseek-flash")).toBe(true);
     expect(new Set(runs.map((run) => run.runId)).size).toBe(runs.length);
     const reviews = await db.select().from(schema.personalContentReviews);
     expect(reviews).toEqual([expect.objectContaining({ verdict: "approved", reviewerRunId: expect.any(String) })]);
@@ -256,12 +267,14 @@ describe("口语输出与纠错 HTTP 接口", () => {
     const created = (await createdResponse.json()).session;
     const payload = {
       clientMessageId: "12121212-1212-4212-8212-121212121212",
-      text: "[mock:fail-once] I stay focused.",
+      text: "I stay focused.",
       inputLanguage: "en",
       messageKind: "text",
     };
+    const calls=failNextSchema('companion_response_chloe_v1');
     const failedResponse = await messageRequest(created.id, payload);
     expect(failedResponse.status).toBe(502);
+    expect(calls.mock.calls.filter(([request])=>request.schemaName==='companion_response_chloe_v1')).toHaveLength(1);
     const failed = (await failedResponse.json()).session;
     expect(failed).toMatchObject({ status: "ai_failed" });
     expect(failed.messages.filter((message: { clientMessageId: string }) => message.clientMessageId === payload.clientMessageId)).toEqual([
@@ -270,6 +283,7 @@ describe("口语输出与纠错 HTTP 接口", () => {
 
     const retryResponse = await messageRequest(created.id, { ...payload, retry: true });
     expect(retryResponse.status).toBe(200);
+    expect(calls.mock.calls.filter(([request])=>request.schemaName==='companion_response_chloe_v1')).toHaveLength(2);
     const recovered = (await retryResponse.json()).session;
     expect(recovered).toMatchObject({ status: "conversing", turnCount: 1, lastError: null });
     expect(recovered.messages.filter((message: { clientMessageId: string }) => message.clientMessageId === payload.clientMessageId)).toHaveLength(1);
@@ -281,13 +295,15 @@ describe("口语输出与纠错 HTTP 接口", () => {
     const created = (await createdResponse.json()).session;
     await messageRequest(created.id, {
       clientMessageId: "20202020-2020-4020-8020-202020202020",
-      text: "[mock:comparator-fail-once] I stay focused.",
+      text: "I stay focused.",
       inputLanguage: "en",
       messageKind: "text",
     });
     const completeEvent = { type: "complete_conversation", clientEventId: "30303030-3030-4030-8030-303030303030" };
+    const calls=failNextSchema('speaking_reattempt_comparator_v1');
     const failedResponse = await eventRequest(created.id, completeEvent);
     expect(failedResponse.status).toBe(502);
+    expect(calls.mock.calls.filter(([request])=>request.schemaName==='speaking_reattempt_comparator_v1')).toHaveLength(1);
     const failed = (await failedResponse.json()).session;
     expect(failed).toMatchObject({ status: "ai_failed" });
 
@@ -298,6 +314,7 @@ describe("口语输出与纠错 HTTP 接口", () => {
 
     const recoveredResponse = await eventRequest(created.id, completeEvent);
     expect(recoveredResponse.status).toBe(200);
+    expect(calls.mock.calls.filter(([request])=>request.schemaName==='speaking_reattempt_comparator_v1')).toHaveLength(2);
     const recovered = (await recoveredResponse.json()).session;
     expect(recovered).toMatchObject({ status: "completed", answerId: stableAnswerId });
     expect(await db.select().from(schema.personalAnswers).where(eq(schema.personalAnswers.id, stableAnswerId))).toHaveLength(1);

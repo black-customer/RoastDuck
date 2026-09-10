@@ -8,7 +8,7 @@ function storage(initial:Record<string,string>={}){
   return values;
 }
 
-it('the new default is Dean on the server and browser with traceable previous-default metadata',()=>{
+it('the default male preset remains traceable through legacy metadata',()=>{
   expect(getStoredVoicePreference()).toBe('us-male');
   const values=storage();
   expect(getStoredVoicePreference()).toBe('us-male');

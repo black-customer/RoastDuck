@@ -4,7 +4,7 @@ import {encryptBackup,decryptBackup} from '@/lib/device-sync/backup';
 import {SYNC_ENTITIES} from '@/lib/device-sync/contracts';
 import {credentialValue} from '@/lib/app-services/shared';
 // Reuse encryption only. This module does not initialize a device, sync server, or sync log.
-export const WEB_BACKUP_TABLES=[...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs'] as const;
+export const WEB_BACKUP_TABLES=[...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs','material_validation_cache','sentence_learning_units','sentence_study_progress','sentence_study_sessions','sentence_study_events','sentence_material_editions','sentence_highlights'] as const;
 const rowSchema=z.record(z.string(),z.union([z.string(),z.number(),z.null()]));
 const archiveSchema=z.object({format:z.literal('roastduck-web-business-v1'),version:z.number().int().positive(),createdAt:z.string().datetime(),tables:z.record(z.string(),z.array(rowSchema).max(300000))}).strict();
 type Archive=z.infer<typeof archiveSchema>;
@@ -37,6 +37,7 @@ export async function restoreWebBackup(database:DatabasePort,bytes:Uint8Array,pa
         if(current){if(Object.entries(original).every(([k,v])=>current[k]===v))unchanged++;else conflicts++;continue;}
         const row={...original};
         if(table==='light_study_sessions'||table==='four_step_sessions'){if(row.status==='active')row.status='paused';}
+        if(table==='sentence_study_sessions'&&row.status==='active'){row.status='paused';const view=JSON.parse(String(row.view_json));view.status='paused';row.view_json=JSON.stringify(view);}
         if(table==='practice_materials'){row.lease_token=null;row.lease_until=null;if(['generating','reviewing'].includes(String(row.status)))row.status='queued';}
         if(table==='runtime_requests'&&row.state==='pending'){row.state='unknown';row.error_code='result_unknown';}
         pending.push({table,row});

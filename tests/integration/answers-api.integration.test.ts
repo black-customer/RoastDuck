@@ -102,7 +102,7 @@ describe("个人回答 HTTP 接口", () => {
     const runs = await db.select().from(schema.aiRuns);
     expect(runs.map((run) => run.role).sort()).toEqual(["corrector", "generator", "reviewer"]);
     expect(new Set(runs.map((run) => run.runId)).size).toBe(3);
-    expect(runs.every((run) => run.model === "deepseek-v4-flash")).toBe(true);
+    expect(runs.every((run) => run.model === "deepseek-flash")).toBe(true);
     const reviews = await db.select().from(schema.personalContentReviews);
     expect(reviews).toHaveLength(1);
     expect(reviews[0]).toMatchObject({ verdict: "approved" });

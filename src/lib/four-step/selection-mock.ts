@@ -4,7 +4,7 @@ import { diagnosisSchema, type Diagnosis, type MaterialEvidence } from "./select
 /** 明确的合成回归夹具，不是规则诊断器，也不用于私人内容发布。 */
 export const selectionMockResolver:MockAiResolver=(request)=>{
   const input=JSON.parse(request.input);
-  const schemaName=request.schemaName.replace(/_v[34]$/,'_v2'),spoken=/_v[34]$/.test(request.schemaName),recall=request.schemaName.endsWith('_v4');
+  const schemaName=request.schemaName.replace(/_v[345]$/,'_v2'),spoken=/_v[345]$/.test(request.schemaName),recall=/_v[45]$/.test(request.schemaName);
   if(schemaName==="four_step_diagnosis_v2") {
     const {actualAnswer:answer,intendedMeaningZh:meaning}=input.source as {actualAnswer:string;intendedMeaningZh:string};
     // Explicit bilingual FreeTalk fixture: preserve the successful English and prepare only the added intent.
@@ -44,7 +44,9 @@ export const selectionMockResolver:MockAiResolver=(request)=>{
       return {id:`sentence_${i}`,intentUnitIds:[u.id],english};
     });
     const rows=units.flatMap((u,i)=>u.gaps.filter((g)=>input.selection.gaps.some((r:{gapId:string;decision:string})=>r.gapId===g.id&&r.decision==="train")).map((g)=>({gapId:g.id,sentenceId:`sentence_${i}`,surfaceInSentence:g.id==="gap_major"?"switched majors":g.id==="gap_used_to"?"used to living":g.targetEnglish})));
-    const concreteRows=recall?rows.map(row=>{const sentence=sentences.find(s=>s.id===row.sentenceId)!,unit=units.find(u=>sentence.intentUnitIds.includes(u.id))!,gap=unit.gaps.find(g=>g.id===row.gapId)!;return {...row,recallPromptZh:unit.intentZh,recallAnswerEn:sentence.english,...(gap.id==='gap_used_to'?{pattern:'be used to + noun / -ing'}:{})};}):rows;
+    const concreteRows=recall?rows.map(row=>{const sentence=sentences.find(s=>s.id===row.sentenceId)!,unit=units.find(u=>sentence.intentUnitIds.includes(u.id))!,gap=unit.gaps.find(g=>g.id===row.gapId)!;
+      const surface=input.source.sentenceStudyVersion&&sentence.english.indexOf(row.surfaceInSentence)!==sentence.english.lastIndexOf(row.surfaceInSentence)?sentence.english.slice(0,sentence.english.indexOf(row.surfaceInSentence)+row.surfaceInSentence.length):row.surfaceInSentence;
+      return {...row,surfaceInSentence:surface,recallPromptZh:unit.intentZh,recallAnswerEn:sentence.english,...(gap.id==='gap_used_to'?{pattern:'be used to + noun / -ing'}:{})};}):rows;
     return {sentences,rows:concreteRows,examFeedback:input.source.mode==="exam_style"?{transcriptBasedNotice:"合成测试仅依据文本，不能评价发音或语调。",lexicalResource:"合成文本反馈。",grammaticalRange:"合成文本反馈。",coherence:"合成文本反馈。",paraphrasing:"释义表达传达了部分原意。",strengths:["Paraphrasing 释义能力"],weaknesses:[],approximateBand:null}:null};
   }
   if(schemaName==="four_step_review_v2") {

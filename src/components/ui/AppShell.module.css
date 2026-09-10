@@ -1,7 +1,7 @@
-.shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 100dvh; }
+.shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 100dvh; background:var(--background); }
 .skipLink { position: fixed; top: 10px; left: 16px; z-index: 100; padding: 10px 16px; background: var(--card); color: var(--primary); transform: translateY(-200%); }
 .skipLink:focus { transform: translateY(0); }
-.sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; padding: 30px 18px 20px; border-right: 1px solid var(--border); background: var(--card); overflow-y: auto; }
+.sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; padding: 30px 18px 20px; border-right: 1px solid var(--border); background: var(--background); overflow-y: auto; }
 .brandRow { display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 5px; font-size: 19px; font-weight: 700; letter-spacing: -.5px; }
 .brand svg { flex: none; }
@@ -17,7 +17,7 @@
 .main:focus { outline: none; }
 .menuButton { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-control); }
 .shell.simple { display:block; }
-.simple .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--border); padding:18px clamp(16px,4vw,60px); overflow:visible; }
+.simple .sidebar { position:relative; height:auto; border:0; padding:22px clamp(16px,4vw,60px); overflow:visible; }
 .simple .brandRow { width:100%; max-width:1100px; margin:auto; }
 .simple .menuButton { display:flex; }
 .simple .navigation { display:none; max-width:1100px; margin:auto; }
@@ -38,6 +38,9 @@
 .shell:has([data-light-focus="true"]) { display:block; background:var(--card); }
 .shell:has([data-light-focus="true"]) :is(.sidebar,.mobileBottomNav) { display:none; }
 .shell:has([data-light-focus="true"]) .main { max-width:none; padding:0; }
+.shell:has([data-sentence-focus="true"]) { display:block; }
+.shell:has([data-sentence-focus="true"]) :is(.sidebar,.mobileBottomNav) { display:none; }
+.shell:has([data-sentence-focus="true"]) .main { max-width:none; padding:0; }
 
 @media (max-width: 767px) {
   .shell { display: block; }

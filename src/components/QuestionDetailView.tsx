@@ -7,6 +7,8 @@ import type { QuestionDetail } from "@/lib/questions/service";
 import { InteractiveEnglishText } from "./InteractiveEnglishText";
 import { LookupCard } from "./LookupCard";
 import {SpeakButton} from './SpeakButton';
+import {sentenceClient} from '@/lib/sentence-study/client';
+import type {SentenceOverview} from '@/lib/sentence-study/contracts';
 import styles from './QuestionViews.module.css';
 
 const GAP_LABELS: Record<string, string> = {
@@ -19,7 +21,7 @@ const GAP_LABELS: Record<string, string> = {
   pronunciation_unknown: "发音未知",
 };
 
-export function QuestionDetailView({ question, learningPack }: { question: QuestionDetail; learningPack: QuestionLearningPack | null;allowLightStudy?:boolean }) {
+export function QuestionDetailView({ question, learningPack,initialSentenceInfo }: { question: QuestionDetail; learningPack: QuestionLearningPack | null;allowLightStudy?:boolean;initialSentenceInfo?:SentenceOverview }) {
   const currentPractice=learningPack?.currentPractice;
   const [lookupId, setLookupId] = useState<string | null>(null);
   const [favorite, setFavorite] = useState(question.favorite);
@@ -28,6 +30,7 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
   const [historyError, setHistoryError] = useState("");
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyReload, setHistoryReload] = useState(0);
+  const [sentenceInfo,setSentenceInfo]=useState<SentenceOverview|null>(initialSentenceInfo??null);
   const [speakingAttempts, setSpeakingAttempts] = useState<Array<{
     id: string;
     mode: "practice" | "exam_style";
@@ -36,6 +39,12 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
     createdAt: string;
     naturalVersion: string;
   }>>([]);
+
+  useEffect(() => {
+    if(initialSentenceInfo)return;
+    let cancelled=false;void sentenceClient.overview({type:'question',id:question.id}).then(result=>{if(!cancelled)setSentenceInfo(result);}).catch(()=>{});
+    return()=>{cancelled=true;};
+  },[question.id,initialSentenceInfo]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,7 +76,11 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
     }
   }
 
-  const primaryAction=learningPack?.primaryAction??question.primaryAction;
+  const legacyAction=learningPack?.primaryAction??question.primaryAction;
+  const primaryAction=sentenceInfo?.resumable.learn?{label:'继续句子学习',href:`/sentence-study?session=${encodeURIComponent(sentenceInfo.resumable.learn.id)}`}:
+    sentenceInfo?.newCount?{label:'开始句子学习',href:`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`}:
+    sentenceInfo?.dueCount?{label:'复习到期句子',href:`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=review`}:
+    legacyAction.href?.startsWith('/light-study')||legacyAction.href?.startsWith('/training')?{label:'查看本题材料',href:`/questions/${encodeURIComponent(question.id)}#my-answers`}:legacyAction;
   const latestAttempt=speakingAttempts[0];
   const latestHref=currentPractice?.href??(latestAttempt?`/questions/${encodeURIComponent(question.id)}/attempts/${encodeURIComponent(latestAttempt.id)}`:null);
   const answerCount=learningPack?.summary.answerCount??question.answerCount;
@@ -93,9 +106,9 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
           </div>
           {hasSecondaryActions&&<details className={styles.moreActions}><summary>更多练习与回顾</summary><div className={styles.secondaryActions}>
             {currentPractice&&!primaryAction.href?.includes('kind=independent')&&<Link href={`${questionHref}/practice?kind=independent&source=${encodeURIComponent(currentPractice.attemptId)}`} className="secondary-button">不看提示，重新回答</Link>}
-            {!!learningPack?.summary.requiredTotal&&!primaryAction.href?.startsWith('/light-study')&&<Link href={`/light-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`} className="secondary-button">轻松学本题</Link>}
-            {currentPractice&&<Link href={`/quick-review?scope=question&id=${encodeURIComponent(question.id)}`} className="secondary-button">快速回顾本题</Link>}
-            {!!learningPack?.summary.dueCount&&<Link href={`/light-study?scope=question&id=${encodeURIComponent(question.id)}&mode=review`} className="secondary-button">复习本题到期表达（{learningPack.summary.dueCount}）</Link>}
+            {!!sentenceInfo?.newCount&&!primaryAction.href?.startsWith('/sentence-study')&&<Link href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`} className="secondary-button">学习本题句子</Link>}
+            {!!sentenceInfo?.dueCount&&<Link href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=review`} className="secondary-button">复习本题到期句子（{sentenceInfo.dueCount}）</Link>}
+            {currentPractice&&<Link href="/extensions">拓展功能与旧记录</Link>}
           </div></details>}
         </article>
 
@@ -110,13 +123,13 @@ export function QuestionDetailView({ question, learningPack }: { question: Quest
           </section>
 
           {learningPack&&["analysis_pending","analysis_failed","materials_pending"].includes(learningPack.state)&&<section id="processing-status" className="question-detail-section" role="status">
-            <h2>{question.stateLabel}</h2><p>{learningPack.state==="analysis_pending"?"回答已保存，正在处理学习材料。可以稍后回来查看。":learningPack.state==="analysis_failed"?"材料处理没有完成，原回答仍完整保留。可以回到处理位置查看原因并重试。":"回答已保留，相关表达仍在整理或审核。通过后可以直接轻松学。"}</p>
+            <h2>{question.stateLabel}</h2><p>{learningPack.state==="analysis_pending"?"回答已保存，正在处理学习材料。可以稍后回来查看。":learningPack.state==="analysis_failed"?"材料处理没有完成，原回答仍完整保留。可以回到处理位置查看原因并重试。":"回答已保留，自然表达仍在整理或审核。通过后可以直接开始句子学习。"}</p>
             {learningPack.state==="analysis_failed"&&learningPack.processing.retryHref&&<Link className="secondary-button" href={learningPack.processing.retryHref}>返回处理位置</Link>}
           </section>}
 
           {answerCount>0&&<section id="learning-units" className="question-detail-section">
-            <div className="question-section-heading"><div><h2>本题的学习表达</h2><p>来自当前已审核材料。可以先轻松学，四步强化按需选择。</p></div>{learningPack&&<span>{learningPack.summary.requiredCompleted} / {learningPack.summary.requiredTotal} 已过首轮</span>}</div>
-            {currentPractice?(currentPractice.rows.length?<ol className="question-learning-list">{currentPractice.rows.map((row,index)=><li key={row.gapId??index}><div><Link href={currentPractice.href} lang="en">{row.englishChunk}</Link><span>{row.chineseChunk}</span></div></li>)}</ol>:<div className="question-inline-empty">{currentPractice.status==="ready"?"本次没有确认的学习表达，可以继续聊新的内容。未确认的意思仍保留在说明里。":"这份材料还未准备好，请通过上方入口查看状态。"}</div>):learningPack?.units.length?<ol className="question-learning-list">{learningPack.units.map(unit=><li key={unit.id}><div><Link href={`/chunks/${encodeURIComponent(unit.chunkId)}`} lang="en">{unit.display}</Link><span>{unit.meaningZh}</span>{unit.ipa&&<small lang="en">/{unit.ipa.replace(/^\/+|\/+$/g,"")}/</small>}</div><div className="question-unit-status"><span>{unit.requirement==="required"?"原学习项":"可选提升"}</span><span>{unit.firstRoundCompletedAt?"历史首轮已完成":"待学习"}</span></div></li>)}</ol>:<div className="question-inline-empty">已有回答材料尚未准备好，请先查看最近的回答。</div>}
+            <div className="question-section-heading"><div><h2>本题的学习材料</h2><p>以完整意思逐句回想，用法和注意点放在句子里理解。</p></div>{sentenceInfo&&<span>{sentenceInfo.totalCount-sentenceInfo.newCount} / {sentenceInfo.totalCount} 句已学</span>}</div>
+            {currentPractice?<div className="question-inline-empty"><p>{sentenceInfo?.totalCount?`${sentenceInfo.newCount} 句待学，${sentenceInfo.dueCount} 句到期复习。`:currentPractice.status==='ready'?'正在核对本题可学句子；你仍可以查看自然回答与原始材料。':'这份材料还未准备好，请查看处理进度。'}</p><Link className="secondary-button" href={currentPractice.href}>查看自然回答与材料</Link></div>:<div className="question-inline-empty">已有回答材料尚未准备好，请先查看最近的回答。</div>}
           </section>}
 
           {(speakingAttempts.length>0||!!learningPack?.answers.length)&&<details id="speaking-attempts" className={`question-detail-section ${styles.fold}`}><summary>全部回答记录</summary>

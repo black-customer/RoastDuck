@@ -1,6 +1,7 @@
 import { DEEPSEEK_MODEL, type AiProvider, type StructuredAiRequest, type StructuredAiResult } from "./contracts";
-import { AiProviderError, httpError, normalizeAiError } from "./errors";
+import { AiProviderError, errorFromResponse, normalizeAiError,REQUEST_FORMAT_VERSION } from "./errors";
 import {buildDeepSeekBody,parseDeepSeekResponse} from "./deepseek-wire";
+import {readResponsesStream} from './responses-stream';
 
 export interface DeepSeekProviderOptions {
   apiKey: string;
@@ -27,7 +28,7 @@ export class DeepSeekProvider implements AiProvider {
 
   async generate<T>(request: StructuredAiRequest<T>): Promise<StructuredAiResult<T>> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeout = setTimeout(() => controller.abort(), request.timeoutMs??this.timeoutMs);
     const startedAt = Date.now();
     try {
       const body=buildDeepSeekBody(request);
@@ -45,16 +46,17 @@ export class DeepSeekProvider implements AiProvider {
       } catch (reason) {
         throw normalizeAiError(reason);
       }
-      if (!response.ok) throw httpError(response.status);
+      if (!response.ok) throw await errorFromResponse(response);
 
       let rawJson: unknown;
-      try { rawJson = await response.json(); }
+      try { rawJson = response.headers.get('content-type')?.includes('text/event-stream')?await readResponsesStream(response):await response.json(); }
       catch(reason) {
         if(controller.signal.aborted)throw new AiProviderError("DeepSeek 读取响应超时", "timeout", true);
         if(reason instanceof SyntaxError)throw new AiProviderError("DeepSeek 响应不是合法 JSON", "invalid_output", true);
         throw normalizeAiError(reason);
       }
       return parseDeepSeekResponse(request,rawJson,Date.now()-startedAt);
+    } catch(reason){const error=normalizeAiError(reason);throw new AiProviderError(error.message,error.code,error.retryable,error.httpStatus,{...error.details,requestFormatVersion:REQUEST_FORMAT_VERSION},error.response);
     } finally {
       clearTimeout(timeout);
     }

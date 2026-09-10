@@ -1,3 +1,4 @@
+import {SPOKEN_REGISTER_VERSION,spokenInstructions} from '@/lib/ai/spoken-register';
 import {z} from "zod";
 import type {DatabasePort,SqlWriter} from "@/lib/platform/database";
 import {query as sql} from "@/lib/platform/sql";
@@ -10,7 +11,7 @@ import {TrainingError} from "@/lib/four-step/shared";
 import type {MemoryService} from "./memory";
 import {dialogueResponseSchema} from "./dialogue-contracts";
 import {credentialValue,parseJson,stableId} from "./shared";
-import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION} from '@/lib/four-step/stage-contracts';
+import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION,SENTENCE_STUDY_VERSION} from '@/lib/four-step/stage-contracts';
 export interface AppConversation {id:string;title:string;mode:"relaxed"|"strict";status:string;created_at:string;updated_at:string;thread_id:string|null;question_id:string|null}
 export interface AppMessage {id:string;conversation_id:string;sequence_no:number;role:"user"|"assistant";text:string;metadata_json:string;created_at:string;teaching_state:string|null;target_repetition:string|null;gap_count:number}
 type Meta={clientMessageId?:string;deliveryStatus?:string;replyTo?:string;leaseToken?:string|null;leaseExpiresAt?:string|null;payload?:unknown;errorCode?:string;runId?:string;translationZh?:string;glossary?:unknown;purpose?:string};
@@ -73,12 +74,15 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     const conversation=await get(conversationId),history=await messages(conversationId),user=history.find(row=>row.id===userId&&row.role==="user");
     if(!user)throw new TrainingError("用户消息不存在",404,"message_missing");
     if(meta(user).deliveryStatus==="completed")return history;
-    const relevant=await memories.relevant(conversation.title+" "+user.text);
+    const memoryLimit=conversation.question_id?2:1;
+    const relevant=await memories.relevantForTeacher(conversation.title+" "+user.text,4,memoryLimit);
     const due=await database.read(async tx=>{
+      const availableSlots=Math.max(0,memoryLimit-relevant.filter(m=>m.category==='learning').length);
+      if(!availableSlots)return [];
       const {cards,progress}=await createLightCatalogue(tx,platform.allowMock).readLightCatalogue({type:'all'});
       return cards.filter(card=>(progress.get(card.itemId)?.due_at??'9999')<=now())
         .sort((a,b)=>progress.get(a.itemId)!.due_at.localeCompare(progress.get(b.itemId)!.due_at)||a.itemId.localeCompare(b.itemId))
-        .slice(0,conversation.question_id?2:1).map(card=>({id:card.itemId,target_english:card.english,intention_zh:card.chinese}));
+        .slice(0,availableSlots).map(card=>({id:card.itemId,target_english:card.english,intention_zh:card.chinese}));
     });
     const token=`native.${platform.bootId}.${platform.newId()}`;
     const reserved=await database.write(async tx=>{
@@ -88,9 +92,9 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
       if(metadata.deliveryStatus==="completed")return null;
       if(metadata.deliveryStatus==="failed"&&!options.retryFailed&&!options.retryUnknown)throw new TrainingError("消息已保留，请明确重试",409,"message_retry_required");
       if(metadata.leaseExpiresAt&&metadata.leaseExpiresAt>now())throw new TrainingError("回复还在处理，请稍后恢复",409,"message_busy");
-      const base=metadata.payload as {dialogueVersion?:'v2'|'v3';dueExpressions?:Array<{id:string}>;relevantMemories?:Array<{id:string}>}|undefined;
+      const base=metadata.payload as {dialogueVersion?:'v2'|'v3';registerProfileVersion?:string;dueExpressions?:Array<{id:string}>;relevantMemories?:Array<{id:string}>}|undefined;
       // A retry cannot reintroduce invalidated material or memories removed since the initial request.
-      const payload=base?{...base,dueExpressions:base.dueExpressions?.filter(item=>due.some(row=>row.id===item.id))??[],relevantMemories:base.relevantMemories?.filter(item=>relevant.some(row=>row.id===item.id))??[]}:{dialogueVersion:'v3' as const,mode:conversation.mode,questionId:conversation.question_id,recentHistory:history.filter(row=>row.sequence_no<=user.sequence_no).slice(-12).map(row=>({id:row.id,role:row.role,text:row.text})),latestUserMessage:user.text,relevantMemories:relevant.map(row=>({id:row.id,summary:row.summary,category:row.category})),dueExpressions:due};
+      const payload=base?{...base,dueExpressions:base.dueExpressions?.filter(item=>due.some(row=>row.id===item.id))??[],relevantMemories:base.relevantMemories?.filter(item=>relevant.some(row=>row.id===item.id))??[]}:{dialogueVersion:'v3' as const,registerProfileVersion:SPOKEN_REGISTER_VERSION,mode:conversation.mode,questionId:conversation.question_id,recentHistory:history.filter(row=>row.sequence_no<=user.sequence_no).slice(-12).map(row=>({id:row.id,role:row.role,text:row.text})),latestUserMessage:user.text,relevantMemories:relevant,memoryUsePolicy:{maxOldIssues:memoryLimit,onlyWhenRelevant:true,absenceIsNotImprovement:true},dueExpressions:due};
       const updated={...metadata,payload,deliveryStatus:"pending",leaseToken:token,leaseExpiresAt:new Date(platform.now().getTime()+180000).toISOString(),errorCode:undefined};
       await tx.run(sql`UPDATE free_talk_messages SET metadata_json=${JSON.stringify(updated)} WHERE id=${userId}`);
       return {payload,metadata:updated,threadId:await ensureThread(tx,conversation,conversation.question_id)};
@@ -99,7 +103,7 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     let deliveredConversationId=conversationId,deliveredThreadId=reserved.threadId;
     try{
       const dialogueVersion=reserved.payload.dialogueVersion==='v3'?'v3':'v2';
-      const result=await runtime.call({role:"companion_response",instructions:await platform.loadPrompt(`companion_dialogue.chloe.${dialogueVersion}.md`),input:JSON.stringify(reserved.payload),schema:dialogueResponseSchema,schemaName:"companion_dialogue_v2",promptVersion:`companion-dialogue-${dialogueVersion}`,schemaVersion:"companion-dialogue-v2",idempotencyKey:stableId("ft_resp",conversationId,meta(user).clientMessageId??userId)},options);
+      const result=await runtime.call({role:"companion_response",instructions:await spokenInstructions(platform.loadPrompt,`companion_dialogue.chloe.${dialogueVersion}.md`,reserved.payload.registerProfileVersion),input:JSON.stringify(reserved.payload),schema:dialogueResponseSchema,schemaName:"companion_dialogue_v2",promptVersion:`companion-dialogue-${dialogueVersion}${reserved.payload.registerProfileVersion?'-'+reserved.payload.registerProfileVersion:''}`,schemaVersion:"companion-dialogue-v2",idempotencyKey:stableId("ft_resp",conversationId,meta(user).clientMessageId??userId)},options);
       const allowed=(reserved.payload as {dueExpressions?:Array<{id:string}>}).dueExpressions??[];
       if(result.data.usedLearningItemIds.some(id=>!allowed.some(item=>item.id===id))||result.data.usedLearningItemIds.length>allowed.length)throw new TrainingError("回复引用了未提供的旧表达",422,"dialogue_invalid_reference");
       await database.write(async tx=>{
@@ -147,7 +151,7 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     if(selected.length>24||selected.reduce((sum,row)=>sum+row.text.length,0)>24000)throw new TrainingError("这一段较长，请选择较短范围复盘",400,"recap_too_large");
     if(!selected.some(row=>row.role==="user"))throw new TrainingError("需要包含你的实际表达",400,"no_user_message");
     if(selected.some(row=>row.role==="user"&&meta(row).deliveryStatus!=="completed"&&!(meta(row).deliveryStatus===undefined&&history.some(reply=>reply.role==="assistant"&&reply.sequence_no>row.sequence_no))))throw new TrainingError("请先恢复未完成的回复，再复盘",409,"message_unresolved");
-    return materials.prepare({sourceType:"free_talk",sourceId:conversationId,question:null,mode:"free_talk",actualAnswer:selected.filter(row=>row.role==="user").map(row=>row.text).join("\n"),intendedMeaningZh:"",sourceMessages:selected.map(row=>({id:row.id,role:row.role,text:row.text})),spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION});
+    return materials.prepare({sourceType:"free_talk",sourceId:conversationId,question:null,mode:"free_talk",actualAnswer:selected.filter(row=>row.role==="user").map(row=>row.text).join("\n"),intendedMeaningZh:"",sourceMessages:selected.map(row=>({id:row.id,role:row.role,text:row.text})),spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION});
   }
   return {list,get,messages,create,prepare,process,recap};
 }

@@ -211,11 +211,15 @@ describe("IELTS 题库 HTTP 接口", () => {
   });
 
   it("按历史回答、学习包和重复 Gap 筛选，并返回按题学习包", async () => {
-    for (const status of ["has_history", "has_learning", "ready_to_learn", "repeated_gaps"]) {
+    for (const status of ["has_history", "repeated_gaps"]) {
       const response = await questionsRoute.GET(new Request(`http://local/api/questions?status=${status}`));
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body.items.map((item: { id: string }) => item.id)).toContain("question_work");
+    }
+    for(const status of ['has_learning','ready_to_learn']){
+      const result=await questionsRoute.GET(new Request(`http://local/api/questions?status=${status}`));
+      expect((await result.json()).items.map((item:{id:string})=>item.id)).not.toContain('question_work');
     }
 
     const response = await learningPackRoute.GET(new Request("http://local/api/questions/question_work/learning-pack"), { params: Promise.resolve({ id: "question_work" }) });

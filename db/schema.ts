@@ -1050,13 +1050,14 @@ export const aiRuns = sqliteTable(
     runId: text("run_id").primaryKey(),
     jobId: text("job_id"),
     role: text("role").notNull(), // generator | reviewer | translator | corrector | hint
-    provider: text("provider").notNull(), // deepseek | mock；模型字段始终 deepseek-v4-flash
-    model: text("model").notNull(), // 运行时恒为 deepseek-v4-flash
+    provider: text("provider").notNull(), // deepseek | mock
+    model: text("model").notNull(), // requested model at run time; historical identifiers are immutable
     promptVersion: text("prompt_version").notNull().default(""),
     schemaVersion: text("schema_version").notNull().default(""),
     thinkingMode: text("thinking_mode").notNull().default("disabled"),
     inputHash: text("input_hash").notNull().default(""),
     responseId: text("response_id"),
+    responseModel: text("response_model"),
     latencyMs: integer("latency_ms"),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
@@ -1065,6 +1066,7 @@ export const aiRuns = sqliteTable(
     status: text("status").notNull(),
     errorCode: text("error_code"),
     errorSummary: text("error_summary"),
+    errorDetailsJson: text("error_details_json").notNull().default("{}"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
@@ -1404,5 +1406,28 @@ export const expressionPreferences=sqliteTable('expression_preferences',{
 export const materialFeedback=sqliteTable('material_feedback',{
   id:text('id').primaryKey(),materialId:text('material_id').notNull(),materialHash:text('material_hash').notNull(),learningItemId:text('learning_item_id').notNull(),rowIndex:integer('row_index').notNull(),reason:text('reason').notNull(),createdAt:text('created_at').notNull(),
 });
+
+/** v33: sentence scheduling, validated publication and append-only correction evidence. */
+export const materialValidationCache=sqliteTable('material_validation_cache',{
+  materialId:text('material_id').primaryKey(),fingerprint:text('fingerprint').notNull(),ruleVersion:text('rule_version').notNull(),valid:integer('valid').notNull(),resultJson:text('result_json').notNull(),checkedAt:text('checked_at').notNull(),
+});
+export const sentenceLearningUnits=sqliteTable('sentence_learning_units',{
+  id:text('id').primaryKey(),materialId:text('material_id').notNull(),sentenceId:text('sentence_id').notNull(),sourceType:text('source_type').notNull(),sourceId:text('source_id').notNull(),questionId:text('question_id'),ordinal:integer('ordinal').notNull(),version:text('version').notNull(),bodyJson:text('body_json').notNull(),active:integer('active').notNull().default(1),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+},t=>[uniqueIndex('sentence_material_version').on(t.materialId,t.sentenceId,t.version)]);
+export const sentenceStudyProgress=sqliteTable('sentence_study_progress',{
+  sentenceId:text('sentence_id').primaryKey(),firstSeenAt:text('first_seen_at').notNull(),lastSeenAt:text('last_seen_at').notNull(),dueAt:text('due_at').notNull(),fsrsJson:text('fsrs_json').notNull(),reviewCount:integer('review_count').notNull().default(0),version:integer('version').notNull().default(1),lastRating:text('last_rating').notNull(),
+});
+export const sentenceStudySessions=sqliteTable('sentence_study_sessions',{
+  id:text('id').primaryKey(),scopeJson:text('scope_json').notNull(),scopeKey:text('scope_key').notNull(),mode:text('mode').notNull(),status:text('status').notNull(),version:integer('version').notNull().default(0),viewJson:text('view_json').notNull(),requestId:text('request_id').notNull().unique(),requestHash:text('request_hash').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+});
+export const sentenceStudyEvents=sqliteTable('sentence_study_events',{
+  sessionId:text('session_id').notNull(),clientEventId:text('client_event_id').notNull(),payloadHash:text('payload_hash').notNull(),kind:text('kind').notNull(),sentenceId:text('sentence_id'),rating:text('rating'),targetEventId:text('target_event_id'),beforeProgressJson:text('before_progress_json'),afterProgressVersion:integer('after_progress_version'),createdAt:text('created_at').notNull(),
+},t=>[primaryKey({columns:[t.sessionId,t.clientEventId]})]);
+export const sentenceMaterialEditions=sqliteTable('sentence_material_editions',{
+  id:text('id').primaryKey(),materialId:text('material_id').notNull(),sourceHash:text('source_hash').notNull(),analysisHash:text('analysis_hash').notNull(),authorJson:text('author_json').notNull(),reviewJson:text('review_json').notNull(),cardsJson:text('cards_json').notNull(),status:text('status').notNull().default('ready'),createdAt:text('created_at').notNull(),
+});
+export const sentenceHighlights=sqliteTable('sentence_highlights',{
+  id:text('id').primaryKey(),sentenceId:text('sentence_id').notNull(),language:text('language').notNull(),textVersion:text('text_version').notNull(),textHash:text('text_hash').notNull(),startOffset:integer('start_offset').notNull(),endOffset:integer('end_offset').notNull(),quote:text('quote').notNull(),prefix:text('prefix').notNull(),suffix:text('suffix').notNull(),state:text('state').notNull().default('active'),clientRequestId:text('client_request_id').notNull().unique(),requestHash:text('request_hash').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+},t=>[index('sentence_highlights_lookup').on(t.sentenceId,t.language,t.state)]);
 
 

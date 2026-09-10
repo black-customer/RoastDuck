@@ -1,3 +1,4 @@
+import {SPOKEN_REGISTER_VERSION} from '@/lib/ai/spoken-register';
 import {z} from "zod";
 import type {DatabasePort,SqlReader} from "@/lib/platform/database";
 import {query as sql} from "@/lib/platform/sql";
@@ -7,7 +8,7 @@ import {hash,TrainingError} from "@/lib/four-step/shared";
 import {speakingAttemptAnalysisSchema} from "@/lib/speaking-practice/schemas";
 import {auditPracticeMaterials} from "@/lib/four-step/audit";
 import {credentialValue,parseJson} from "./shared";
-import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION} from '@/lib/four-step/stage-contracts';
+import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION,SENTENCE_STUDY_VERSION} from '@/lib/four-step/stage-contracts';
 
 export interface AnswerDraft {id:string;question_id:string;english_text:string;chinese_text:string;english_unknown:number;raw_input?:string;input_format?:string;version:number;submitted_attempt_id:string|null;source_attempt_id:string|null;kind:'practice'|'independent'|'edit';english_committed_at:string|null;created_at:string;updated_at:string}
 export interface AppAttempt {id:string;question_id:string;mode:string;answer_text:string;intended_meaning_zh:string;natural_version:string;gap_count:number;status:string;analysis_json:string;created_at:string;updated_at:string}
@@ -82,10 +83,13 @@ export function createAnswerService(database:DatabasePort,materials:Pick<Materia
       const attemptId=`sqa_${hash("draft",id).slice(0,24)}`,timestamp=platform.now().toISOString();
       // Explicit 'unknown' means an empty attempt, never a made-up English placeholder.
       const english=mixed?draft.raw_input!:(draft.english_unknown?"":draft.english_text),meaning=mixed?'':draft.chinese_text;
+      const [parentMaterial]=draft.kind==='edit'&&draft.source_attempt_id?await tx.all<{input_json:string}>(sql`SELECT input_json FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${draft.source_attempt_id} AND status='ready' ORDER BY created_at DESC,id DESC LIMIT 1`):[];
+      const parent=parentMaterial?parseJson<{sentenceSourceId?:string;sourceId:string}>(parentMaterial.input_json,{sourceId:draft.source_attempt_id!}):null;
+      const sentenceSourceId=parent?.sentenceSourceId??parent?.sourceId;
       await tx.run(sql`INSERT INTO speaking_question_attempts(id,question_id,mode,answer_text,intended_meaning_zh,status,created_at,updated_at)
         VALUES(${attemptId},${question.id},'practice',${english},${meaning},'processing',${timestamp},${timestamp})`);
       await tx.run(sql`INSERT INTO practice_submissions(request_id,input_hash,attempt_id) VALUES(${id},${hash(question.id,"practice",english,meaning)},${attemptId})`);
-      await materials.prepareIn(tx,{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:"practice",actualAnswer:english,intendedMeaningZh:meaning,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,...(mixed?{inputFormat:'mixed-v1' as const,rawInput:english}:{})});
+      await materials.prepareIn(tx,{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:"practice",actualAnswer:english,intendedMeaningZh:meaning,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION,...(sentenceSourceId?{sentenceSourceId}:{}),...(mixed?{inputFormat:'mixed-v1' as const,rawInput:english}:{})});
       await tx.run(sql`UPDATE answer_drafts SET submitted_attempt_id=${attemptId},version=version+1,updated_at=${timestamp} WHERE id=${id}`);
       return {attemptId};
     });

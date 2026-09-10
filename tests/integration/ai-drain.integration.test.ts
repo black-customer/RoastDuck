@@ -63,7 +63,7 @@ describe("AI Drain 隔离端到端", () => {
     expect(report.completed).toHaveLength(1);
     expect(report.failed).toHaveLength(0);
     expect(report.stoppedReason).toBe("max_batches");
-    expect(report.model).toBe("deepseek-v4-flash");
+    expect(report.model).toBe("deepseek-flash");
     expect(fs.existsSync(reportFile)).toBe(true);
 
     const batch = JSON.parse(fs.readFileSync(
@@ -77,7 +77,7 @@ describe("AI Drain 隔离端到端", () => {
     expect(job.status).toBe("completed");
     const [run] = await db.select().from(schema.aiRuns);
     expect(run.provider).toBe("mock");
-    expect(run.model).toBe("deepseek-v4-flash");
+    expect(run.model).toBe("deepseek-flash");
     expect(run.role).toBe("reviewer");
     expect(run.status).toBe("completed");
   });

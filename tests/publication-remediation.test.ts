@@ -108,7 +108,7 @@ it('危险旧脚本退出且不修改历史审核文件', () => {
 it('公共 drain 拒绝真实 Provider，调用数及 ai_runs 都为零', async () => {
   const { runAiDrain } = await import('@pipeline/src/ai/drain');
   const generate = vi.fn();
-  await expect(runAiDrain({ providerName: 'deepseek', model: 'deepseek-v4-flash', generate }, { maxBatches: 1, maxCostUsd: 1, concurrency: 1, apply: false, dryRun: false })).rejects.toThrow(/禁用/);
+  await expect(runAiDrain({ providerName: 'deepseek', model: 'deepseek-flash', generate }, { maxBatches: 1, maxCostUsd: 1, concurrency: 1, apply: false, dryRun: false })).rejects.toThrow(/禁用/);
   expect(generate).not.toHaveBeenCalled();
   expect(await db.select().from(schema.aiRuns)).toHaveLength(0);
 });

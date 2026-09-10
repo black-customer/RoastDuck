@@ -11,7 +11,7 @@ import {loadPrompt} from "../../mobile/src/prompts";
 import "../../mobile/src/styles.css";
 declare const __NATIVE_TEST_DB__:string;
 declare global {interface Window {roastduckQaSnapshot?:()=>Promise<unknown>}}
-const provider:AiProvider={providerName:"mock",model:"deepseek-v4-flash",async generate(request){
+const provider:AiProvider={providerName:"mock",model:"deepseek-flash",async generate(request){
   const input=JSON.parse(request.input);let data:unknown;
   if(request.schemaName==="companion_dialogue_v2")data={messages:[{text:"That makes sense. Tell me a little more.",translationZh:"我明白了，再多说一点吧。",purpose:"natural_response"},{text:"You can take your time.",translationZh:"可以慢慢来。",purpose:"follow_up"}],usedLearningItemIds:[],glossary:[]};
   else if(request.schemaName==="companion_memory_extractor_v1")data={memories:[]};

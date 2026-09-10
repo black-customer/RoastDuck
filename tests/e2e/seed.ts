@@ -242,3 +242,19 @@ if((await light.applyLightEvent(recoveryIntro.id,{type:"rate",rating:"remembered
 const lightOverview = await light.lightOverview({type:"all"});
 if(lightOverview.totalCount!==15 || lightOverview.newCount!==11 || lightOverview.dueCount!==4) throw new Error("轻学习E2E夹具未完整准备");
 console.log("轻学习隔离材料已核验：15项，其中11项新学、4项到期；Runtime调用0。");
+const {publishSentenceFixture}=await import('../helpers/sentence-material');
+await publishSentenceFixture(db,'sentence-e2e-new',[['make breakfast','做早餐'],['go for a walk','散步'],['read a book','读一本书']]);
+await publishSentenceFixture(db,'sentence-e2e-next',[['play the guitar','弹吉他'],['listen to music','听音乐']]);
+await publishSentenceFixture(db,'sentence-e2e-output',[['cook dinner','做晚饭'],['wash the dishes','洗碗']]);
+await publishSentenceFixture(db,'sentence-e2e-performance',Array.from({length:30},(_,i)=>[`read chapter ${i+1}`,`阅读第${i+1}章`] as [string,string]));
+await publishSentenceFixture(db,'sentence-e2e-review',[['take a break','休息一下'],['drink some water','喝点水']]);
+const {nodeDatabase}=await import('../../src/lib/platform/node/database');
+const {createSentenceService}=await import('../../src/lib/sentence-study/core-service');
+const {randomUUID}=await import('node:crypto');
+const sentenceService=createSentenceService(nodeDatabase,{now:()=>earlier,newId:randomUUID});
+let sentenceReview=await sentenceService.create({scope:{type:'question',id:'sentence-e2e-review'},mode:'learn',clientRequestId:'sentence-e2e-seed-review'});
+while(sentenceReview.status==='active'){
+  const card=sentenceReview.cards[sentenceReview.index];sentenceReview=await sentenceService.event(sentenceReview.id,{type:'reveal',sentenceId:card.id,unitVersion:card.version,version:sentenceReview.version,clientEventId:randomUUID()});
+  sentenceReview=await sentenceService.event(sentenceReview.id,{type:'rate',sentenceId:card.id,unitVersion:card.version,rating:'remembered',version:sentenceReview.version,clientEventId:randomUUID()});
+}
+console.log('句子学习隔离夹具：完整多句题目、新学、到期复习；Runtime调用0。');

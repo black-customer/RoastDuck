@@ -1,16 +1,16 @@
 :root {
   color-scheme: light;
-  --background: #f5f7fb;
-  --foreground: #1e304e;
-  --card: #ffffff;
-  --card-elevated: #f1f5fc;
-  --primary: #2465c5;
-  --primary-strong: #205aaf;
-  --primary-soft: #edf3fd;
-  --primary-soft-strong: #dce9fd;
-  --muted: #586a84;
-  --muted-strong: #455975;
-  --border: #e0e6ef;
+  --background: #eaf0f8;
+  --foreground: #233b5d;
+  --card: #fbfcff;
+  --card-elevated: #f0f5fc;
+  --primary: #2868c7;
+  --primary-strong: #2058aa;
+  --primary-soft: #e4eefc;
+  --primary-soft-strong: #cbdff8;
+  --muted: #526881;
+  --muted-strong: #415a77;
+  --border: #d5dfec;
   --border-strong: #aabbd2;
   --success: #287754;
   --success-soft: #eff7f2;
@@ -27,7 +27,8 @@
   --radius-control: 9px;
   --radius-panel: 14px;
   --radius-card: 14px;
-  --font-body: "Plus Jakarta Sans", "Aptos", "Segoe UI Variable Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-body: "Aptos", "Segoe UI Variable Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-english: "Aptos", "Segoe UI Variable Text", "Segoe UI", sans-serif;
   --text-body: 1rem;
   --text-small: .875rem;
   --text-title: clamp(1.6rem, 2.2vw, 1.85rem);

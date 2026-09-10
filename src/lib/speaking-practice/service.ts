@@ -1,3 +1,4 @@
+import {SPOKEN_REGISTER_VERSION} from '@/lib/ai/spoken-register';
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,10 +10,13 @@ import {
 } from "@db/schema";
 import { createAiProvider } from "@/lib/ai/provider-factory";
 import { runtimeAnswerMockResolver } from "@/lib/answers/runtime-mock";
-import { prepareMaterial, processMaterial } from "@/lib/four-step/materials";
+import { prepareMaterial } from "@/lib/four-step/materials";
 import { hash } from "@/lib/four-step/shared";
-import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION} from '@/lib/four-step/stage-contracts';
-import { materialFailureMessage } from "@/lib/four-step/material-status";
+import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION,SENTENCE_STUDY_VERSION} from '@/lib/four-step/stage-contracts';
+import {prepareCurrentMaterialRetry,resolveCurrentMaterial,type MaterialTransition} from '@/lib/four-step/current-revision';
+import {nodeDatabase} from '@/lib/platform/node/database';
+import type {MaterialInput} from '@/lib/four-step/material-types';
+import { materialFailureMessage,materialDiagnostic,type MaterialDiagnostic } from "@/lib/four-step/material-status";
 import { executeAuditedAiCall } from "@/lib/ai/job-service";
 import {
   speakingAttemptAnalysisSchema,
@@ -36,7 +40,7 @@ export function normalizeKey(text: string): string {
 }
 
 function readPrompt(filename: string): string {
-  return fs.readFileSync(path.join(process.cwd(), "pipeline", "prompts", filename), "utf8");
+  return fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(), "pipeline", "prompts"), filename), "utf8");
 }
 
 export class SpeakingPracticeError extends Error {
@@ -59,6 +63,8 @@ export interface AttemptView {
   materialStatus?: string;
   materialError?: string;
   processingStage?: string;
+  materialDiagnostic?:MaterialDiagnostic;
+  materialTransition?:MaterialTransition;
   analysis: SpeakingAttemptAnalysis;
   createdAt: string;
   updatedAt: string;
@@ -83,12 +89,12 @@ export async function prepareSpeakingAttempt(input: CreateAttemptInput): Promise
     await tx.run(sql`INSERT INTO practice_submissions (request_id,input_hash,attempt_id) VALUES (${requestId},${inputHash},${id})`);
     return id;
   });
-  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh, part: question.part }, mode: input.mode, actualAnswer: input.answerText, intendedMeaningZh: input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION });
+  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh, part: question.part }, mode: input.mode, actualAnswer: input.answerText, intendedMeaningZh: input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION });
   return (await getSpeakingAttempt(attemptId))!;
 }
 
 /** 显式处理／重试；GET 不启动任务。 */
-export async function prepareAttemptReanalysis(attemptId: string) {
+export async function prepareAttemptReanalysis(attemptId: string,options:{retryUnknown?:boolean}={}) {
   return withDbTransaction(async () => {
     const db = await getDbReady();
     const attempt = await getSpeakingAttempt(attemptId);
@@ -100,20 +106,21 @@ export async function prepareAttemptReanalysis(attemptId: string) {
     if (running) throw new SpeakingPracticeError("原分析仍在运行，请稍后再按新标准分析",409,"legacy_analysis_running");
     await db.run(sql`INSERT INTO practice_legacy_analyses(attempt_id,analysis_json,natural_version,archived_at)
       SELECT id,analysis_json,natural_version,${new Date().toISOString()} FROM speaking_question_attempts WHERE id=${attemptId} AND analysis_json!='{}' ON CONFLICT DO NOTHING`);
-    const [previous]=await db.all<{input_json:string}>(sql`SELECT input_json FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} AND contract_version='evidence_v2' ORDER BY created_at DESC,id DESC LIMIT 1`);
-    // Recover the exact saved version, including mixed-input and spoken-style markers.
-    const material = await prepareMaterial(previous?JSON.parse(previous.input_json):{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION});
+    const [previous]=await db.all<{id:string}>(sql`SELECT id FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} AND contract_version='evidence_v2' ORDER BY julianday(created_at) DESC,id DESC LIMIT 1`);
+    // An explicit retry can append an upgraded failed contract, but never rewrite the original snapshot.
+    const material = previous?(await prepareCurrentMaterialRetry(nodeDatabase,previous.id,new Date(),options)).material:await prepareMaterial({sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION});
     if (material.status!=="ready") await db.update(speakingQuestionAttempts).set({status:"processing"}).where(eq(speakingQuestionAttempts.id,attemptId));
     return (await getSpeakingAttempt(attemptId))!;
   });
 }
 
-export async function processSpeakingAttempt(attemptId: string) {
+export async function processSpeakingAttempt(attemptId: string,options:{retry?:boolean;retryUnknown?:boolean}={}) {
   const db = await getDbReady();
-  const [material] = await db.all<{ id: string }>(sql`SELECT id FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} ORDER BY (contract_version='evidence_v2') DESC,created_at DESC,id DESC LIMIT 1`);
+  const [material] = await db.all<{ id: string }>(sql`SELECT id FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} ORDER BY (contract_version='evidence_v2') DESC,julianday(created_at) DESC,id DESC LIMIT 1`);
   if (!material) throw new SpeakingPracticeError("此历史回答的新版材料尚未编译", 409, "material_missing");
-  await processMaterial(material.id);
   const {webCompanion}=await import('@/lib/app-services/web');
+  const target=options.retry?await prepareCurrentMaterialRetry(nodeDatabase,material.id,new Date(),{retryUnknown:options.retryUnknown}):await resolveCurrentMaterial(nodeDatabase,material.id);
+  await webCompanion().materials.process(target.material.id,options);
   await webCompanion().comparison.process(attemptId).catch(()=>undefined);
   return getSpeakingAttempt(attemptId);
 }
@@ -150,9 +157,10 @@ export async function getSpeakingAttempt(attemptId: string): Promise<AttemptView
     };
   }
 
-  const [material] = await db.all<{ id: string; contract_version:string; status:string;error_code:string|null;job_id:string|null;lease_until:string|null;updated_at:string }>(sql`SELECT id,contract_version,status,error_code,job_id,lease_until,updated_at FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${row.id} ORDER BY (contract_version='evidence_v2') DESC,created_at DESC,id DESC LIMIT 1`);
-  const [run]=material?.job_id?await db.all<{error_code:string|null;role:string}>(sql`SELECT error_code,role FROM ai_runs WHERE job_id=${material.job_id} ORDER BY created_at DESC LIMIT 1`):[];
-  const stageNames:Record<string,string>={gap_generator:"对照中英文原意",gap_reviewer:"核对真实表达缺口",learning_material_compiler:"编排四列材料",reviewer:"核对材料与原文"};
+  const [material] = await db.all<{ id: string; input_json:string;contract_version:string; status:string;error_code:string|null;job_id:string|null;lease_until:string|null;updated_at:string }>(sql`SELECT id,input_json,contract_version,status,error_code,job_id,lease_until,updated_at FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${row.id} ORDER BY (contract_version='evidence_v2') DESC,julianday(created_at) DESC,id DESC LIMIT 1`);
+  let provenance:MaterialInput|null=null;try{provenance=material?JSON.parse(material.input_json) as MaterialInput:null;}catch{/* A broken material snapshot must not hide the saved answer. */}
+  const [run]=material?.job_id?await db.all<{error_code:string|null;role:string;error_details_json:string}>(sql`SELECT error_code,role,error_details_json FROM ai_runs WHERE job_id=${material.job_id} ORDER BY created_at DESC LIMIT 1`):[];
+  const stageNames:Record<string,string>={gap_generator:"对照中英文原意",gap_reviewer:"核对真实表达缺口",learning_material_compiler:"整理自然回答与句子",reviewer:"核对材料与原文"};
   const stale=row.status==="processing"&&material&&material.status!=="ready"&&(
     material.lease_until?Date.parse(material.lease_until)<Date.now():Date.now()-Date.parse(material.updated_at)>10*60_000
   );
@@ -160,8 +168,10 @@ export async function getSpeakingAttempt(attemptId: string): Promise<AttemptView
     materialId: material?.id,
     materialContractVersion: material?.contract_version,
     materialStatus:material?.status,
+    materialTransition:provenance?.runtimeRevision?{fromMaterialId:provenance.runtimeRevision.parentMaterialId,toMaterialId:material!.id,message:'原回答和旧分析已保留，这次按当前的中英文原意对齐与自然美式表达规则继续处理。'}:undefined,
     materialError:stale?"上次处理已中断，原回答已保存。可以恢复处理。":material?.status==="failed"?materialFailureMessage(material.error_code==="material_service_failed"?run?.error_code:material.error_code):undefined,
     processingStage:run?stageNames[run.role]:undefined,
+    materialDiagnostic:material?.status==='failed'?materialDiagnostic(material.error_code==='material_service_failed'?run?.error_code:material.error_code,run?.role,run?.error_details_json):undefined,
     id: row.id,
     questionId: row.questionId,
     mode: row.mode as "practice" | "exam_style",

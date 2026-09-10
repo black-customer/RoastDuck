@@ -47,7 +47,7 @@ function canonicalize(value: string) {
 }
 
 function readPrompt(filename: string) {
-  return fs.readFileSync(path.join(process.cwd(), "pipeline", "prompts", filename), "utf8");
+  return fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(), "pipeline", "prompts"), filename), "utf8");
 }
 
 async function latestVersionNo(answerId: string) {
@@ -231,7 +231,7 @@ export async function applyPersonalChunks(
         chunkId,
         ipa: candidate.ipa,
         accent: "en-US",
-        source: "deepseek-v4-flash-reviewed",
+        source: "deepseek-flash-reviewed",
         isPrimary: 1,
       }).onConflictDoNothing();
     }

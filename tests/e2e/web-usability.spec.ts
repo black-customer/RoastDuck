@@ -13,7 +13,7 @@ test('单框混合草稿刷新恢复、提交丢响应原地恢复，不创建�
   await page.getByRole('button',{name:'保存并分析我的表达',exact:true}).click();await expect(page.locator('main').getByRole('alert')).toBeVisible();
   await page.getByRole('button',{name:'保存并分析我的表达',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/attempts/${attemptId}$`));
   const history=(await(await request.get(`/api/speaking-practice/questions/${question}/attempts`)).json()).attempts;expect(history.filter((a:{id:string})=>a.id===attemptId)).toHaveLength(1);
-  await expect(page.getByRole('link',{name:'轻松学本次表达',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
   await page.getByRole('link',{name:'不看提示，重新回答',exact:true}).click();
   await expect(page.getByLabel('我真正想表达的中文意思（可选）',{exact:true})).toHaveCount(0);await expect(page.getByLabel('我的英文尝试',{exact:true})).toHaveValue('');
   await page.getByLabel('我的英文尝试',{exact:true}).fill('I saw a manhole cover outside.');await page.getByRole('button',{name:'封存英文，再继续'}).click();

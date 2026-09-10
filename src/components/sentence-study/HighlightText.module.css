@@ -1,0 +1,19 @@
+.wrapper { position: relative; min-width: 0; }
+.manual { color: inherit; background: #fff0a6; font-weight: inherit; padding: 0; border-radius: 2px; cursor: pointer; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.automatic { text-decoration: underline; text-decoration-color: #6897ca; text-decoration-thickness: 2px; text-underline-offset: .16em; }
+.tools { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 8px; color: var(--text-secondary, #53647d); font-size: 14px; line-height: 1.5; }
+.hint { user-select: none; }
+.keyboardTool,.management button { border: 0; background: transparent; color: var(--primary-strong, #2058a7); padding: 8px 4px; min-height: 44px; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.keyboardTool:focus-visible,.management summary:focus-visible,.management button:focus-visible,.toolbar button:focus-visible { outline: 2px solid var(--primary, #2868c7); outline-offset: 2px; }
+.management { position: relative; }
+.management summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.management ul { list-style: none; margin: 4px 0 0; padding: 0; min-width: 180px; max-width: 100%; }
+.management li { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.management li span { overflow-wrap: anywhere; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; width: fit-content; padding: 6px; margin-top: 8px; border: 1px solid var(--border, #ccd7e5); border-radius: 9px; background: var(--surface, #f8fbff); }
+.toolbar button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: 6px; color: var(--text, #233b5d); background: transparent; font: inherit; cursor: pointer; }
+.toolbar .primary { background: #fff0a6; }
+.toolbar button:disabled { opacity: .6; cursor: wait; }
+.status { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--text-secondary, #53647d); }
+.status button { color: var(--primary-strong, #2058a7); text-decoration: underline; border: 0; background: none; min-height: 44px; cursor: pointer; }
+@media (forced-colors: active) { .manual { outline: 1px solid Highlight; } .automatic { text-decoration-color: LinkText; } }

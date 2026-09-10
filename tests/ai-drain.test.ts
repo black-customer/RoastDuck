@@ -36,14 +36,14 @@ describe("AI Drain 预算与阶段契约", () => {
       verdicts: [{ chunkId: "c_abcdef", verdict: "approved", reason: "自然且可复用" }],
     }, {
       provider: "deepseek",
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       runId: "run-independent-1",
     });
     expect(output).toMatchObject({
       reviewer: {
         role: "independent_reviewer",
         provider: "deepseek",
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         runId: "run-independent-1",
       },
     });

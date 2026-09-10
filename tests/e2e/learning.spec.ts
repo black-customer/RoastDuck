@@ -124,7 +124,7 @@ test("回答工作台先保存中英混合原文，并可恢复同一 AI 任务"
 test("口语输出场支持中英混合、多气泡老师回复、可点击英文与完成后入库", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/questions/question_e2e_habits");
-  await page.goto("/speaking-arena?question=question_e2e_habits");
+  await page.goto("/speaking-arena?extension=1&question=question_e2e_habits");
 
   await expect(page.getByRole("region", { name: "与 Chloe 的雅思口语对话" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/AI 起步提示|来自历史回答/)).toBeVisible();

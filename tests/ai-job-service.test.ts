@@ -67,7 +67,7 @@ describe("AI Job 状态机与审计", () => {
     const runs = (await db.select().from(schema.aiRuns)).filter((run) => run.jobId === first.id);
     expect(runs).toHaveLength(2);
     expect(runs.map((run) => run.status).sort()).toEqual(["completed", "failed"]);
-    expect(runs.every((run) => run.model === "deepseek-v4-flash")).toBe(true);
+    expect(runs.every((run) => run.model === "deepseek-flash")).toBe(true);
   });
 
   it("Generator 与 Reviewer 产生不同 runId，按 generating → reviewing → applying → completed 推进", async () => {

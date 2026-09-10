@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const DEEPSEEK_MODEL = "deepseek-v4-flash" as const;
+export const DEEPSEEK_MODEL = "deepseek-flash" as const;
+export const DEEPSEEK_MODEL_LABEL = "DeepSeek V4.1 Flash" as const;
 export const AI_ROLES = [
   "generator",
   "reviewer",
@@ -42,10 +43,13 @@ export interface StructuredAiRequest<T> {
   schemaVersion: string;
   idempotencyKey: string;
   maxOutputTokens?: number;
+  thinking?:ThinkingEffort;
+  timeoutMs?:number;
 }
 
 export interface StructuredAiResult<T> {
   data: T;
+  responseModel?: string;
   responseId: string;
   latencyMs: number;
   usage: AiUsage;

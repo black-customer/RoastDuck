@@ -1,5 +1,5 @@
 .shell { min-width:0; max-width:1120px; margin-inline:auto; }
-.main { display:flex; flex-direction:column; height:calc(100dvh - 96px); min-height:560px; min-width:0; overflow:hidden; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-panel); }
+.main { display:flex; flex-direction:column; height:calc(100dvh - 96px); min-height:560px; min-width:0; overflow:hidden; background:var(--card); border:0; border-radius:var(--radius-panel); }
 .main button,.candidateDrawer button { min-height:44px; min-width:44px; }
 .main button:disabled,.candidateDrawer button:disabled { cursor:not-allowed; opacity:.55; }
 .main button:focus-visible,.main select:focus-visible,.main textarea:focus-visible,.main summary:focus-visible,.candidateDrawer button:focus-visible { outline:3px solid var(--primary); outline-offset:3px; }
@@ -31,12 +31,12 @@
 .error { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:none; padding:10px 28px; color:var(--danger); background:var(--danger-soft); font-size:.875rem; }
 .error span { min-width:0; overflow-wrap:anywhere; }
 .error button { flex:none; text-decoration:underline; text-underline-offset:3px; }
-.messages { flex:1; min-height:120px; min-width:0; padding:24px 28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-color:var(--border-strong) transparent; }
+.messages { flex:1; min-height:120px; min-width:0; padding:28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-color:var(--border-strong) transparent; background:var(--card-elevated); }
 .empty { max-width:60ch; margin:28px auto; color:var(--muted-strong); }
 .empty h2 { font-size:1.1rem; color:var(--foreground); font-weight:650; margin-bottom:10px; }
 .message { width:fit-content; max-width:min(88%,72ch); margin-bottom:24px; padding:14px 18px; border-radius:var(--radius-panel); }
-.userMessage { margin-left:auto; background:var(--primary-soft); }
-.assistantMessage { background:var(--background); }
+.userMessage { margin-left:auto; background:var(--primary-soft-strong); }
+.assistantMessage { background:var(--card); }
 .messageHeader { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 20px; margin-bottom:6px; color:var(--muted-strong); font-size:.8125rem; }
 .messageActions { display:flex; gap:8px; }
 .messageActions button { color:var(--primary-strong); padding-inline:6px; }

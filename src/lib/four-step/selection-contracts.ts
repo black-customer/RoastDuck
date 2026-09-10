@@ -76,11 +76,36 @@ export const recallEvidenceReviewSchema=spokenEvidenceReviewSchema.extend({
 export const reviewSchemaForSource=(source:Pick<SelectionSource,'spokenStyleVersion'>)=>source.spokenStyleVersion==='personal-spoken-v2'?recallEvidenceReviewSchema:source.spokenStyleVersion==='personal-spoken-v1'?spokenEvidenceReviewSchema:evidenceReviewSchema;
 export const materialEvidenceSchema = z.object({ diagnosis: diagnosisSchema, selection: evidencedSelectionReviewSchema, draft: storedMaterialDraftSchema });
 export type MaterialEvidence = z.infer<typeof materialEvidenceSchema>;
-export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1'|'personal-spoken-v2';selectionPolicyVersion?:'evidence-exclusion-v1';inputFormat?:'mixed-v1';rawInput?:string }
+export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1'|'personal-spoken-v2';selectionPolicyVersion?:'evidence-exclusion-v1';sentenceStudyVersion?:'sentence-material-v1';inputFormat?:'mixed-v1';rawInput?:string }
 function fail(code: string, message: string): never { throw new TrainingError(message, 422, `material_${code}`); }
 function unique(ids: string[]) { return new Set(ids).size === ids.length; }
 function sourceQuotes(unit: Diagnosis["units"][number]) { return [...unit.english,...unit.chinese,...unit.raw??[]].map((q) => q.text); }
-function hasQuote(unit: Diagnosis["units"][number], value: string) { return sourceQuotes(unit).some((q) => q.includes(value)); }
+type SourceQuoteField='english'|'chinese'|'raw';
+/** A quote can span adjacent references in one source field, but may not borrow another unit's text. */
+function hasQuote(unit: Diagnosis["units"][number],value:string,source?:SelectionSource,onlyField?:SourceQuoteField){
+  if(!value.trim())return false;
+  const fields:SourceQuoteField[]=onlyField?[onlyField]:['english','chinese','raw'];
+  if(!source)return fields.some(field=>(unit[field]??[]).some(ref=>ref.text.includes(value)));
+  const mixed=source.inputFormat==='mixed-v1';
+  if(mixed&&(!source.rawInput||source.rawInput!==source.actualAnswer))return false;
+  for(const field of fields){
+    const refs=unit[field]??[];
+    const original=mixed?source.rawInput:field==='english'?source.actualAnswer:field==='chinese'?source.intendedMeaningZh:undefined;
+    if(!refs.length||original===undefined)continue;
+    // Locate the exact occurrence of every contributing ref, including in the single-ref fast path.
+    const spans=refs.map(ref=>locateQuote(original,ref));
+    if(refs.some(ref=>ref.text.includes(value)))return true;
+    let start=-1;
+    while((start=original.indexOf(value,start+1))>=0){
+      let covered=true;
+      for(let index=start;index<start+value.length;index++){
+        if(!/\s/u.test(original[index])&&!spans.some(span=>span.start<=index&&index<span.end)){covered=false;break;}
+      }
+      if(covered)return true;
+    }
+  }
+  return false;
+}
 
 /** 引用由服务端解析位置；AI 不需要猜中文字符偏移。 */
 export function locateQuote(source: string, ref: z.infer<typeof quote>) {
@@ -110,7 +135,7 @@ export function validateDiagnosis(source: SelectionSource, diagnosis: Diagnosis)
     if (!sourceQuotes(unit).length) fail("missing_evidence", "意思单元没有原文证据");
     if (["natural","uncertain","non_answer"].includes(unit.status) && unit.gaps.length) fail("unsupported_gap", "已自然表达或不确定内容不能生成必练项");
     for (const gap of unit.gaps) {
-      if (!hasQuote(unit,gap.evidenceQuote)) fail("gap_quote", "问题证据不属于当前意思单元");
+      if (!hasQuote(unit,gap.evidenceQuote,source)) fail("gap_quote", "问题证据不属于当前意思单元");
       if(source.spokenStyleVersion&&!gap.senseKey)fail('sense_missing','新学习目标需要明确的意思/用途键');
     }
   }
@@ -122,11 +147,11 @@ export function validateSelection(diagnosis: Diagnosis, selection: SelectionRevi
   if (gaps.length !== selection.gaps.length || !unique(selection.gaps.map((g) => g.gapId))) fail("selection_coverage", "候选表达审核不完整");
   for (const unit of diagnosis.units) {
     const review = selection.units.find((u) => u.unitId === unit.id);
-    if (!review || !hasQuote(unit,review.evidenceQuote)) fail("selection_evidence", "审核未引用当前原文");
+    if (!review || !hasQuote(unit,review.evidenceQuote,source)) fail("selection_evidence", "审核未引用当前原文");
     const hasTraining=unit.gaps.some(g=>selection.gaps.some(r=>r.gapId===g.id&&r.decision==='train'));
     const editorial=review.noTrainingNeeded;
     if(editorial){
-      if(source?.selectionPolicyVersion!=='evidence-exclusion-v1'||source.spokenStyleVersion!=='personal-spoken-v2'||unit.status!=='repair'||review.status!=='repair'||hasTraining||unit.gaps.some(g=>selection.gaps.find(r=>r.gapId===g.id)?.decision!=='exclude')||!editorial.noConfirmedLanguageError||!editorial.noUnexpressedIntention||!hasQuote(unit,editorial.evidenceQuote)||!unit.english.some(q=>q.text.includes(editorial.evidenceQuote))||!/[a-z]/i.test(editorial.evidenceQuote)||/[\u3400-\u9fff]/u.test(editorial.evidenceQuote))fail('editorial_evidence','仅整理文本的零训练裁决需要独立英文证据，不能跳过缺失意图或确认错误');
+      if(source?.selectionPolicyVersion!=='evidence-exclusion-v1'||source.spokenStyleVersion!=='personal-spoken-v2'||unit.status!=='repair'||review.status!=='repair'||hasTraining||unit.gaps.some(g=>selection.gaps.find(r=>r.gapId===g.id)?.decision!=='exclude')||!editorial.noConfirmedLanguageError||!editorial.noUnexpressedIntention||!hasQuote(unit,editorial.evidenceQuote,source,'english')||!/[a-z]/i.test(editorial.evidenceQuote)||/[\u3400-\u9fff]/u.test(editorial.evidenceQuote))fail('editorial_evidence','仅整理文本的零训练裁决需要独立英文证据，不能跳过缺失意图或确认错误');
     }
     if(source?.spokenStyleVersion){
       if(review.status==='natural'&&(!unit.english.some(q=>/[a-z]/i.test(q.text)&&!/[\u3400-\u9fff]/u.test(q.text))))fail('natural_without_english','没有英文表达成功证据，不能以已会排除');
@@ -135,7 +160,7 @@ export function validateSelection(diagnosis: Diagnosis, selection: SelectionRevi
     }
     for (const gap of unit.gaps) {
       const verdict = selection.gaps.find((g) => g.gapId === gap.id);
-      if (!verdict || !hasQuote(unit,verdict.evidenceQuote)) fail("selection_evidence", "Gap 裁决缺少原文证据");
+      if (!verdict || !hasQuote(unit,verdict.evidenceQuote,source)) fail("selection_evidence", "Gap 裁决缺少原文证据");
       if (verdict.decision === "train") {
         if (!["repair","missing"].includes(review.status)) fail("natural_selected", "已经表达或未确认的意思不能列为必练");
       }
@@ -161,6 +186,7 @@ export function compileEvidence(source: SelectionSource, evidence: MaterialEvide
     const found = selected.find((s) => s.gap.id === row.gapId);
     const sentence = draft.sentences.find((s) => s.id === row.sentenceId);
     if (!found || !sentence?.intentUnitIds.includes(found.unit.id) || !findTargetSpan(sentence.english,[row.surfaceInSentence])) fail("row_alignment", "训练行没有关联正确意思或可用填空范围");
+    if(source.sentenceStudyVersion&&(sentence.english.indexOf(row.surfaceInSentence)<0||sentence.english.indexOf(row.surfaceInSentence)!==sentence.english.lastIndexOf(row.surfaceInSentence)))fail('ambiguous_surface','句内重点需要唯一准确的位置；请扩大表面形以区分重复出现的片段');
     if (selection.units.find((r)=>r.unitId===found.unit.id)!.status === "repair" && normalizeExpression(found.unit.english.map((q)=>q.text).join(" "))===normalizeExpression(sentence.english)) fail("no_op_repair", "推荐句与原句相同，没有可证明的修复");
     const recall=source.spokenStyleVersion==='personal-spoken-v2'?recallFieldsSchema.parse(row):null;
     if(recall&&(!findTargetSpan(sentence.english,[recall.recallAnswerEn])||!findTargetSpan(recall.recallAnswerEn,[row.surfaceInSentence])||/(?:\.{3}|…|_{2,}|\[[^\]]+\]|\{[^}]+\})/.test(recall.recallAnswerEn)))fail('recall_alignment','回想答案必须是当前例句中含目标表面形的具体英文，不得使用句式占位符');
@@ -195,7 +221,7 @@ export function validateEvidenceReview(evidence: MaterialEvidence, review: z.inf
     const row=review.rows.find((r)=>r.gapId===gap.id);
     const confirmed=evidence.selection.units.find(u=>u.unitId===unit.id)?.status==='repair'&&gap.kind!=='unexpressed_intention';
     const necessary=source?.spokenStyleVersion?row?.learningTargetNeeded===true&&row.repairNeeded===confirmed:row?.repairNeeded;
-    if (!row || !row.approved || !necessary || !row.meaningPreserved || !row.minimalRepair || !row.cueUnambiguous || !row.sentenceAligned || !row.clozeValid || !hasQuote(unit,row.evidenceQuote)) fail("review_rejected", "材料必要性、原意或填空审核未通过");
+    if (!row || !row.approved || !necessary || !row.meaningPreserved || !row.minimalRepair || !row.cueUnambiguous || !row.sentenceAligned || !row.clozeValid || !hasQuote(unit,row.evidenceQuote,source)) fail("review_rejected", "材料必要性、原意或填空审核未通过");
   }
   if(source?.spokenStyleVersion){
     const parsed=spokenEvidenceReviewSchema.safeParse(review);
@@ -222,9 +248,9 @@ export function validateEvidenceReview(evidence: MaterialEvidence, review: z.inf
       const units=sentence.intentUnitIds.map(unitId=>evidence.diagnosis.units.find(unit=>unit.id===unitId)!);
       for(const ref of verdict.evidence){
         const field=ref.sourceField==='actualAnswer'?'english':ref.sourceField==='intendedMeaningZh'?'chinese':'raw';
-        if(!source[ref.sourceField]?.includes(ref.sourceQuote)||!units.some(unit=>(unit[field]??[]).some(q=>q.text.includes(ref.sourceQuote))))fail('sentence_review_evidence','逐句审核必须引用当前句所关联的真实来源');
+        if(!source[ref.sourceField]?.includes(ref.sourceQuote)||!units.some(unit=>hasQuote(unit,ref.sourceQuote,source,field)))fail('sentence_review_evidence','逐句审核必须引用当前句所关联的真实来源');
       }
-      if(units.some(unit=>!verdict.evidence.some(ref=>{const field=ref.sourceField==='actualAnswer'?'english':ref.sourceField==='intendedMeaningZh'?'chinese':'raw';return (unit[field]??[]).some(q=>q.text.includes(ref.sourceQuote));})))fail('sentence_review_evidence','逐句审核遗漏了当前句的来源意思');
+      if(units.some(unit=>!verdict.evidence.some(ref=>{const field=ref.sourceField==='actualAnswer'?'english':ref.sourceField==='intendedMeaningZh'?'chinese':'raw';return hasQuote(unit,ref.sourceQuote,source,field);})))fail('sentence_review_evidence','逐句审核遗漏了当前句的来源意思');
     }
   }
 }

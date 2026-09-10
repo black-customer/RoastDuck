@@ -26,7 +26,7 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
     const owned=await database.write(async tx=>{
       const [current]=await tx.all<Receipt>(sql`SELECT * FROM runtime_requests WHERE logical_key=${key}`);
       // A late response keeps audit evidence, but cannot replace a newer explicitly retried request.
-      await tx.run(sql`UPDATE ai_runs SET status='completed',response_id=${validated.responseId},latency_ms=${validated.latencyMs},
+      await tx.run(sql`UPDATE ai_runs SET status='completed',response_id=${validated.responseId},response_model=${validated.responseModel??null},error_details_json='{}',latency_ms=${validated.latencyMs},
         input_tokens=${validated.usage.inputTokens},output_tokens=${validated.usage.outputTokens},reasoning_tokens=${validated.usage.reasoningTokens},cached_tokens=${validated.usage.cachedTokens},error_code=NULL,error_summary=NULL WHERE run_id=${runId}`);
       if(current?.run_id!==runId)return false;
       await tx.run(sql`UPDATE runtime_requests SET state='completed',response_json=${JSON.stringify(validated)},error_code=NULL,updated_at=${clock.now().toISOString()} WHERE logical_key=${key}`);
@@ -50,7 +50,7 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
       catch(reason){
         if(reason instanceof AiProviderError&&!["network_error","timeout"].includes(reason.code)){
           await database.write(async tx=>{
-            await tx.run(sql`UPDATE ai_runs SET status='failed',error_code=${reason.code},error_summary=${safeErrorSummary(reason)} WHERE run_id=${receipt.run_id}`);
+            await tx.run(sql`UPDATE ai_runs SET status='failed',error_code=${reason.code},error_summary=${safeErrorSummary(reason)},error_details_json=${JSON.stringify(reason.details??{})} WHERE run_id=${receipt.run_id}`);
             await tx.run(sql`UPDATE runtime_requests SET state='failed',error_code=${reason.code} WHERE logical_key=${key} AND run_id=${receipt.run_id}`);
           });
           receipt.state="failed";knownFailure=true;
@@ -72,7 +72,7 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
       const [current]=await tx.all<Receipt>(sql`SELECT * FROM runtime_requests WHERE logical_key=${key}`);
       if((current?.run_id??null)!==(receipt?.run_id??null)||current?.state==="completed")return false;
       await tx.run(sql`INSERT INTO ai_runs(run_id,job_id,role,provider,model,prompt_version,schema_version,thinking_mode,input_hash,status,created_at)
-        VALUES(${runId},${options.jobId??null},${request.role},${provider.providerName},${provider.model},${request.promptVersion},${request.schemaVersion},${AI_ROLE_CONFIG[request.role].thinking},${sha256Text(request.input.normalize("NFKC"))},'pending',${timestamp})`);
+        VALUES(${runId},${options.jobId??null},${request.role},${provider.providerName},${provider.model},${request.promptVersion},${request.schemaVersion},${request.thinking??AI_ROLE_CONFIG[request.role].thinking},${sha256Text(request.input.normalize("NFKC"))},'pending',${timestamp})`);
       await tx.run(sql`INSERT INTO runtime_requests(logical_key,run_id,owner_boot_id,state,request_hash,updated_at)
         VALUES(${key},${runId},${clock.bootId},'pending',${requestHash},${timestamp})
         ON CONFLICT(logical_key) DO UPDATE SET run_id=excluded.run_id,owner_boot_id=excluded.owner_boot_id,state='pending',request_hash=excluded.request_hash,response_json=NULL,error_code=NULL,updated_at=excluded.updated_at`);
@@ -85,7 +85,7 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
     catch(reason){
       const error=reason instanceof z.ZodError?new AiProviderError("AI输出未通过Schema校验","invalid_output",true):normalizeAiError(reason),unknown=error.code==="network_error"||error.code==="timeout";
       await database.write(async tx=>{
-        await tx.run(sql`UPDATE ai_runs SET status=${unknown?"unknown":"failed"},error_code=${error.code},error_summary=${safeErrorSummary(error)} WHERE run_id=${runId}`);
+        await tx.run(sql`UPDATE ai_runs SET status=${unknown?"unknown":"failed"},error_code=${error.code},error_summary=${safeErrorSummary(error)},error_details_json=${JSON.stringify(error.details??{})},response_id=${error.response?.responseId??null},response_model=${error.response?.responseModel??null},input_tokens=${error.response?.usage.inputTokens??null},output_tokens=${error.response?.usage.outputTokens??null},reasoning_tokens=${error.response?.usage.reasoningTokens??null},cached_tokens=${error.response?.usage.cachedTokens??null} WHERE run_id=${runId}`);
         await tx.run(sql`UPDATE runtime_requests SET state=${unknown?"unknown":"failed"},error_code=${error.code},updated_at=${clock.now().toISOString()} WHERE logical_key=${key} AND run_id=${runId}`);
       });
       if(unknown)throw new RuntimeRequestError("请求中断，结果未确认；请先恢复结果，重发需确认","result_unknown");
@@ -94,7 +94,7 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
     return save(key,runId,request,result);
   }
   return {call<T>(request:StructuredAiRequest<T>,options:RuntimeCallOptions={}){
-    const requestHash=hashParts(provider.providerName,provider.model,request.role,request.promptVersion,request.schemaVersion,request.schemaName,request.maxOutputTokens??0,JSON.stringify(AI_ROLE_CONFIG[request.role]),request.instructions,request.input,JSON.stringify(z.toJSONSchema(request.schema)));
+    const requestHash=hashParts(provider.providerName,provider.model,request.role,request.promptVersion,request.schemaVersion,request.schemaName,request.maxOutputTokens??0,request.thinking??AI_ROLE_CONFIG[request.role].thinking,JSON.stringify(AI_ROLE_CONFIG[request.role]),request.instructions,request.input,JSON.stringify(z.toJSONSchema(request.schema)));
     const key=hashParts(options.jobId??"",request.idempotencyKey,requestHash);
     const existing=active.get(key);if(existing)return existing as Promise<RuntimeResult<T>>;
     const operation=execute(key,requestHash,request,options);

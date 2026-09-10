@@ -31,7 +31,7 @@ export function StartLightButton({scope,mode,resumeSessionId,label,children,clas
       const result=await webLightClient.create(input);
       try{if(sessionStorage.getItem(key)===raw)sessionStorage.removeItem(key);}catch{/* Save confirmed: cleanup failure is not a business failure. */}
       try{if(JSON.parse(sessionStorage.getItem('roastduck_home_light_start')??'null')?.clientRequestId===input.clientRequestId)sessionStorage.removeItem('roastduck_home_light_start');}catch{/* Receipt is already confirmed. */}
-      router.push(`/light-study?${scopeQuery(result.scope)}&mode=${result.mode}&session=${encodeURIComponent(result.id)}`);
+      router.push(`/light-study?extension=1&${scopeQuery(result.scope)}&mode=${result.mode}&session=${encodeURIComponent(result.id)}`);
     }catch(reason){setError(reason instanceof Error?reason.message:'暂时无法开始，请重试。原记录仍保留。');locked.current=false;setBusy(false);}
   }
   return <div><button className={className??'primary-button'} aria-label={label} disabled={busy} onClick={()=>void start()}>{busy?'正在恢复学习…':children??label}</button>{error&&<p role="alert">{error} <button className="secondary-button" disabled={busy} onClick={()=>void start()}>重试</button></p>}</div>;

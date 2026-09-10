@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 import http from "node:http";
 import { projectRuntime, runtimeEnvironment } from "../project-runtime.mjs";
+import { activeRelease } from "./releases.mjs";
 
 const root = path.resolve(fileURLToPath(new URL("../../", import.meta.url)));
 const messages = JSON.parse(fs.readFileSync(new URL("./messages.json", import.meta.url), "utf8"));
@@ -104,6 +105,7 @@ try {
     else if (await portBusy()) throw new Error(messages.portBusy);
     else {
       const runtime = projectRuntime(root);
+      const release = activeRelease(root);
       if (runtime.warning) console.warn(runtime.warning);
       const nextCli = path.join(root, "node_modules", "next", "dist", "bin", "next");
       if (!fs.existsSync(nextCli)) throw new Error(messages.missingDependencies);
@@ -114,15 +116,15 @@ try {
       const err = fs.openSync(stderr, "a");
       let server;
       try {
-        server = spawn(runtime.nodePath, [nextCli, "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
+        server = spawn(runtime.nodePath, [nextCli, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
           cwd: root, detached: true, windowsHide: true, stdio: ["ignore", out, err],
-          env: { ...runtimeEnvironment(runtime), NODE_OPTIONS: "", ROASTDUCK_E2E: "", ROASTDUCK_DESKTOP: "1" },
+          env: { ...runtimeEnvironment(runtime), NODE_OPTIONS: "", NODE_ENV:"production", ROASTDUCK_E2E: "", ROASTDUCK_DESKTOP: "1", ROASTDUCK_DESKTOP_RELEASE:release.releaseId,ROASTDUCK_PROMPT_ROOT:path.join(release.directory,'runtime-prompts') },
         });
         await new Promise((resolve, reject) => { server.once("spawn", resolve); server.once("error", reject); });
       } finally { fs.closeSync(out); fs.closeSync(err); }
       server.unref();
       fs.writeFileSync(path.join(directory, `instance-${port}.json`), JSON.stringify({
-        pid: server.pid, port, workspaceId, nodeVersion:runtime.version, startedAt: new Date().toISOString(), stdout, stderr,
+        pid: server.pid, port, workspaceId, nodeVersion:runtime.version, releaseId:release.releaseId, startedAt: new Date().toISOString(), stdout, stderr,
       }, null, 2));
       await waitForApp(server);
     }

@@ -16,7 +16,7 @@ function setup(){
   connection.exec("INSERT INTO questions(id,book_id,part,text,text_zh,norm_text) VALUES('q','removed',1,'Do you live alone?','你一个人住吗？','q')");
   const clock={now:()=>new Date("2026-09-07T12:00:00Z"),newId:()=>`app-${++seq}`,bootId:"app-test"};
   const runtime=createRuntimeCalls(database,new MockAiProvider(selectionMockResolver),clock);
-  const materials=createMaterialService({database,runtime,...clock,loadPrompt:name=>fs.readFileSync(path.join("pipeline/prompts",name),"utf8")});
+  const materials=createMaterialService({database,runtime,...clock,allowMock:true,loadPrompt:name=>fs.readFileSync(path.join("pipeline/prompts",name),"utf8")});
   return {database,connection,clock,materials,answers:createAnswerService(database,materials,{...clock,allowMock:true}),questions:createQuestionService(database)};
 }
 it("English/Chinese draft → independent material pipeline → click-only learning without books or duplicated answers",async()=>{

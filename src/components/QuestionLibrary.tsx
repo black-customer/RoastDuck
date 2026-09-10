@@ -135,7 +135,8 @@ export function QuestionLibrary() {
       const response = await fetch(`/api/questions/random${params.size ? `?${params}` : ""}`, { cache: "no-store" });
       const body = (await response.json()) as { question?: QuestionListItem; error?: string };
       if (!response.ok || !body.question) throw new Error(body.error || "暂时无法分配题目");
-      router.push(`/questions/${encodeURIComponent(body.question.id)}?from=random`);
+      // A question changes the document task. Avoid leaving it in an unfinished RSC transition.
+      window.location.assign(`/questions/${encodeURIComponent(body.question.id)}?from=random`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "暂时无法分配题目");
       setRandomLoading(false);
@@ -200,9 +201,9 @@ export function QuestionLibrary() {
               <select value={active.status} onChange={(event) => updateFilters({ status: event.target.value })}>
                 <option value="all">全部状态</option>
                 <option value="unanswered">未作答</option>
-                <option value="learning_incomplete">有新表达待学</option>
-                <option value="learning_completed">已过首轮（非掌握）</option>
-                <option value="mastered">自评已掌握</option>
+                <option value="learning_incomplete">有新句子待学</option>
+                <option value="learning_completed">句子已过首轮</option>
+                {searchParams.get('extension')==='1'&&<option value="mastered">自评已掌握</option>}
               </select>
             </label>
             <label>
@@ -247,8 +248,8 @@ export function QuestionLibrary() {
                   <div className="question-row-footer">
                     <p>{question.setNames.join(" · ") || "个人题目"} · {question.answerCount ? `${question.answerCount} 次回答` : `${question.sourceCount} 个来源`}</p>
                     <div className={styles.rowActions}>
-                      {question.answerCount > 0 && <button type="button" className={styles.selfAssessButton} disabled={!!masteryBusy} aria-pressed={question.isMastered} onClick={() => void toggleMastery(question.id, question.isMastered)} title={question.isMastered ? "取消自评掌握" : "自评为已掌握（不代表跨日验证）"}>{masteryBusy === question.id ? "正在保存…" : question.isMastered ? "取消自评掌握" : "自评掌握"}</button>}
-                      {question.primaryAction.href !== `/questions/${encodeURIComponent(question.id)}` && <Link href={`/questions/${encodeURIComponent(question.id)}`} className={styles.detailLink}>查看题目</Link>}
+                      {searchParams.get('extension')==='1'&&question.answerCount > 0 && <button type="button" className={styles.selfAssessButton} disabled={!!masteryBusy} aria-pressed={question.isMastered} onClick={() => void toggleMastery(question.id, question.isMastered)} title={question.isMastered ? "取消自评掌握" : "自评为已掌握（不代表跨日验证）"}>{masteryBusy === question.id ? "正在保存…" : question.isMastered ? "取消自评掌握" : "自评掌握"}</button>}
+                      {question.primaryAction.href !== `/questions/${encodeURIComponent(question.id)}` && <a href={`/questions/${encodeURIComponent(question.id)}`} className={styles.detailLink}>查看题目</a>}
                       {question.primaryAction.href ? <Link href={question.primaryAction.href} className="question-open-link">{question.primaryAction.label}<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></Link> : <span className={styles.questionState}>{question.primaryAction.label}</span>}
                     </div>
                   </div>

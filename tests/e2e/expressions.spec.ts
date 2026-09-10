@@ -21,7 +21,7 @@ async function mockExpressions(page:Page){
 }
 test('快速回顾逐行真正隐藏英文，可键盘揭晓/收起，不产生学习写入',async({page})=>{
   const {writes}=await mockExpressions(page);
-  await page.goto('/quick-review?scope=collection&id=ielts');
+  await page.goto('/quick-review?extension=1&scope=collection&id=ielts');
   const row=page.getByRole('article',{name:'习惯一个人住'}),reveal=row.getByRole('button',{name:'揭晓英文',exact:true});
   await expect(reveal).toBeVisible();await expect(row.locator('[lang="en"]')).toHaveCount(0);await expect(row.getByRole('button',{name:/播放/})).toHaveCount(0);
   for(const width of [1440,390,320]){
@@ -36,7 +36,7 @@ test('快速回顾逐行真正隐藏英文，可键盘揭晓/收起，不产生�
   await page.reload();await expect(row.locator('[lang="en"]')).toHaveCount(0);
 });
 test('两个表达集合可切换，自评已掌握独立显示并可恢复',async({page})=>{
-  const {writes,item}=await mockExpressions(page);await page.goto('/expressions');
+  const {writes,item}=await mockExpressions(page);await page.goto('/expressions?extension=1');
   await expect(page.getByRole('heading',{name:'我的雅思表达',exact:true})).toBeVisible();
   const row=page.locator('article').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
   await row.getByText('说明、来源与管理',{exact:true}).click();
@@ -50,6 +50,6 @@ test('两个表达集合可切换，自评已掌握独立显示并可恢复',asy
   await page.getByLabel('表达范围').selectOption('all');await expect(row.getByText('待学',{exact:true})).toBeVisible();
   await page.getByRole('navigation',{name:'个人表达集合'}).getByRole('link',{name:'我的对话表达'}).click();
   await expect(page).toHaveURL(/scope=collection&id=free_talk/);await expect(page.getByRole('heading',{name:'我的对话表达',exact:true})).toBeVisible();
-  await expect(page.getByRole('region',{name:'表达学习概况'}).getByRole('link',{name:'快速回顾'})).toHaveAttribute('href','/quick-review?scope=collection&id=free_talk');
+  await expect(page.getByRole('region',{name:'表达学习概况'}).getByRole('link',{name:'快速回顾'})).toHaveAttribute('href','/quick-review?extension=1&scope=collection&id=free_talk');
   expect(writes).toEqual(['preference','preference']);
 });

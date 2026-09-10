@@ -8,7 +8,7 @@ const root=process.cwd(), destination=path.resolve(root,'.publish/github');
 if(!fs.existsSync(path.join(root,'package.json'))||!destination.startsWith(root+path.sep))throw new Error('Run from the RoastDuck root');
 const candidates=[...new Set(execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z'],{encoding:'utf8'}).split('\0').filter(Boolean))].sort();
 const excluded=[], files=[], changes=[];
-const excludedRoots=['materials/','Material/','data/','pipeline/agent-work/','pipeline/books/','pipeline/queue/','pipeline/reports/','pipeline/sources/','pipeline/golden/questions.json','pipeline/golden/sentences.json','pipeline/src/fill_domains_data.py','scripts/process-content-enrichment.ts','.zcode/','.impeccable/review/','reviews/','comp/'];
+const excludedRoots=['materials/','Material/','data/','pipeline/agent-work/','pipeline/books/','pipeline/queue/','pipeline/reports/','pipeline/sources/','pipeline/golden/questions.json','pipeline/golden/sentences.json','pipeline/src/fill_domains_data.py','scripts/process-content-enrichment.ts','scripts/verify-web-v020.ts','scripts/apply-style-calibration.ts','scripts/verification-budget.mjs','.zcode/','.impeccable/review/','reviews/','comp/'];
 const privateReports=/^docs\/(archive|evidence|reviews)\//;
 const allowedRoots=['src/','db/','scripts/','tests/','pipeline/src/','pipeline/prompts/','pipeline/golden/','android/','mobile/','assets/desktop/','public/','.agents/','.github/','.impeccable/','docs/'];
 const bannedFile=/(?:^|\/)(?:node_modules|\.git|\.next[^/]*|build|__pycache__|\.gradle|test-results|playwright-report)\/|(?:\.db(?:-wal|-shm|-journal)?|\.keystore|\.jks|\.pem|\.key|\.mp3|\.wav|\.opus|\.docx|\.pdf|\.gz|\.zip|\.pyc|\.log|\.tsbuildinfo)$|(?:^|\/)local\.properties$/i;

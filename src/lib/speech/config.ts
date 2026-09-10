@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { MIMO_TTS_MODEL, MIMO_TTS_VOICES } from "./contracts";
+import { DEFAULT_MIMO_VOICE, MIMO_TTS_MODEL, MIMO_TTS_VOICES } from "./contracts";
 
 const speechEnvironmentSchema = z.object({
   MIMO_API_KEY: z.string(),
   MIMO_BASE_URL: z.string().url(),
   MIMO_TTS_MODEL: z.literal(MIMO_TTS_MODEL),
   MIMO_TTS_VOICE: z.enum(MIMO_TTS_VOICES),
-  MIMO_TTS_ACCENT: z.literal("en-US"),
+  MIMO_TTS_ACCENT: z.enum(["en-US", "en-GB"]),
 });
 
 export interface SpeechEnvironment {
@@ -14,7 +14,7 @@ export interface SpeechEnvironment {
   baseUrl: string;
   model: typeof MIMO_TTS_MODEL;
   voice: typeof MIMO_TTS_VOICES[number];
-  accent: "en-US";
+  accent: "en-US" | "en-GB";
 }
 
 export function readSpeechEnvironment(env: Record<string, string | undefined> = process.env): SpeechEnvironment {
@@ -23,7 +23,7 @@ export function readSpeechEnvironment(env: Record<string, string | undefined> = 
     MIMO_API_KEY: env.MIMO_API_KEY?.trim() ?? "",
     MIMO_BASE_URL: (env.MIMO_BASE_URL?.trim() || "https://api.xiaomimimo.com/v1").replace(/\/+$/, ""),
     MIMO_TTS_MODEL: env.MIMO_TTS_MODEL?.trim() || MIMO_TTS_MODEL,
-    MIMO_TTS_VOICE: env.MIMO_TTS_VOICE?.trim() || "Dean",
+    MIMO_TTS_VOICE: env.MIMO_TTS_VOICE?.trim() || DEFAULT_MIMO_VOICE,
     MIMO_TTS_ACCENT: env.MIMO_TTS_ACCENT?.trim() || "en-US",
   });
   return {
@@ -51,7 +51,7 @@ export function getSpeechHealth(env: Record<string, string | undefined> = proces
       configured: false,
       provider: "mimo" as const,
       model: MIMO_TTS_MODEL,
-      voice: "Dean" as const,
+      voice: DEFAULT_MIMO_VOICE,
       accent: "en-US" as const,
       status: "invalid_configuration" as const,
     };

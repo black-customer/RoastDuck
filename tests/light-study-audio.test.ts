@@ -71,7 +71,7 @@ it("卸载后请求和回调不能发声，关闭预取时不消费音频请求"
 
 it("当前和下一项真正下载 WAV，重播使用内存资源，换项和卸载释放对象地址",async()=>{
   const revoke=vi.spyOn(URL,'revokeObjectURL');
-  const synthesis=vi.fn(async(url:string|URL|Request,init?:RequestInit)=>{void url;void init;return success('Dean');});
+  const synthesis=vi.fn(async(url:string|URL|Request,init?:RequestInit)=>{void url;void init;return success('Milo');});
   const {player,asset,factory}=setup(synthesis);
   const current={text:'I mean, that works.',voiceId:'us-male' as const,style:'short-expression' as const};
   const next={...current,text:'That sounds good.'};
@@ -80,7 +80,7 @@ it("当前和下一项真正下载 WAV，重播使用内存资源，换项和卸
   await player.play(current);await player.play(current);
   expect(synthesis).toHaveBeenCalledTimes(2);expect(asset).toHaveBeenCalledTimes(2);
   expect(factory.mock.calls[0]?.[0]).toMatch(/^blob:/);
-  expect(JSON.parse(String(synthesis.mock.calls[0]?.[1]?.body))).toMatchObject({voice:'Dean',style:'short-expression'});
+  expect(JSON.parse(String(synthesis.mock.calls[0]?.[1]?.body))).toMatchObject({voice:'Milo',style:'short-expression'});
   player.stop();player.prime(next,null,false);
   expect(revoke).toHaveBeenCalledTimes(1);
   player.dispose();expect(revoke).toHaveBeenCalledTimes(2);
@@ -93,7 +93,7 @@ it("同文不同声线和风格分别准备，响应不符声线不能冒充所�
   await player.play({...input('Well, it helps.'),style:'ielts-answer'});
   await player.play({text:'Well, it helps.',voiceId:'us-male',style:'ielts-answer'});
   expect(synthesis).toHaveBeenCalledTimes(3);expect(asset).toHaveBeenCalledTimes(3);
-  expect(states.at(-1)).toMatchObject({provider:'mimo',voice:'Dean'});
+  expect(states.at(-1)).toMatchObject({provider:'mimo',voice:'Milo'});
   const mismatch=setup(vi.fn(async()=>success('Chloe')));
   await mismatch.player.play({text:'Hello.',voiceId:'us-male'});
   expect(mismatch.asset).not.toHaveBeenCalled();expect(mismatch.states.at(-1)).toMatchObject({provider:'browser',errorCode:'invalid_audio'});
@@ -140,4 +140,45 @@ it("旧播放器卸载不能停掉其他播放器正在使用的系统备用声�
   vi.mocked(old.fallback.stop).mockClear();vi.mocked(current.fallback.stop).mockClear();
   old.player.dispose();
   expect(old.fallback.stop).not.toHaveBeenCalled();expect(current.fallback.stop).not.toHaveBeenCalled();
+});
+
+it('自然跟练超过旧超时仍等待MiMo，不自动换声音',async()=>{
+  vi.useFakeTimers();let resolve!:(response:Response)=>void;
+  const {player,states,fallback,factory}=setup(vi.fn(()=>new Promise<Response>(r=>{resolve=r;})));
+  const play=player.play({...input('A natural practice sentence.'),playbackMode:'natural'});
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(states.at(-1)?.phase).toBe('loading');expect(fallback.speak).not.toHaveBeenCalled();
+  resolve(success());await play;
+  expect(factory).toHaveBeenCalledOnce();expect(states.at(-1)?.provider).toBe('mimo');
+});
+
+it('自然声音失败不冒充示范，显式快捷播放立即本地发声且迟到MiMo只缓存',async()=>{
+  let resolve!:(response:Response)=>void;
+  const synthesis=vi.fn(()=>new Promise<Response>(r=>{resolve=r;}));
+  const {player,fallback,factory,states}=setup(synthesis);
+  const text=input('A delayed natural sentence.');
+  const pending=player.play({...text,playbackMode:'natural'});
+  await vi.waitFor(()=>expect(synthesis).toHaveBeenCalledOnce());
+  const quick=player.play({...text,playbackMode:'quick'});
+  expect(fallback.speak).toHaveBeenCalledWith(text.text,expect.objectContaining({localOnly:true}));
+  expect(states.at(-1)?.provider).toBe('browser');expect(states.at(-1)?.voice).toBeUndefined();
+  await quick;resolve(success());await pending;
+  expect(factory).not.toHaveBeenCalled();
+  await player.play({...text,playbackMode:'quick'});
+  expect(factory).toHaveBeenCalledOnce();expect(synthesis).toHaveBeenCalledOnce();
+});
+
+it('快捷冷播放不调用Runtime，本机声音缺失不会改用远程浏览器声音',async()=>{
+  const synthesis=vi.fn(async()=>success());const {player,fallback,states}=setup(synthesis);
+  vi.mocked(fallback.speak).mockImplementation((_text,options)=>options?.onError?.(new Error('local_voice_unavailable')));
+  await player.play({...input('Quick'),playbackMode:'quick'});
+  expect(synthesis).not.toHaveBeenCalled();
+  expect(states.at(-1)).toMatchObject({phase:'error',provider:'browser',errorCode:'local_voice_unavailable'});
+});
+
+it('自然请求失败提供错误及快捷操作信息，不自动调用备用',async()=>{
+  const {player,fallback,states}=setup(vi.fn(async()=>new Response(JSON.stringify({code:'rate_limited'}),{status:429})));
+  await player.play({...input('Natural sentence.'),playbackMode:'natural'});
+  expect(fallback.speak).not.toHaveBeenCalled();
+  expect(states.at(-1)).toMatchObject({phase:'error',provider:null,errorCode:'rate_limited'});
 });

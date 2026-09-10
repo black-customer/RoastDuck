@@ -8,6 +8,6 @@ import {runCoreDiagnosticPipeline} from "./core-diagnostic-pipeline";
 export {STAGE_CONTRACTS,DIAGNOSIS_REPAIR_PROMPT} from "./stage-contracts";
 export function runDiagnosticPipeline(material:MaterialRow,jobId:string,provider:AiProvider,guard:(work:()=>Promise<unknown>)=>Promise<unknown>){
   return runCoreDiagnosticPipeline(material,{database:nodeDatabase,runtime:{call:(request)=>executeAuditedAiCall(provider,jobId,request,{maxAttempts:1})},
-    loadPrompt:name=>fs.readFileSync(path.join(process.cwd(),"pipeline/prompts",name),"utf8"),now:()=>new Date(),
+    loadPrompt:name=>fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(),"pipeline/prompts"),name),"utf8"),now:()=>new Date(),
     guard:work=>guard(()=>nodeDatabase.write(work)),callOptions:{jobId}});
 }

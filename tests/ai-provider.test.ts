@@ -25,7 +25,7 @@ function successResponse() {
   return {
     id: "response_test_1",
     status: "completed",
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
     output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ greeting: "Hello!" }) }] }],
     usage: {
       input_tokens: 11,
@@ -38,18 +38,18 @@ function successResponse() {
 
 describe("DeepSeek V4 Flash Provider", () => {
   it("读取响应体超时不能伪装成格式不合法",async()=>{
-    const provider=new DeepSeekProvider({apiKey:"test-key-not-real",timeoutMs:5,fetchImpl:async(_url,init)=>({ok:true,json:()=>new Promise((_resolve,reject)=>{init?.signal?.addEventListener("abort",()=>reject(new DOMException("Aborted","AbortError")));})}) as Response});
+    const provider=new DeepSeekProvider({apiKey:"test-key-not-real",timeoutMs:5,fetchImpl:async(_url,init)=>({ok:true,headers:new Headers({'content-type':'application/json'}),json:()=>new Promise((_resolve,reject)=>{init?.signal?.addEventListener("abort",()=>reject(new DOMException("Aborted","AbortError")));})}) as Response});
     await expect(provider.generate(request("generator"))).rejects.toMatchObject({code:"timeout"});
   });
-  it("环境配置只允许 deepseek-v4-flash", () => {
+  it("环境配置只允许 deepseek-flash", () => {
     const config = readAiEnvironment({
       NODE_ENV: "production",
       AI_PROVIDER: "deepseek",
       DEEPSEEK_API_KEY: "test-only",
       DEEPSEEK_BASE_URL: "https://api.deepseek.com/",
-      DEEPSEEK_MODEL: "deepseek-v4-flash",
+      DEEPSEEK_MODEL: "deepseek-flash",
     });
-    expect(config.model).toBe("deepseek-v4-flash");
+    expect(config.model).toBe("deepseek-flash");
     expect(config.baseUrl).toBe("https://api.deepseek.com");
     expect(() => readAiEnvironment({
       AI_PROVIDER: "deepseek",
@@ -71,7 +71,7 @@ describe("DeepSeek V4 Flash Provider", () => {
     expect(result.data).toEqual({ greeting: "Hello!" });
     expect(result.usage).toEqual({ inputTokens: 11, outputTokens: 5, cachedTokens: 3, reasoningTokens: 0 });
     expect(sentBody).toMatchObject({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       reasoning: { effort: "none" },
       temperature: 0.2,
       user_id: "job_generator_1",
@@ -93,7 +93,7 @@ describe("DeepSeek V4 Flash Provider", () => {
     });
     const result = await provider.generate(request("reviewer"));
     expect(result.usage.reasoningTokens).toBe(7);
-    expect(sentBody).toMatchObject({ model: "deepseek-v4-flash", reasoning: { effort: "high" } });
+    expect(sentBody).toMatchObject({ model: "deepseek-flash", reasoning: { effort: "high" } });
     expect(sentBody).not.toHaveProperty("temperature");
   });
 

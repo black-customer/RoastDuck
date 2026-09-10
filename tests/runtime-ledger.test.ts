@@ -13,7 +13,7 @@ const result:StructuredAiResult<{answer:string}>={data:{answer:"Hello"},response
 const clock=(bootId="boot")=>{let seq=0;return {bootId,now:()=>new Date("2026-09-07T12:00:00Z"),newId:()=>`${bootId}-${++seq}`};};
 function provider(generate:(request:StructuredAiRequest<unknown>)=>Promise<StructuredAiResult<unknown>>,recover?:(request:StructuredAiRequest<unknown>)=>Promise<StructuredAiResult<unknown>>):AiProvider{
   // Vitest spies erase generic call signatures; the fixture supplies schema-aware implementations.
-  return {providerName:"mock",model:"deepseek-v4-flash",generate:generate as AiProvider["generate"],recover:recover as AiProvider["recover"]};
+  return {providerName:"mock",model:"deepseek-flash",generate:generate as AiProvider["generate"],recover:recover as AiProvider["recover"]};
 }
 it("persists pending audit before dispatch, joins double-clicks and reuses successful results without a second call",async()=>{
   const {database,connection}=fixture();

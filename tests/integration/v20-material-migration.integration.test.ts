@@ -32,7 +32,7 @@ it("连续迁移可重跑；v20 校验和被篡改时拒绝启动",async()=>{
     await ensureSchema(client,temp.url);
     const before=await migrationHistory(client);
     await ensureSchema(client,temp.url);
-    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:32},(_,index)=>index+1));
+    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:34},(_,index)=>index+1));
     expect(await migrationHistory(client)).toEqual(before);
     await client.execute("UPDATE _schema_migrations SET checksum='synthetic-tamper' WHERE version=20");
     await expect(ensureSchema(client,temp.url)).rejects.toThrow("checksum");
@@ -56,7 +56,7 @@ it("真实早期 v19 漏版本表的历史结构由 v21 补齐，保留原 check
     await client.execute({sql:"UPDATE _schema_migrations SET checksum=? WHERE version=19",args:[earlyChecksum]});
     const previousHistory=await migrationHistory(client,20);
     await ensureSchema(client,temp.url);
-    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:32},(_,index)=>index+1));
+    expect((await migrationHistory(client)).map(row=>row.version)).toEqual(Array.from({length:34},(_,index)=>index+1));
     expect(await migrationHistory(client,20)).toEqual(previousHistory);
     expect((await client.execute("SELECT name FROM sqlite_master WHERE name='practice_material_revisions'")).rows).toHaveLength(1);
     expect((await client.execute("SELECT checksum FROM _schema_migrations WHERE version=19")).rows[0].checksum).toBe(earlyChecksum);

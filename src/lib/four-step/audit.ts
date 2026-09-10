@@ -4,7 +4,8 @@ import { materialReviewSchema } from "./contracts";
 import { validateMaterial } from "./material-validation";
 import type { MaterialInput, MaterialRow } from "./material-types";
 import {materialStageContracts,diagnosisRepairPrompt} from "./stage-contracts";
-import { reviewSchemaForSource, validateEvidenceReview } from "./selection-contracts";
+import { reviewSchemaForSource, validateEvidenceReview,diagnosisSchema } from "./selection-contracts";
+import {normalizeUniqueQuoteOccurrences} from './quote-normalization';
 import { hash } from "./shared";
 import {compileOfflineMaterial} from './offline-compile';
 import {authorHash} from './offline-contracts';
@@ -72,7 +73,9 @@ export async function auditPracticeMaterials(client: MaterialAuditReader, allowM
         }
         if(stage("material").run_id!==material.generator_run_id || stage("review").run_id!==material.reviewer_run_id) fail("stage_publication_chain");
         for(const [name,output] of [["diagnosis",evidence.diagnosis],["selection",evidence.selection],["material",evidence.draft]] as const) {
-          if(JSON.stringify(JSON.parse(String(stage(name).output_json)))!==JSON.stringify(output)) fail("stage_output_chain");
+          const original=JSON.parse(String(stage(name).output_json));
+          const expected=name==='diagnosis'&&input.registerProfileVersion?normalizeUniqueQuoteOccurrences(input,diagnosisSchema.parse(original)).diagnosis:original;
+          if(JSON.stringify(expected)!==JSON.stringify(output)) fail("stage_output_chain");
         }
         if(JSON.stringify(speakingAttemptAnalysisSchema.parse(expectedInputs.review.compiled))!==JSON.stringify(analysis)) fail("reviewed_material_drift");
         const reviewSchema=reviewSchemaForSource(input);

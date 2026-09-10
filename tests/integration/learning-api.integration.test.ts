@@ -92,7 +92,7 @@ describe("学习会话 HTTP 接口契约", () => {
     const response = await aiHealthRoute.GET();
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.model).toBe("deepseek-v4-flash");
+    expect(body.model).toBe("deepseek-flash");
     expect(body).not.toHaveProperty("apiKey");
     expect(JSON.stringify(body)).not.toContain("sk-");
   });

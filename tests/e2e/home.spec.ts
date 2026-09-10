@@ -38,20 +38,20 @@ test('320/390窄屏保留两主动作，不被统计挤出首屏',async({page})=
 test('自动组选启动丢响应，刷新重试使用同一提交与会话',async({page,request})=>{
   let id='',failed=false;const ids:string[]=[];
   await page.goto('/study?mode=learn');
-  await page.route('**/api/light-study/sessions',async route=>{
+  await page.route('**/api/sentence-study/sessions',async route=>{
     if(route.request().method()!=='POST'){await route.continue();return;}
     ids.push(route.request().postDataJSON().clientRequestId);
     if(!failed){failed=true;const response=await route.fetch();expect(response.ok()).toBe(true);id=(await response.json()).session.id;await route.abort();}else await route.continue();
   });
-  await page.getByRole('button',{name:'帮我选一组',exact:true}).click();
+  await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
   await expect(page.getByRole('alert')).toBeVisible();await page.reload();
-  await page.getByRole('button',{name:'帮我选一组',exact:true}).click();
-  await expect(page.getByRole('region',{name:'当前表达'})).toBeVisible();
+  await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
+  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);expect(new Set(ids).size).toBe(1);
-  await page.getByRole('button',{name:'保存并暂停'}).click();
-  expect((await(await request.get(`/api/light-study/sessions/${id}`)).json()).session.status).toBe('paused');
+  await page.getByRole('button',{name:'暂停学习'}).click();
+  await expect.poll(async()=>(await(await request.get(`/api/sentence-study/sessions/${id}`)).json()).session.status).toBe('paused');
   await page.goto('/');await page.getByRole('button',{name:'学习',exact:true}).click();
-  await expect(page.getByRole('region',{name:'当前表达'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);
 });
 
@@ -61,10 +61,10 @@ test('选题直接开始本题新表达，不改变范围或经过四步',async(
   await page.getByPlaceholder('输入题目中的中文或英文').fill(question.textEn);
   const choices=page.locator('[data-question-id="light-e2e-home"]').getByRole('button',{name:/^学习：/});
   await expect(choices.first()).toBeVisible();await choices.first().click();
-  await expect(page.getByRole('region',{name:'当前表达'})).toBeVisible();
-  expect(new URL(page.url()).searchParams.get('scope')).toBe('question');
-  expect(new URL(page.url()).searchParams.get('id')).toBe('light-e2e-home');
-  expect(new URL(page.url()).searchParams.get('mode')).toBe('learn');
-  await expect(page.getByRole('button',{name:'揭晓表达',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
+  const sessionId=new URL(page.url()).searchParams.get('session');
+  const session=(await(await request.get(`/api/sentence-study/sessions/${sessionId}`)).json()).session;
+  expect(session.scope).toEqual({type:'question',id:'light-e2e-home'});expect(session.mode).toBe('learn');
+  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
 });

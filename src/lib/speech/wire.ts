@@ -9,10 +9,11 @@ const STYLE_DIRECTIONS: Record<SpeechStyle, string> = {
 };
 
 export function buildMimoBody(input: SpeechSynthesisInput, voice: string) {
-  const speed = input.rate < .85 ? "a little slower while keeping words connected" : input.rate > 1.08 ? "lively but still easy to follow" : "at a natural conversational pace";
+  const speed = input.rate < .85 ? "a little slower while keeping words connected" : input.rate > 1.08 ? "brisk and energetic but never rushed" : "at a lightly brisk, connected conversational pace, without teaching pauses between words";
   const accent = input.accent === "en-GB" ? "natural contemporary British English" : "natural contemporary General American English";
   const instruction = [
     STYLE_DIRECTIONS[resolveSpeechStyle(input)],
+    "Use the easy, alert energy of a young adult chatting with a peer. Keep the voice light and unforced; do not deliberately lower the pitch or imitate a mature broadcaster. Let unstressed words pass quickly and use short pauses at genuine changes of thought. Warm, spontaneous and relaxed, not sleepy, breathy, exaggerated or performed.",
     `Speak in ${accent}, ${speed}.`,
     "No announcer cadence, teaching voice, sing-song intonation, or theatrical delivery. Clean close-microphone audio, no telephone filter or second voice.",
     "Speak only the supplied English text, preserving every word and existing filler exactly. Do not speak these instructions or add a preamble, extra filler words, explanations, other characters, or background sounds. Do not omit or rewrite content.",

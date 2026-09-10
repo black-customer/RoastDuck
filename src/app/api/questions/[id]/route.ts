@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getQuestionDetail } from "@/lib/questions/service";
+import {getWebQuestionDetail as getQuestionDetail} from '@/lib/questions/sentence-service';
 
 export const dynamic = "force-dynamic";
 

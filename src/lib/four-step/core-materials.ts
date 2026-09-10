@@ -10,6 +10,8 @@ import {hash,TrainingError} from "./shared";
 import {auditPracticeMaterials} from "./audit";
 import {speakingAttemptAnalysisSchema} from "@/lib/speaking-practice/schemas";
 import {assertLocalOwnership} from '@/lib/device-sync/ownership';
+import {recordReviewedAnswerMemoriesIn} from '@/lib/coaching/learning-memory';
+import {materialDiagnostic} from './material-status';
 
 export interface MaterialPlatform {database:DatabasePort;runtime:RuntimeCalls;loadPrompt:(filename:string)=>string|Promise<string>;now:()=>Date;newId:()=>string;bootId:string;allowMock?:boolean}
 export interface MaterialProcessOptions {retry?:boolean;retryUnknown?:boolean}
@@ -30,7 +32,8 @@ export function createMaterialService(platform:MaterialPlatform){
     const material=await getFrom(tx,id);let parsed:unknown=null;try{parsed=JSON.parse(material.analysis_json);}catch{/* Retain the original and show a broken-material state. */}
     const analysis=speakingAttemptAnalysisSchema.safeParse(parsed);
     const audit=material.status==="ready"?await auditPracticeMaterials({execute:async statement=>({rows:await tx.all<Record<string,unknown>>(typeof statement==="string"?{sql:statement}:statement)})},platform.allowMock,[id]):null;
-    return {material,analysis:analysis.success?analysis.data:null,verified:!!audit?.ok,audit};
+    const [run]=material.job_id?await tx.all<{role:string;error_code:string|null;error_details_json:string}>(sql`SELECT role,error_code,error_details_json FROM ai_runs WHERE job_id=${material.job_id} ORDER BY created_at DESC,run_id DESC LIMIT 1`):[];
+    return {material,analysis:analysis.success?analysis.data:null,verified:!!audit?.ok,audit,diagnostic:material.status==='failed'?materialDiagnostic(material.error_code==='request_failed'||material.error_code==='material_service_failed'?run?.error_code:material.error_code,run?.role,run?.error_details_json):null};
   });
   async function prepareIn(tx:SqlWriter,input:MaterialInput){
     return prepareMaterialIn(tx,input,now().toISOString());
@@ -75,6 +78,7 @@ export function createMaterialService(platform:MaterialPlatform){
           VALUES(${id},${generated.generatorRunId},${JSON.stringify(generated.analysis)},${generated.reviewed.runId},${JSON.stringify(generated.reviewed.data)},${now().toISOString()}) ON CONFLICT DO NOTHING`);
         await tx.run(sql`UPDATE practice_materials SET analysis_json=${JSON.stringify(generated.analysis)},generator_run_id=${generated.generatorRunId},reviewer_run_id=${generated.reviewed.runId},review_json=${JSON.stringify(generated.reviewed.data)} WHERE id=${id}`);
         await publishReviewedItems(tx,material,source,generated.analysis,now());
+        await recordReviewedAnswerMemoriesIn(tx,material.id,now(),{allowMock:platform.allowMock});
         await tx.run(sql`UPDATE ai_jobs SET status='completed',last_error_code=NULL,updated_at=${now().toISOString()} WHERE id=${jobId}`);
       });
     }catch(error){
@@ -83,7 +87,7 @@ export function createMaterialService(platform:MaterialPlatform){
         if((await getFrom(tx,id)).lease_token!==token)return;
         const waiting=code==="request_pending";
         await tx.run(sql`UPDATE practice_materials SET status=${waiting?"queued":"failed"},lease_token=NULL,lease_until=NULL,error_code=${code},updated_at=${now().toISOString()} WHERE id=${id}`);
-        await tx.run(sql`UPDATE ai_jobs SET status=${waiting?"queued":"retryable_failure"},last_error_code=${code},updated_at=${now().toISOString()} WHERE id=${jobId}`);
+        await tx.run(sql`UPDATE ai_jobs SET status=${waiting?'queued':error instanceof AiProviderError&&!error.retryable?'terminal_failure':'retryable_failure'},last_error_code=${code},updated_at=${now().toISOString()} WHERE id=${jobId}`);
         if(source.sourceType==="ielts_practice")await tx.run(sql`UPDATE speaking_question_attempts SET status=${waiting?"processing":"failed"},updated_at=${now().toISOString()} WHERE id=${source.sourceId}`);
       });
     }

@@ -17,22 +17,23 @@ test("回答到四步：不可跳过、错误保留、刷新恢复、移动和�
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await page.getByText("查看四列材料、收藏与调整",{exact:true}).click();
-  await page.getByTestId("expression-row").first().getByText("说明、来源与管理",{exact:true}).click();
-  await expect(page.getByTestId("expression-row").first()).toContainText("I saw a 井盖 outside.");
-  await expect(page.getByTestId("expression-row").first()).toContainText("我在外面看到了一个井盖。");
-  await page.getByText("查看四列材料、收藏与调整",{exact:true}).click();
+  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
+  await page.getByText('我的原回答（中文、英文或混合）与补充原意',{exact:true}).click();
+  await expect(page.locator('details[open]')).toContainText('I saw a 井盖 outside.');
+  await expect(page.locator('details[open]')).toContainText('我在外面看到了一个井盖。');
+  await page.getByText('我的原回答（中文、英文或混合）与补充原意',{exact:true}).click();
   for(const width of [1440,390,320]) {
     await page.setViewportSize({width,height:1000});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.evaluate(()=>window.scrollTo(0,0));
-    await expect(page.getByRole("button",{name:"可选：四步强化",exact:true})).toBeInViewport();
+    await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeInViewport();
     if(width!==320) await page.screenshot({path:`test-results/visual/material-evidence-${width}.png`,fullPage:true});
   }
   await page.setViewportSize({width:1440,height:1000});
   const resultAccessibility=await new AxeBuilder({page}).include(".material-result").analyze();
   expect(resultAccessibility.violations.filter((i)=>["serious","critical"].includes(i.impact??""))).toEqual([]);
-  await page.getByRole("button", { name: "可选：四步强化",exact:true }).click();
+  await page.getByRole('link',{name:'拓展功能与原学习记录',exact:true}).click();
+  await page.getByRole('link',{name:/四步强化/}).click();
   const dialog = page.getByRole("dialog", { name: "四步表达强化" });
   const field = page.getByRole("textbox", { name: "你的英文表达" });
   await expect(field).toBeVisible();
@@ -54,7 +55,6 @@ test("回答到四步：不可跳过、错误保留、刷新恢复、移动和�
   const accessibility = await new AxeBuilder({ page }).include(".mastery-overlay").analyze();
   expect(accessibility.violations.filter((issue) => ["serious", "critical"].includes(issue.impact ?? ""))).toEqual([]);
   await page.reload();
-  await page.getByRole("button", { name: "可选：四步强化",exact:true }).click();
   await expect(field).toHaveValue("the");
   const answers = ["manhole cover", "I saw a manhole cover outside.", "manhole cover", "I saw a manhole cover outside."];
   for (const [index, answer] of answers.entries()) {
@@ -67,7 +67,7 @@ test("回答到四步：不可跳过、错误保留、刷新恢复、移动和�
   await expect(page.getByText(/还不等于无提示或跨日掌握/)).toBeVisible();
 });
 
-test("历史回答旧链接直接进入已审核四步材料，打开不触发在线生成",async({page,request})=>{
+test("历史回答旧链接进入已审核句子材料，打开不触发在线生成",async({page,request})=>{
   const question="question_e2e_habits";
   const {attempt}=await(await request.post(`/api/speaking-practice/questions/${question}/attempts`,{data:{clientRequestId:"e2e-offline-link",mode:"practice",answerText:"I saw a 井盖 outside.",intendedMeaningZh:"我在外面看到了一个井盖。"}})).json();
   await expect.poll(async()=>(await(await request.get(`/api/speaking-practice/attempts/${attempt.id}`)).json()).attempt.status).toBe("completed");
@@ -81,11 +81,11 @@ test("历史回答旧链接直接进入已审核四步材料，打开不触发�
   await page.setViewportSize({width:390,height:844});
   await page.goto("/answer-studio/e2e-historical-linked");
   await expect(page).toHaveURL(new RegExp(`/questions/${question}/attempts/${attempt.id}$`));
-  await expect(page.getByRole("button",{name:"可选：四步强化",exact:true})).toBeInViewport();
+  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeInViewport();
   await expect(page.getByText("材料处理未完成",{exact:true})).toHaveCount(0);
   expect(writes).toEqual([]);
   await page.goto(`/questions/${question}`);
-  await expect(page.locator("#learning-units")).toContainText("manhole cover");
+  await expect(page.getByRole('link',{name:/学习本题句子|句子学习/}).first()).toBeVisible();
   await expect(page.getByText("回答已保存，但学习材料还没有通过发布闸门。",{exact:true})).toHaveCount(0);
   await expect(page.getByText("可借用的公共表达",{exact:true})).toHaveCount(0);
 });
@@ -95,10 +95,10 @@ test("自然表达不因升级措辞制卡，零项提示不宣称完全掌握",
   const {attempt}=await (await request.post(`/api/speaking-practice/questions/${question}/attempts`,{data:{clientRequestId:"e2e-selection-natural",mode:"practice",answerText:"I really like my major.",intendedMeaningZh:"我很喜欢我的专业。"}})).json();
   await expect.poll(async()=>(await(await request.get(`/api/speaking-practice/attempts/${attempt.id}`)).json()).attempt.status).toBe("completed");
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await expect(page.getByRole('heading',{name:'本次没有确认的学习表达',exact:true})).toBeVisible();
+  await expect(page.getByText('准备表达 0 项，修复表达 0 项。',{exact:false})).toHaveCount(1);
   await expect(page.getByRole("button",{name:"可选：四步强化",exact:true})).toHaveCount(0);
-  await page.getByText('自然表达全文与逐句试听',{exact:true}).click();
-  await expect(page.locator('details[open] > p[lang="en"]').first()).toHaveText("I really like my major.");
+  await expect(page.locator('.material-natural-text')).toHaveText('I really like my major.');
+  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
   await expect(page.getByText(/非常自然完整|意图表达非常完整自然/)).toHaveCount(0);
 });
 
@@ -191,7 +191,7 @@ test("恢复期间服务端仍在处理时自动读取结果，不永久锁住�
     // 初始快照模拟尚在处理；后续 GET 读取真实、已保存的结果。
     await route.fulfill({ json: { ...body, session: { ...body.session, busy: true } } });
   });
-  await page.goto(`/training/${attempt.materialId}`);
+  await page.goto(`/training/${attempt.materialId}?extension=1`);
   const input = page.getByRole("textbox", { name: "你的英文表达" });
   await expect(input).toBeDisabled();
   await expect(input).toBeEnabled();
@@ -222,8 +222,7 @@ test("逐句循环停止及离开后不再自动播放", async ({ page, request 
   await page.route('**/api/speech/assets/synthetic-loop',route=>{assets++;return route.fulfill({body:wav,contentType:'audio/wav'});});
   const plays=()=>page.evaluate(()=>(window as unknown as {syntheticPlays?:number}).syntheticPlays??0);
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await page.getByText('自然表达全文与逐句试听',{exact:true}).click();
-  await page.getByText('逐句播放（可选）',{exact:true}).click();
+  await page.getByText('逐句试听',{exact:true}).click();
   await page.getByRole("button", { name: "🔂 单句循环", exact: true }).click();
   await page.getByRole("button", { name: "▶️ 播放", exact: true }).click();
   await expect.poll(async()=>({plays:await plays(),syntheses,assets,browserErrors})).toEqual({plays:1,syntheses:1,assets:1,browserErrors:[]});
@@ -233,7 +232,7 @@ test("逐句循环停止及离开后不再自动播放", async ({ page, request 
   expect(await plays()).toBe(1);
   await page.getByRole("button", { name: "▶️ 播放", exact: true }).click();
   await expect.poll(plays).toBe(2);
-  await page.getByText('逐句播放（可选）',{exact:true}).click();
+  await page.getByText('逐句试听',{exact:true}).click();
   await page.waitForTimeout(800);
   expect(await plays()).toBe(2);expect(syntheses).toBe(1);
 });

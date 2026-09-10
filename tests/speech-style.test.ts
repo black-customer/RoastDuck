@@ -11,6 +11,9 @@ it('three approved conversational directions preserve the original text, accent,
     expect(body.messages[1]).toEqual({role:'assistant',content:text});
     expect(body.audio).toEqual({format:'wav',voice:'Dean'});
     expect(body.messages[0].content).toContain('General American English');
+    expect(body.messages[0].content).toContain('young adult chatting with a peer');
+    expect(body.messages[0].content).toContain('lightly brisk');
+    expect(body.messages[0].content).toContain('do not deliberately lower the pitch');
     expect(body.messages[0].content).toContain('preserving every word and existing filler exactly');
     return body.messages[0].content;
   });

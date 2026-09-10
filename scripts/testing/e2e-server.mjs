@@ -3,13 +3,16 @@ import {spawn} from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
+import {releaseDirectory,validateRelease} from '../desktop/releases.mjs';
 const port=process.argv[2];
 if(!/^\d+$/.test(port??"")||Number(port)<1024||Number(port)>65535)throw new Error("无效测试端口");
 const directory=path.resolve("test-results",`e2e-server-${Date.now()}`);
 fs.mkdirSync(directory,{recursive:true});
 const diagnostics=process.env.ROASTDUCK_E2E_DIAGNOSTICS==="1";
+const releaseId=process.env.ROASTDUCK_TEST_DESKTOP_RELEASE;
+const release=releaseId?validateRelease(process.cwd(),JSON.parse(fs.readFileSync(path.join(releaseDirectory(process.cwd(),releaseId),'desktop-release.json'),'utf8'))):null;
 const preload=diagnostics?["--import",pathToFileURL(path.resolve("scripts/testing/e2e-diagnostics.mjs")).href]:[];
-fs.writeFileSync(path.join(directory,"runtime.json"),JSON.stringify({node:process.version,execPath:process.execPath,diagnostics}));
+fs.writeFileSync(path.join(directory,"runtime.json"),JSON.stringify({node:process.version,execPath:process.execPath,diagnostics,releaseId:release?.releaseId??null}));
 const nodeArgs=[...preload,"node_modules/next/dist/bin/next","start","-H","127.0.0.1","-p",port];
 const nativeProbe=process.platform==='win32'&&process.env.ROASTDUCK_WIN_DEBUGGER==='1';
 const probeConfig=path.join(directory,'native-probe.json');
@@ -18,7 +21,7 @@ const executable=nativeProbe?path.join(process.env.SystemRoot??'C:/Windows','Sys
 const arguments_=nativeProbe?['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.resolve('scripts/testing/windows-native-probe.ps1'),'-Config',probeConfig]:nodeArgs;
 const child=spawn(executable,arguments_,{
   shell:false,windowsHide:true,stdio:["ignore","pipe","pipe"],
-  env:{...process.env,ROASTDUCK_E2E_DIAGNOSTIC_DIR:diagnostics?directory:"",AI_PROVIDER:"mock",ROASTDUCK_E2E:"1",ROASTDUCK_DB:"file:./test-results/e2e.db",ROASTDUCK_SKIP_DB_BACKUP:"1",MIMO_API_KEY:"",DEEPSEEK_API_KEY:""},
+  env:{...process.env,ROASTDUCK_E2E_DIAGNOSTIC_DIR:diagnostics?directory:"",AI_PROVIDER:"mock",ROASTDUCK_E2E:release?"":"1",ROASTDUCK_DESKTOP:release?"1":"",ROASTDUCK_DESKTOP_RELEASE:release?.releaseId??"",ROASTDUCK_PROMPT_ROOT:release?path.join(release.directory,'runtime-prompts'):path.resolve('pipeline/prompts'),ROASTDUCK_DB:"file:./test-results/e2e.db",ROASTDUCK_SKIP_DB_BACKUP:"1",MIMO_API_KEY:"",DEEPSEEK_API_KEY:""},
 });
 for(const [name,stream,destination] of [["stdout",child.stdout,process.stdout],["stderr",child.stderr,process.stderr]]){
   stream.on("data",chunk=>{fs.appendFileSync(path.join(directory,`${name}.log`),chunk);destination.write(chunk);});

@@ -115,7 +115,7 @@ function parseState(value: string): RetrievalState {
 }
 
 function readPrompt(filename: string) {
-  return fs.readFileSync(path.join(process.cwd(), "pipeline", "prompts", filename), "utf8");
+  return fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(), "pipeline", "prompts"), filename), "utf8");
 }
 
 function stableId(prefix: string, ...parts: string[]) {

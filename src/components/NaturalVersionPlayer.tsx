@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { getTTS, splitSentencesForTts } from "@/lib/tts";
 import { VoiceSelector } from "./VoiceSelector";
 import type {SpeechStyle} from '@/lib/speech/contracts';
+import type {LightAudioState,PlaybackMode} from '@/lib/light-study/audio';
 
 type PlayMode = "continuous" | "loop_single" | "shadowing";
 
@@ -23,6 +24,7 @@ export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation'
   const [isPlaying, setIsPlaying] = useState(false);
   const [playMode, setPlayMode] = useState<PlayMode>("continuous");
   const [isShadowingWaiting, setIsShadowingWaiting] = useState(false);
+  const [audioState,setAudioState]=useState<LightAudioState|null>(null);
 
   // References to keep event callbacks up to date
   const isPlayingRef = useRef(isPlaying);
@@ -60,7 +62,7 @@ export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation'
     setIsShadowingWaiting(false);
   }
 
-  function playSentenceAt(index: number) {
+  function playSentenceAt(index: number,playbackMode:PlaybackMode='natural') {
     if (index < 0 || index >= sentences.length) {
       stopAll();
       return;
@@ -79,7 +81,8 @@ export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation'
 
     const sentence = sentences[index];
     getTTS().speak(sentence, {
-      ownerId,style,
+      ownerId,style,playbackMode,
+      onState:state=>{if(playbackEpoch.current===generation)setAudioState(state);},
       onEnd: () => {
         if (!isPlayingRef.current || playbackEpoch.current !== generation) return;
 
@@ -117,7 +120,7 @@ export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation'
         }
       },
       onError: () => {
-        if (playbackEpoch.current === generation) stopAll();
+        if (playbackEpoch.current === generation) {isPlayingRef.current=false;setIsPlaying(false);}
       },
     });
   }
@@ -161,6 +164,10 @@ export function NaturalVersionPlayer({ naturalVersion,style='daily-conversation'
         </div>
         <VoiceSelector compact />
       </div>
+
+      {audioState?.message&&<p role="status">{audioState.message}</p>}
+      {['loading','error'].includes(audioState?.phase??'')&&audioState?.errorCode!=='local_voice_unavailable'&&<button type="button" onClick={()=>playSentenceAt(activeIndex,'quick')}>先听快捷声音</button>}
+      {audioState?.errorCode==='local_voice_unavailable'&&<button type="button" onClick={()=>playSentenceAt(activeIndex,'natural')}>准备自然声音</button>}
 
       {/* Control Toolbar */}
       <div className="player-toolbar">

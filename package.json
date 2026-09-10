@@ -1,9 +1,9 @@
 {
   "name": "roastduck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "鱼块学英语 — 雅思作答与对话的四步表达强化",
+  "description": "鱼块学英语 — 从自己的意思出发，逐句学习自然口语",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS= next dev -H 127.0.0.1",
     "build": "cross-env NODE_OPTIONS= next build",
@@ -36,6 +36,8 @@
     "governance:check": "node scripts/governance-check.mjs",
     "audit:materials": "cross-env NODE_OPTIONS= tsx scripts/audit-practice-materials.ts",
     "audit:readiness": "cross-env NODE_OPTIONS= tsx scripts/audit-practice-readiness.ts",
+    "audit:sentences": "cross-env NODE_OPTIONS= tsx scripts/audit-sentence-materials.ts",
+    "audit:sentences:e2e": "cross-env NODE_OPTIONS= AI_PROVIDER=mock ROASTDUCK_DB=file:./test-results/e2e.db tsx scripts/audit-sentence-materials.ts",
     "audit:light-study": "cross-env NODE_OPTIONS= tsx scripts/audit-light-study.ts",
     "audit:materials:e2e": "cross-env AI_PROVIDER=mock ROASTDUCK_DB=file:./test-results/e2e.db tsx scripts/audit-practice-materials.ts",
     "check:ai": "cross-env NODE_OPTIONS= AI_PROVIDER=mock vitest run tests/ai-job-service.test.ts tests/ai-provider.test.ts tests/ai-drain.test.ts tests/agent-workflow.test.ts tests/schemas.test.ts",

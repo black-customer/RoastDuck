@@ -21,6 +21,7 @@ const checks = [
   ["build", ["run", "build:e2e"]],
   ["e2e", ["run", "e2e:run"]],
   ["current-material-audit", ["run", "audit:materials:e2e"]],
+  ["sentence-material-audit", ["run", "audit:sentences:e2e"]],
 ];
 
 const failures = [];

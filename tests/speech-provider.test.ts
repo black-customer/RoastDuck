@@ -35,16 +35,17 @@ describe("Xiaomi MiMo V2.5 TTS Provider", () => {
       expect(network).not.toHaveBeenCalled();
     } finally { network.mockRestore(); vi.unstubAllEnvs(); }
   });
-  it("默认使用 mimo-v2.5-tts、Dean 与美式英语，保留明确配置", () => {
+  it("默认使用 mimo-v2.5-tts、Milo 与美式英语，保留明确配置", () => {
     const config = readSpeechEnvironment({ MIMO_API_KEY: "secret" });
     expect(config).toMatchObject({
       model: "mimo-v2.5-tts",
-      voice: "Dean",
+      voice: "Milo",
       accent: "en-US",
       baseUrl: "https://api.xiaomimimo.com/v1",
     });
     expect(getSpeechHealth({})).toMatchObject({ configured: false, status: "missing_key" });
     expect(readSpeechEnvironment({MIMO_TTS_VOICE:"Chloe"}).voice).toBe("Chloe");
+    expect(readSpeechEnvironment({MIMO_TTS_VOICE:"Dean",MIMO_TTS_ACCENT:"en-GB"})).toMatchObject({voice:'Dean',accent:'en-GB'});
   });
 
   it("服务端按官方协议发送文本和美式风格指令，并校验 WAV", async () => {

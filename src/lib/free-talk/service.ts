@@ -22,7 +22,7 @@ function stableId(prefix: string, ...parts: string[]) {
 }
 
 function readPrompt(filename: string): string {
-  return fs.readFileSync(path.join(process.cwd(), "pipeline", "prompts", filename), "utf8");
+  return fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(), "pipeline", "prompts"), filename), "utf8");
 }
 
 export class FreeTalkServiceError extends Error {

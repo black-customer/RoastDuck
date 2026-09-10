@@ -7,10 +7,10 @@ import { BrandMark, Icon, type IconName } from "./Icon";
 import styles from "./AppShell.module.css";
 
 const navigation: Array<{ href: string; label: string; icon: IconName; prefixes: string[] }> = [
-  { href: "/", label: "今日学习", icon: "home", prefixes: ["/learn", "/light-study", "/study"] },
+  { href: "/", label: "今日学习", icon: "home", prefixes: ["/sentence-study", "/study"] },
   { href: "/questions", label: "雅思题库", icon: "questions", prefixes: ["/questions", "/speaking-arena", "/answer-studio"] },
-  { href: "/free-talk", label: "AI Free Talk", icon: "speaking", prefixes: ["/free-talk"] },
-  { href: "/review", label: "到期复习", icon: "answers", prefixes: ["/review", "/training"] },
+  { href: "/free-talk", label: "与 Chloe 聊聊", icon: "speaking", prefixes: ["/free-talk"] },
+  { href: "/study?mode=review", label: "到期复习", icon: "answers", prefixes: [] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,10 +37,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className={styles.sidebarBottom}>
           <p className={styles.sidebarNote}>把想说的话，<br />变成会用的英语。</p>
           <nav aria-label="工具导航">
-            <Link className={styles.navLink} aria-current={pathname === "/expressions" || pathname === "/quick-review" ? "page" : undefined} href="/expressions" onClick={close}><Icon name="answers" />我的表达</Link>
+            <Link className={styles.navLink} aria-current={pathname === "/expressions" ? "page" : undefined} href="/expressions" onClick={close}><Icon name="answers" />我的材料</Link>
             <Link className={styles.navLink} aria-current={pathname === "/companion-memories" ? "page" : undefined} href="/companion-memories" onClick={close}><Icon name="memory" />Chloe 记得什么</Link>
             <Link className={styles.navLink} aria-current={pathname === "/search" ? "page" : undefined} href="/search" onClick={close}><Icon name="search" />搜索表达</Link>
             <Link className={styles.navLink} aria-current={["/settings", "/review-content"].includes(pathname) ? "page" : undefined} href="/settings" onClick={close}><Icon name="settings" />学习设置</Link>
+            <Link className={styles.navLink} aria-current={pathname === "/extensions" ? "page" : undefined} href="/extensions" onClick={close}><Icon name="settings" />拓展功能</Link>
           </nav>
         </div>
       </div>
@@ -59,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Icon name="speaking" />
         <span>对话</span>
       </Link>
-      <Link href="/review" className={styles.mobileNavItem} aria-current={pathname.startsWith("/review") ? "page" : undefined} onClick={close}>
+      <Link href="/study?mode=review" className={styles.mobileNavItem} onClick={close}>
         <Icon name="answers" />
         <span>复习</span>
       </Link>

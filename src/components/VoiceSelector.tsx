@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DEFAULT_VOICE_PRESET, type VoicePresetId, VOICE_PRESETS } from "@/lib/speech/contracts";
+import { useEffect, useRef } from "react";
+import { type VoicePresetId } from "@/lib/speech/contracts";
 import { getTTS } from "@/lib/tts";
+import {legacyPresetFor} from '@/lib/speech/preferences';
+import {SpeechPreferences} from './SpeechPreferences';
 
 interface VoiceSelectorProps {
   currentVoice?: VoicePresetId;
@@ -11,50 +13,13 @@ interface VoiceSelectorProps {
 }
 
 export function VoiceSelector({ currentVoice, onVoiceChange, compact = false }: VoiceSelectorProps) {
-  const [selectedVoice, setSelectedVoice] = useState<VoicePresetId>(
-    currentVoice ?? DEFAULT_VOICE_PRESET,
-  );
-
+  const previousControlled=useRef(currentVoice);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const active = getTTS().getVoice();
-      setSelectedVoice(active);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (currentVoice && currentVoice !== selectedVoice) {
-      setSelectedVoice(currentVoice);
-    }
-  }, [currentVoice, selectedVoice]);
-
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const val = e.target.value as VoicePresetId;
-    setSelectedVoice(val);
-    getTTS().setVoice(val);
-    onVoiceChange?.(val);
-  }
-
-  return (
-    <div className={`voice-selector ${compact ? "is-compact" : ""}`}>
-      <label htmlFor="voice-preset-select" className="voice-selector-label">
-        <span className="voice-icon">🎙️</span>
-        {!compact ? <span className="voice-text">发音：</span> : null}
-      </label>
-      <select
-        id="voice-preset-select"
-        className="voice-select-dropdown"
-        value={selectedVoice}
-        onChange={handleChange}
-        title="选择朗读与口语对练音色"
-      >
-        {VOICE_PRESETS.map((preset) => (
-          <option key={preset.id} value={preset.id}>
-            {preset.label} · {preset.accent === "en-US" ? "🇺🇸 美音" : "🇬🇧 英音"}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+    // A legacy controlled caller may change its preset explicitly. Initial props
+    // must not overwrite a v3 speaker (Dean and Milo share the old male alias).
+    if(currentVoice&&previousControlled.current!==currentVoice&&getTTS().getVoice()!==currentVoice)getTTS().setVoice(currentVoice);
+    previousControlled.current=currentVoice;
+  },[currentVoice]);
+  return <SpeechPreferences compact={compact} onChange={preferences=>onVoiceChange?.(legacyPresetFor(preferences))}/>;
 }
 

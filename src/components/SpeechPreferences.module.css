@@ -1,0 +1,8 @@
+.preferences { min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; }
+.controls label { display: grid; gap: 6px; min-width: 0; color: var(--text-secondary, #53647d); font-size: 14px; line-height: 1.4; }
+.controls select { min-height: 44px; max-width: 100%; padding: 8px 30px 8px 10px; border: 1px solid var(--border, #ccd7e5); border-radius: 9px; background: var(--surface, #f8fbff); color: var(--text, #233b5d); font: inherit; font-size: 16px; }
+.controls select:focus-visible { outline: 2px solid var(--primary, #2868c7); outline-offset: 2px; }
+.hint { margin: 8px 0 0; max-width: 64ch; color: var(--text-secondary, #53647d); font-size: 14px; line-height: 1.6; }
+.compact .controls { gap: 8px; }
+@media (max-width: 390px) { .controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .controls label:first-child { grid-column: 1 / -1; } }

@@ -26,7 +26,7 @@ function normalized(value: string) {
 }
 
 function readPrompt(filename: string) {
-  return fs.readFileSync(path.join(process.cwd(), "pipeline", "prompts", filename), "utf8");
+  return fs.readFileSync(path.join(process.env.ROASTDUCK_PROMPT_ROOT||path.join(process.cwd(), "pipeline", "prompts"), filename), "utf8");
 }
 
 function validateIndependentReview(rawText: string, generated: SpeakingGapGeneration, review: SpeakingGapReview) {

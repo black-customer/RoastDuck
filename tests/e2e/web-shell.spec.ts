@@ -54,7 +54,7 @@ test("全站共享蓝白 Web 框架，桌面/手机/放大无溢出，保留导�
     ["book", "/books/book_e2e"], ["chunk", "/chunks/c_e2e_progress"],
     ["answer", "/answer-studio?question=question_e2e_habits"],
     ["workspace", `/answer-studio/${answer.id}`],
-    ["chat", "/speaking-arena?question=question_e2e_habits"],
+    ["chat", "/speaking-arena?extension=1&question=question_e2e_habits"],
     ["search", "/search"], ["settings", "/settings"],
     ["content", "/review-content"], ["missing", "/missing-page"],
   ];
@@ -77,7 +77,7 @@ test("全站共享蓝白 Web 框架，桌面/手机/放大无溢出，保留导�
         main: document.querySelector("main")!.getBoundingClientRect().width,
       }));
       if (metrics.scroll > metrics.width) findings.push({ route, width, issue: "horizontal-overflow", detail: metrics });
-      if (metrics.background !== "#f5f7fb") findings.push({ route, width, issue: "wrong-theme", detail: metrics });
+      if (metrics.background !== "#eaf0f8") findings.push({ route, width, issue: "wrong-theme", detail: metrics });
       if (width > 767 && metrics.main < width - 260) findings.push({ route, width, issue: "narrow-shell", detail: metrics });
       if (width === 1440 || width === 390) {
         await page.screenshot({ path: `test-results/visual/v02-${name}-${width}.png`, fullPage: true });
@@ -168,12 +168,12 @@ test("离线诊断进入按题问题账本，未编译材料不冒充可学，�
   page.on("request", (request) => { if (request.url().includes("/api/") && request.method() !== "GET") writes++; });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto(`/questions/${a.questionId}`);
+    await page.goto(`/questions/${a.questionId}?extension=1`);
     await expect(page.locator("#gap-ledger .question-gap-list > li")).toHaveCount(2);
     await expect(page.locator("#gap-ledger")).toContainText("really like");
     await expect(page.locator("#gap-ledger")).toContainText("haven't seen");
     await expect(page.locator("#gap-ledger")).not.toContainText("quarantined fixture");
-    await expect(page.locator("#learning-units")).toContainText("0 / 0");
+    await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toHaveCount(0);
     await expect(page.getByRole("article").getByRole("link", { name: "材料待处理", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "学习本题表达", exact: true })).toHaveCount(0);
     await page.screenshot({ path: `test-results/visual/v02-offline-gap-ledger-${width}.png`, fullPage: true });

@@ -25,7 +25,7 @@ async function readCounts(){
 }
 test("轻学新项：只点击、丢响应不重复记录、暂停刷新恢复，原强化和AI记录不变",async({page})=>{
   await setup(page);const before=await readCounts();
-  await page.goto("/light-study?scope=question&id=light-e2e-new");
+  await page.goto("/light-study?extension=1&scope=question&id=light-e2e-new");
   await page.getByRole("button",{name:"开始轻松学",exact:true}).click();
   await expect(page.getByRole("region",{name:"当前表达"})).toBeVisible();
   await expect(page.getByRole("textbox")).toHaveCount(0);
@@ -71,7 +71,7 @@ test("轻学新项：只点击、丢响应不重复记录、暂停刷新恢复�
 });
 test("保存失败时计时不会覆盖原操作，刷新后以同一事件重试",async({page})=>{
   await setup(page);await page.clock.install();
-  await page.goto("/light-study?scope=question&id=light-e2e-recovery");
+  await page.goto("/light-study?extension=1&scope=question&id=light-e2e-recovery");
   await page.getByRole("button",{name:"开始复习",exact:true}).click();
   await expect(page.getByRole('region',{name:'当前表达'})).toBeVisible();
   await page.getByText("播放与揭晓设置",{exact:true}).click();
@@ -101,7 +101,7 @@ test("保存失败时计时不会覆盖原操作，刷新后以同一事件重�
 });
 test("轻复习：默认手动、计时可暂停和提前揭晓、三档自评均直接继续",async({page})=>{
   await setup(page);await page.clock.install();
-  await page.goto("/light-study?scope=question&id=light-e2e-review");
+  await page.goto("/light-study?extension=1&scope=question&id=light-e2e-review");
   await expect(page.getByRole("button",{name:/复习到期表达/})).toHaveAttribute("aria-pressed","true");
   await page.getByRole("button",{name:"开始复习",exact:true}).click();
   await expect(page.getByRole("button",{name:"揭晓表达",exact:true})).toBeVisible();
@@ -153,7 +153,7 @@ test("轻复习：默认手动、计时可暂停和提前揭晓、三档自评�
 });
 test("V2五项新学最多再见三次，失败不强制循环，揭晓/移动焦点和总结可用",async({page})=>{
   await setup(page);
-  await page.goto("/light-study?scope=question&id=light-e2e-weak");
+  await page.goto("/light-study?extension=1&scope=question&id=light-e2e-weak");
   await page.getByRole("button",{name:"开始轻松学",exact:true}).click();
   await expect(page.getByRole("heading",{level:2})).toBeFocused();
   await page.getByText("播放与揭晓设置",{exact:true}).click();
@@ -183,14 +183,13 @@ test("入口、无材料、无到期和错误范围明确；打开页面不创�
   await setup(page);const before=await readCounts();
   await page.goto("/");await expect(page.getByRole("heading",{name:"我的学习记录"})).toBeVisible();
   await page.goto("/questions/light-e2e-new");
-  await page.getByText('更多练习与回顾',{exact:true}).click();
-  await expect(page.getByRole("link",{name:/轻松学本题|继续轻松学/})).toHaveAttribute("href",/scope=question/);
+  await expect(page.getByRole('link',{name:/开始句子学习|继续句子学习/}).first()).toHaveAttribute('href',/sentence-study/);
   const {attempts}=await(await request.get("/api/speaking-practice/questions/light-e2e-new/attempts")).json();
   await page.goto(`/questions/light-e2e-new/attempts/${attempts[0].id}`);
-  await expect(page.getByRole("link",{name:"轻松学本次表达"})).toHaveAttribute("href",/scope=material/);
-  await page.goto("/light-study?scope=question&id=light-e2e-new");
+  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toHaveAttribute('href',/scope=material/);
+  await page.goto("/light-study?extension=1&scope=question&id=light-e2e-new");
   await page.getByRole("button",{name:/复习到期表达/}).click();
   await expect(page.getByText("暂时没有到期表达，稍后再来，或学一点新的。",{exact:true})).toBeVisible();
-  await page.goto("/light-study?scope=invalid");await expect(page.locator("main").getByRole("alert")).toContainText("范围不正确");
+  await page.goto("/light-study?extension=1&scope=invalid");await expect(page.locator("main").getByRole("alert")).toContainText("范围不正确");
   expect(await readCounts()).toEqual(before);
 });

@@ -1,6 +1,10 @@
 # 数据模型
 状态：现行；2026-09-07。数据库实现以db/schema.ts及连续编号迁移为准，旧结构保留兼容，不执行db:push替代生产迁移。
 ## 当前实体
+- v34：sentence_highlights保存稳定句子ID、语言、文本版本/hash、UTF-16准确范围与quote/prefix/suffix锚点；新增请求唯一，取消为软删除。仅可靠唯一锚点映射可迁移，无法对应保留旧版；业务备份包含高亮，不含Key。ai_runs追加response_model/error_details_json，保留失败运行与安全诊断，不保存隐私报错正文。
+- 当前失败材料的runtimeRevision引用parentMaterialId/parentInputHash/策略版本；追加practice_materials版本，不覆盖原Attempt、旧分析或成绩。已发布材料不能通过该失败恢复路径重写。
+- 审核错误记忆复用Companion记录，保留原表达、建议、原因、源版本、审核run、提示状态和修正证据。准备/风格/转写不确定不计确认错误；同源幂等及删除generation保护迟到写入，不另建错题表。
+- v33：sentence_learning_units与sentence_material_editions保存完整句子及追加审核版本；sentence_study_sessions/events/progress独立于旧语块和四步。material_validation_cache绑定已审材料指纹与规则版本，避免每次点击重审。更正评分保留before快照、原评分时刻与更正事件，不重复累加次数。
 - v32：answer_drafts.raw_input/input_format保留单框原文；expression_preferences.self_known独立停推；light_study_progress.scheduler_version记录日级策略。不覆盖旧字段、due或历史记录。
 - v29：light_study_successions/batches保存旧会话继任、原切换版本与未学队列；speech_requests保存真实请求/未知结果，不写假ai_runs。
 - v30：speech_lane为同库多Web进程的全局合成租约；v31：expression_preferences与material_feedback保存个人偏好、原材料哈希和反馈证据。隐藏不更新学习成绩。
