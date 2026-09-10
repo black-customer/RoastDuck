@@ -24,7 +24,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_material_v3") (result.data as {sentences:Array<{english:string}>}).sentences[0].english="I'm used to living alone. "+"An oversized synthetic sentence. ".repeat(80);
+      if(request.schemaName==="four_step_material_v4") (result.data as {sentences:Array<{english:string}>}).sentences[0].english="I'm used to living alone. "+"An oversized synthetic sentence. ".repeat(80);
       return result;
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -39,7 +39,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     const spy=vi.spyOn(MockAiProvider.prototype,"generate");
     const attempt=await service.createSpeakingAttempt(answer);
     expect(attempt.status).toBe("completed");
-    expect(spy.mock.calls.map(([r])=>r.schemaName)).toEqual(["four_step_diagnosis_v3","four_step_selection_v3","four_step_material_v3","four_step_review_v3"]);
+    expect(spy.mock.calls.map(([r])=>r.schemaName)).toEqual(["four_step_diagnosis_v4","four_step_selection_v4","four_step_material_v4","four_step_review_v4"]);
     expect(new Set(spy.mock.calls.map(([r])=>r.instructions)).size).toBe(4);
     expect(attempt.analysis.learningMaterials[0].originalEnglish).toBe(answer.answerText);
     expect(attempt.analysis.learningMaterials[0].yourChineseSentence).toBe(answer.intendedMeaningZh);
@@ -62,7 +62,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
   it("最后审核网络失败只重试该阶段，原回答和三个检查点保留",async()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
-      if(request.schemaName==="four_step_review_v3") throw new Error("synthetic network failure");
+      if(request.schemaName==="four_step_review_v4") throw new Error("synthetic network failure");
       return original.call(this,request);
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -74,13 +74,13 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     const retry=vi.spyOn(MockAiProvider.prototype,"generate");
     expect((await service.processSpeakingAttempt(attempt.id))?.status).toBe("completed");
     expect(retry).toHaveBeenCalledTimes(1);
-    expect(retry.mock.calls[0][0].schemaName).toBe("four_step_review_v3");
+    expect(retry.mock.calls[0][0].schemaName).toBe("four_step_review_v4");
   });
   it("诊断审核拒绝时根本不运行材料生成，拒绝证据不被覆盖",async()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_selection_v3") (result.data as {approved:boolean}).approved=false;
+      if(request.schemaName==="four_step_selection_v4") (result.data as {approved:boolean}).approved=false;
       return result;
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -119,7 +119,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     let corrupted=false;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_diagnosis_v3"&&!corrupted){
+      if(request.schemaName==="four_step_diagnosis_v4"&&!corrupted){
         corrupted=true;
         (result.data as {units:Array<{english:Array<{text:string}>}>}).units[0].english[0].text="A fabricated quote.";
       }

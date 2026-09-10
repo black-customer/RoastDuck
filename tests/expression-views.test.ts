@@ -17,9 +17,18 @@ it('quick review starts with neither target English nor playback mounted in the 
 });
 it('current progress uses eligible counts while lifetime studied history remains visible',()=>{
   const html=renderToStaticMarkup(createElement(ExpressionSummary,{scope:{type:'collection',id:'ielts'},summary:{total:8,eligibleTotal:5,studied:6,eligibleStudied:3,selfKnownUnstudied:1,eligibleSelfKnownUnstudied:1,new:1,due:0,hidden:3}}));
-  expect(html).toContain('本轮已处理 4 / 5');expect(html).toContain('max="5" value="4"');
+  expect(html).toContain('当前材料已处理 4 / 5');expect(html).toContain('max="5" value="4"');
   expect(html).toContain('累计学过');expect(html).toContain('<dd>6</dd>');expect(html).toContain('不代表客观掌握');
   expect(html).toContain('/quick-review?scope=collection&amp;id=ielts');
+});
+it('learning and due review keep the same selected source scope',()=>{
+  const html=renderToStaticMarkup(createElement(ExpressionSummary,{scope:{type:'collection',id:'ielts',questionId:'question-a',topicId:'topic-a'},summary:{total:8,eligibleTotal:8,studied:3,eligibleStudied:3,selfKnownUnstudied:0,eligibleSelfKnownUnstudied:0,new:5,due:2,hidden:0}}));
+  expect(html).toContain('/light-study?scope=collection&amp;id=ielts&amp;questionId=question-a&amp;topicId=topic-a&amp;mode=learn');
+  expect(html).toContain('/light-study?scope=collection&amp;id=ielts&amp;questionId=question-a&amp;topicId=topic-a&amp;mode=review');
+});
+it('an empty collection does not show a zero progress panel',()=>{
+  const html=renderToStaticMarkup(createElement(ExpressionSummary,{scope:{type:'collection',id:'free_talk'},summary:{total:0,eligibleTotal:0,studied:0,eligibleStudied:0,selfKnownUnstudied:0,eligibleSelfKnownUnstudied:0,new:0,due:0,hidden:0}}));
+  expect(html).toBe('');
 });
 it('default collection is IELTS and question/material scopes are preserved in links',()=>{
   expect(expressionScope({}).data).toEqual({type:'collection',id:'ielts'});

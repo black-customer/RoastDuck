@@ -39,9 +39,11 @@ test('两个表达集合可切换，自评已掌握独立显示并可恢复',asy
   const {writes,item}=await mockExpressions(page);await page.goto('/expressions');
   await expect(page.getByRole('heading',{name:'我的雅思表达',exact:true})).toBeVisible();
   const row=page.locator('article').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
+  await row.getByText('说明、来源与管理',{exact:true}).click();
   await row.getByRole('button',{name:'已掌握（自评）',exact:true}).click();
   await expect(row.getByText('自评已会，尚未学习',{exact:true})).toBeVisible();
-  await expect(page.getByRole('region',{name:'表达学习概况'}).getByRole('link',{name:'开始轻松学'})).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'表达学习概况'}).getByRole('link',{name:/学新表达/})).toHaveCount(0);
+  await page.getByText('筛选表达',{exact:true}).click();
   await page.getByLabel('表达范围').selectOption('known');await expect(row).toBeVisible();
   for(const width of [1440,390,320]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);if(width!==320)await page.screenshot({path:`test-results/visual/expression-collection-${width}.png`,fullPage:true});}
   await row.getByRole('button',{name:'恢复推送',exact:true}).click();await expect(row).toHaveCount(0);

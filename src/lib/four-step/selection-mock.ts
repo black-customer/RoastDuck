@@ -4,9 +4,14 @@ import { diagnosisSchema, type Diagnosis, type MaterialEvidence } from "./select
 /** 明确的合成回归夹具，不是规则诊断器，也不用于私人内容发布。 */
 export const selectionMockResolver:MockAiResolver=(request)=>{
   const input=JSON.parse(request.input);
-  const schemaName=request.schemaName.replace(/_v3$/,'_v2'),spoken=request.schemaName.endsWith('_v3');
+  const schemaName=request.schemaName.replace(/_v[34]$/,'_v2'),spoken=/_v[34]$/.test(request.schemaName),recall=request.schemaName.endsWith('_v4');
   if(schemaName==="four_step_diagnosis_v2") {
     const {actualAnswer:answer,intendedMeaningZh:meaning}=input.source as {actualAnswer:string;intendedMeaningZh:string};
+    // Explicit bilingual FreeTalk fixture: preserve the successful English and prepare only the added intent.
+    if(spoken&&input.source.sourceType==='free_talk'&&answer==='I want to change the date of my test. 我最近准备得不够充分，想把考试推迟两周。'){
+      return diagnosisSchema.parse({units:[{id:'unit_en',intentZh:'我想更改考试日期。',english:[{text:'I want to change the date of my test.',occurrence:0}],chinese:[],status:'natural',reasonZh:'原创Mock里更改日期已用自然英文表达。',gaps:[]},
+        {id:'unit_added',intentZh:'我最近准备得不够充分，想把考试推迟两周。',english:[{text:'我最近准备得不够充分，想把考试推迟两周。',occurrence:0}],chinese:[],status:'missing',reasonZh:'中文补充的准备情况与两周时长还未展示英文。',gaps:[{id:'gap_prepare_test',kind:'unexpressed_intention',cueZh:'还没有准备充分',targetEnglish:'not fully prepared',senseKey:'not_fully_prepared',acceptableVariants:[],evidenceQuote:'我最近准备得不够充分，想把考试推迟两周。',whyNeededZh:'Mock准备项，不冒充已经犯错。'}]}]});
+    }
     const noun=answer.includes("井盖") || /round metal (thing|cover)/i.test(answer);
     const missing=meaning.includes("化学") && !answer.includes("chemistry");
     const grammar=answer.includes("used to live alone");
@@ -35,15 +40,17 @@ export const selectionMockResolver:MockAiResolver=(request)=>{
       if(accepted.some((g)=>g.id==="gap_major")) english="I'm a fourth-year student in Qingdao, studying computer science after I switched majors from chemistry.";
       if(accepted.some((g)=>g.id==="gap_used_to")) english=english.replace("used to live alone","used to living alone");
       if(accepted.some(g=>g.id==='gap_lunch'))english='I make lunch at home.';
+      if(accepted.some(g=>g.id==='gap_prepare_test'))english="I'm not fully prepared, so I'd like to postpone my test by two weeks.";
       return {id:`sentence_${i}`,intentUnitIds:[u.id],english};
     });
     const rows=units.flatMap((u,i)=>u.gaps.filter((g)=>input.selection.gaps.some((r:{gapId:string;decision:string})=>r.gapId===g.id&&r.decision==="train")).map((g)=>({gapId:g.id,sentenceId:`sentence_${i}`,surfaceInSentence:g.id==="gap_major"?"switched majors":g.id==="gap_used_to"?"used to living":g.targetEnglish})));
-    return {sentences,rows,examFeedback:input.source.mode==="exam_style"?{transcriptBasedNotice:"合成测试仅依据文本，不能评价发音或语调。",lexicalResource:"合成文本反馈。",grammaticalRange:"合成文本反馈。",coherence:"合成文本反馈。",paraphrasing:"释义表达传达了部分原意。",strengths:["Paraphrasing 释义能力"],weaknesses:[],approximateBand:null}:null};
+    const concreteRows=recall?rows.map(row=>{const sentence=sentences.find(s=>s.id===row.sentenceId)!,unit=units.find(u=>sentence.intentUnitIds.includes(u.id))!,gap=unit.gaps.find(g=>g.id===row.gapId)!;return {...row,recallPromptZh:unit.intentZh,recallAnswerEn:sentence.english,...(gap.id==='gap_used_to'?{pattern:'be used to + noun / -ing'}:{})};}):rows;
+    return {sentences,rows:concreteRows,examFeedback:input.source.mode==="exam_style"?{transcriptBasedNotice:"合成测试仅依据文本，不能评价发音或语调。",lexicalResource:"合成文本反馈。",grammaticalRange:"合成文本反馈。",coherence:"合成文本反馈。",paraphrasing:"释义表达传达了部分原意。",strengths:["Paraphrasing 释义能力"],weaknesses:[],approximateBand:null}:null};
   }
   if(schemaName==="four_step_review_v2") {
     const evidence=input.compiled.evidence as MaterialEvidence;
     const confirmed=(id:string)=>evidence.diagnosis.units.find(u=>u.gaps.some(g=>g.id===id))?.status==='repair';
-    return {approved:true,reasonZh:"独立材料审核合成夹具。",rows:evidence.draft.rows.map((r)=>({gapId:r.gapId,approved:true,evidenceQuote:evidence.diagnosis.units.flatMap((u)=>u.gaps).find((g)=>g.id===r.gapId)!.evidenceQuote,reasonZh:"仅供测试：引用当前准备或修复目标。",repairNeeded:spoken?confirmed(r.gapId):true,...(spoken?{learningTargetNeeded:true}:{}),meaningPreserved:true,minimalRepair:true,cueUnambiguous:true,sentenceAligned:true,clozeValid:true})),...(spoken?{wholeAnswer:{meaningPreserved:true,voicePreserved:true,stancePreserved:true,discourseFunctionsPreserved:true,metaphorsPreserved:true,spokenNaturalness:true,noInventedPersonalStyle:true,reasonZh:'独立请求的合成全文核查。',evidence:input.compiled.naturalVersion?[{sourceField:input.source.actualAnswer?'actualAnswer':'intendedMeaningZh',sourceQuote:(input.source.actualAnswer||input.source.intendedMeaningZh).slice(0,1500),rendering:input.compiled.naturalVersion,treatment:'adapted',reasonZh:'合成案例保留原意。'}]:[]}}:{})};
+    return {approved:true,reasonZh:"独立材料审核合成夹具。",rows:evidence.draft.rows.map((r)=>({gapId:r.gapId,approved:true,evidenceQuote:evidence.diagnosis.units.flatMap((u)=>u.gaps).find((g)=>g.id===r.gapId)!.evidenceQuote,reasonZh:"仅供测试：引用当前准备或修复目标。",repairNeeded:spoken?confirmed(r.gapId):true,...(spoken?{learningTargetNeeded:true}:{}),...(recall?{recallCueUnambiguous:true,recallAnswerConcrete:true,recallAligned:true}:{}),meaningPreserved:true,minimalRepair:true,cueUnambiguous:true,sentenceAligned:true,clozeValid:true})),...(recall?{sentences:evidence.draft.sentences.map(sentence=>({sentenceId:sentence.id,sentenceQuote:sentence.english,meaningPreserved:true,naturalEnglish:true,grammarCorrect:true,sourceUncertaintyHandled:true,reasonZh:'合成样例中的逐句原意与语法核查。',evidence:evidence.diagnosis.units.filter(u=>sentence.intentUnitIds.includes(u.id)).flatMap(u=>[...u.english.map(q=>({sourceField:'actualAnswer',sourceQuote:q.text})),...u.chinese.map(q=>({sourceField:'intendedMeaningZh',sourceQuote:q.text})),...(u.raw??[]).map(q=>({sourceField:'rawInput',sourceQuote:q.text}))])}))}:{}),...(spoken?{wholeAnswer:{meaningPreserved:true,voicePreserved:true,stancePreserved:true,discourseFunctionsPreserved:true,metaphorsPreserved:true,spokenNaturalness:true,noInventedPersonalStyle:true,reasonZh:'独立请求的合成全文核查。',evidence:input.compiled.naturalVersion?[{sourceField:input.source.actualAnswer?'actualAnswer':'intendedMeaningZh',sourceQuote:(input.source.actualAnswer||input.source.intendedMeaningZh).slice(0,1500),rendering:input.compiled.naturalVersion,treatment:'adapted',reasonZh:'合成案例保留原意。'}]:[]}}:{})};
   }
   throw new Error("unknown_selection_mock_schema");
 };

@@ -3,9 +3,13 @@ import { speakingAttemptAnalysisSchema } from "@/lib/speaking-practice/schemas";
 import { materialReviewSchema } from "./contracts";
 import { validateMaterial } from "./material-validation";
 import type { MaterialInput, MaterialRow } from "./material-types";
-import {materialStageContracts,diagnosisRepairPrompt,SPOKEN_STYLE_VERSION} from "./stage-contracts";
-import { evidenceReviewSchema,spokenEvidenceReviewSchema, validateEvidenceReview } from "./selection-contracts";
+import {materialStageContracts,diagnosisRepairPrompt} from "./stage-contracts";
+import { reviewSchemaForSource, validateEvidenceReview } from "./selection-contracts";
 import { hash } from "./shared";
+import {compileOfflineMaterial} from './offline-compile';
+import {authorHash} from './offline-contracts';
+import {materialSourceHash} from './revision-source';
+import {normalizeExpression} from './contracts';
 
 /** Read-only SQL boundary: neither libsql internals nor platform credentials escape it. */
 export interface MaterialAuditReader {
@@ -71,7 +75,7 @@ export async function auditPracticeMaterials(client: MaterialAuditReader, allowM
           if(JSON.stringify(JSON.parse(String(stage(name).output_json)))!==JSON.stringify(output)) fail("stage_output_chain");
         }
         if(JSON.stringify(speakingAttemptAnalysisSchema.parse(expectedInputs.review.compiled))!==JSON.stringify(analysis)) fail("reviewed_material_drift");
-        const reviewSchema=input.spokenStyleVersion===SPOKEN_STYLE_VERSION?spokenEvidenceReviewSchema:evidenceReviewSchema;
+        const reviewSchema=reviewSchemaForSource(input);
         validateEvidenceReview(evidence,reviewSchema.parse(JSON.parse(String(stage("review").output_json))),input);
         if(offline.length){
           const receipt=(name:string)=>offline.find(r=>r.run_id===stage(name).run_id);
@@ -90,6 +94,22 @@ export async function auditPracticeMaterials(client: MaterialAuditReader, allowM
       if (!allowMock && runs.some((r) => r.provider === "mock")) fail("mock_is_not_real_review");
       const links = (await client.execute({ sql: "SELECT mi.row_index,i.id FROM practice_material_items mi LEFT JOIN learning_items i ON i.id=mi.learning_item_id WHERE mi.material_id=?", args: [material.id] })).rows;
       if (links.length !== analysis.learningMaterials.length || links.some((r) => !r.id) || analysis.learningMaterials.some((_, i) => !links.some((r) => r.row_index === i))) fail("learning_item_links");
+      if(input.offlineRevision){
+        const artifact=JSON.parse(material.review_json).offlineRevision;
+        if(!artifact)throw new Error('offline_revision_evidence');
+        const compiled=compileOfflineMaterial(artifact.source,artifact.author,artifact.review,{selectionPolicyVersion:input.selectionPolicyVersion}),basis=compiled.author.revisionBasis;
+        const revision=input.offlineRevision;
+        if(!basis||basis.materialId!==revision.parentMaterialId||basis.inputHash!==revision.parentInputHash||basis.analysisHash!==revision.parentAnalysisHash||basis.sourceHash!==revision.sourceHash||materialSourceHash(input)!==revision.sourceHash||hash(authorHash(compiled.author),JSON.stringify(compiled.review))!==revision.artifactHash||JSON.stringify(compiled.analysis)!==JSON.stringify(analysis))fail('offline_revision_evidence');
+        const old=(await client.execute({sql:'SELECT * FROM practice_materials WHERE id=?',args:[revision.parentMaterialId]})).rows[0];
+        if(!old||old.input_hash!==revision.parentInputHash||hash(String(old.analysis_json))!==revision.parentAnalysisHash||materialSourceHash(JSON.parse(String(old.input_json)))!==revision.sourceHash)fail('offline_revision_parent');
+        const oldItems=(await client.execute({sql:'SELECT mi.row_index,i.id,i.target_english,i.intention_zh FROM practice_material_items mi JOIN learning_items i ON i.id=mi.learning_item_id WHERE mi.material_id=?',args:[revision.parentMaterialId]})).rows;
+        for(const [unitIndex,unit] of compiled.author.units.entries())for(const [gapIndex,gap] of unit.gaps.entries())if(gap.priorLearningItem){
+          const gapId=`g${unitIndex}_${gapIndex}`,rowIndex=analysis.learningMaterials.findIndex(row=>row.gapId===gapId);
+          if(rowIndex<0)continue;
+          const prior=gap.priorLearningItem,original=oldItems.find(item=>item.row_index===prior.rowIndex),verdict=compiled.review.continuity?.find(item=>item.gapId===gapId);
+          if(!original||original.id!==prior.learningItemId||original.target_english!==prior.targetEnglish||original.intention_zh!==prior.intentionZh||!links.some(link=>link.row_index===rowIndex&&link.id===original.id)||normalizeExpression(prior.targetEnglish)!==normalizeExpression(analysis.learningMaterials[rowIndex].englishChunk)||!verdict?.sameTarget||!verdict.sameIntention||verdict.learningItemId!==original.id)fail('offline_revision_identity');
+        }
+      }
       if (material.source_type === "ielts_practice") {
         const original = (await client.execute({ sql: "SELECT question_id,answer_text,intended_meaning_zh FROM speaking_question_attempts WHERE id=?", args: [material.source_id] })).rows[0];
         if (!original || original.question_id !== material.question_id || original.answer_text !== input.actualAnswer || original.intended_meaning_zh !== input.intendedMeaningZh) fail("answer_source_mismatch");

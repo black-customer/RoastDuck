@@ -39,6 +39,7 @@ export function createMaterialService(platform:MaterialPlatform){
   async function run(id:string,options:MaterialProcessOptions):Promise<MaterialRow>{
     let material=await get(id);
     if(material.status==="ready")return material;
+    if((JSON.parse(material.input_json) as MaterialInput).offlineRevision)throw new TrainingError('离线修订只能经独立审核后的本机发布入口继续',409,'offline_revision_required');
     if(material.contract_version!=="evidence_v2")throw new TrainingError("保留旧材料；请显式创建新版分析，不覆盖历史",409,"legacy_material");
     if(!["queued","generating","reviewing","failed"].includes(material.status))throw new TrainingError("材料已隐藏或移除，不会自动恢复",409,"material_unavailable");
     if(material.source_type==="ielts_practice"&&(await database.read(tx=>tx.all(sql`SELECT 1 FROM practice_answer_sources WHERE attempt_id=${material.source_id}`))).length){

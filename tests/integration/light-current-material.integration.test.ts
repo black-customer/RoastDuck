@@ -84,6 +84,16 @@ it('a newer pending version leaves the previous ready material available in cata
   expect(await activity.getQuestionActivity(fixture.questionId)).toMatchObject({currentMaterialId:ready.materialId,lightTotal:1,state:'learning_incomplete'});
   expect((await light.createLightSession({scope:{type:'material',id:ready.materialId},mode:'learn',clientRequestId:'ready-while-pending'},now)).card?.materialId).toBe(ready.materialId);
 });
+it('withdrawing an already-published replacement never resurrects the superseded teaching version',async()=>{
+  const fixture=await currentMaterialFixture(db,'withdraw-replacement',[['close the door','关门'],['open the door','开门']]);
+  const old=await fixture.publish('old'),current=await fixture.publish('new');
+  await stamp(old.materialId,'2026-08-04T00:00:00Z');await stamp(current.materialId,'2026-08-05T00:00:00Z');
+  await db.run(sql`UPDATE practice_materials SET status='hidden' WHERE id=${current.materialId}`);
+  expect(await sourceCards({type:'question',id:fixture.questionId},fixture.sourceId)).toEqual([]);
+  expect(await sourceCards({type:'material',id:old.materialId},fixture.sourceId)).toEqual([]);
+  expect(await light.lightOverview({type:'question',id:fixture.questionId},now)).toMatchObject({newCount:0,totalCount:0});
+  expect(await db.all(sql`SELECT * FROM practice_material_revisions WHERE material_id=${current.materialId}`)).not.toHaveLength(0);
+});
 
 it.each(['learn','review'] as const)('a superseded %s session skips its old snapshot without adding or replacing study progress',async mode=>{
   const actions=mode==='learn'?[['wipe the table','擦桌子'],['sweep the floor','扫地']] as const:[['book a flight','订机票'],['reserve a room','订房间']] as const;

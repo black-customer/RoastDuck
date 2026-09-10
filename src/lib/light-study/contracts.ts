@@ -29,6 +29,7 @@ export interface LightSource {
 export interface LightCard {
   itemId:string; materialId:string; materialHash:string; rowIndex:number; progressVersion:number;
   chinese:string; english:string; sentenceZh:string; sentenceEn:string;
+  pattern?:string;
   originalEnglish:string; reasonZh:string; sourceTitle:string; sourceHref:string; questionId:string|null;
   sourceType?:LightSource["sourceType"];sources?:LightSource[];
 }
@@ -40,7 +41,8 @@ export interface LightView {
   needsUpgrade?:boolean;historyOnly?:boolean;legacySessionId?:string;
   phase?:LightPhase|null; initialTotal?:number; initialIndex?:number;
   questionId?:string|null;
-  summary?:Array<{itemId:string;chinese:string;initialRating:LightRating;latestRating:LightRating}>;
+  nextDueAt?:string|null;
+  summary?:Array<{itemId:string;chinese:string;english?:string;initialRating:LightRating;latestRating:LightRating}>;
 }
 export interface LightOverview {
   enabled:boolean; scope:LightScope; newCount:number; dueCount:number; totalCount:number; unavailableCount:number;

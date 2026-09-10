@@ -68,7 +68,7 @@ test("全站共享蓝白 Web 框架，桌面/手机/放大无溢出，保留导�
       if (name === "workspace") await expect(page.getByLabel("可编辑的英文答案版本")).toBeVisible();
       await expect(page.locator("[data-app-shell]")).toHaveCount(1);
       await expect(page.getByRole("main")).toHaveCount(1);
-      if (width > 767) await expect(page.getByRole("navigation", { name: "主导航", exact: true })).toBeVisible();
+      if (width > 767 && name!=='home') await expect(page.getByRole("navigation", { name: "主导航", exact: true })).toBeVisible();
       else await expect(page.getByRole("button", { name: "展开或收起导航" })).toBeVisible();
       const metrics = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,

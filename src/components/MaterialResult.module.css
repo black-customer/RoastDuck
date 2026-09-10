@@ -1,0 +1,11 @@
+.statePanel { display:grid; gap:16px; padding:32px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-panel); }
+.statePanel h1 { font-size:1.65rem; font-weight:650; line-height:1.4; }
+.statePanel p { max-width:72ch; color:var(--muted-strong); line-height:1.7; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; }
+.actions a,.actions button,.error button { min-height:44px; }
+.details summary,.error summary { min-height:44px; padding-block:10px; cursor:pointer; color:var(--primary-strong); }
+.details code,.error code { overflow-wrap:anywhere; }
+.error { padding:18px 24px; margin-bottom:20px; border:1px solid var(--danger); border-radius:var(--radius-panel); color:var(--danger); }
+.error p { margin-bottom:12px; }
+.statePanel button:focus-visible,.statePanel summary:focus-visible,.error button:focus-visible,.error summary:focus-visible { outline:3px solid var(--primary); outline-offset:3px; }
+@media(max-width:600px) { .statePanel { padding:24px 18px; } .statePanel h1 { font-size:1.4rem; } }

@@ -58,7 +58,7 @@ async function lightOverview(scope:LightScope,now=options.now()):Promise<LightOv
   return database.read(async db=>{
   const {cards,progress,unavailableCount}=await createLightCatalogue(db,options.allowMock).readLightCatalogue(scope);
   const newCount=cards.filter(c=>!progress.has(c.itemId)).length;
-  const dueCount=cards.filter(c=>(progress.get(c.itemId)?.due_at??"9999")<=now.toISOString()).length;
+  const dueCount=cards.filter(c=>Date.parse(progress.get(c.itemId)?.due_at??'')<=now.getTime()).length;
   const rows=await db.all<SessionRow>(sql`SELECT * FROM light_study_sessions WHERE scope_key=${scopeKey(scope)} AND status IN ('active','paused') AND ${notSuperseded} AND ${localOwnerFilter('light_study_sessions','light_study_sessions.id')} ORDER BY julianday(updated_at) DESC,id`);
   const resumable:LightOverview["resumable"]={};
   const eligibleIds=availableSnapshotKeys(cards);
@@ -98,7 +98,7 @@ async function createLightSession(raw:unknown,now=options.now()):Promise<LightVi
       await assertLocalOwnership(tx,'light_study_sessions',requested.id);
       if(active&&active.id!==requested.id&&active.experience_version==='light_study_v2'&&active.status==='active'){
         const link=await findSuccession(tx,requested.id);
-        if(link?.current_session_id!==active.id)throw new LightStudyError('这个范围已有正在进行的学习，请从首页继续当前一组',409,'session_in_use');
+        if(link?.current_session_id!==active.id&&requested.status!=='completed')await tx.run(sql`UPDATE light_study_sessions SET status='paused',version=version+1,updated_at=${now.toISOString()} WHERE id=${active.id}`);
       }
       if(requested.experience_version==='light_study_v1'&&requested.status!=='completed')id=await continueLegacy(tx,requested,now,options.allowMock);
       else id=requested.id;
@@ -113,8 +113,8 @@ async function createLightSession(raw:unknown,now=options.now()):Promise<LightVi
       if(!id){
       if(!options.enabled())throw new LightStudyError("轻松学暂未开放新批次，已有记录仍可恢复",503,"light_study_disabled");
       const progress=new Map((await tx.all<ProgressRow>(sql`SELECT * FROM light_study_progress`)).map(p=>[p.learning_item_id,p]));
-      const candidates=catalogue.cards.filter(c=>input.mode==="learn"?!progress.has(c.itemId):(progress.get(c.itemId)?.due_at??"9999")<=now.toISOString());
-      if(input.mode==="review")candidates.sort((a,b)=>progress.get(a.itemId)!.due_at.localeCompare(progress.get(b.itemId)!.due_at)||a.itemId.localeCompare(b.itemId));
+      const candidates=catalogue.cards.filter(c=>input.mode==="learn"?!progress.has(c.itemId):Date.parse(progress.get(c.itemId)?.due_at??'')<=now.getTime());
+      if(input.mode==="review")candidates.sort((a,b)=>Date.parse(progress.get(a.itemId)!.due_at)-Date.parse(progress.get(b.itemId)!.due_at)||a.itemId.localeCompare(b.itemId));
       const cards=candidates.slice(0,5).map(c=>({...c,progressVersion:progress.get(c.itemId)?.version??0}));
       if(!cards.length)throw new LightStudyError(input.mode==="review"?"这个范围暂时没有到期表达":"这个范围暂时没有新的可学表达",409,"nothing_available");
       id=`light_${options.newId()}`;

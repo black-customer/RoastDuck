@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuestionListItem } from "@/lib/questions/service";
 import { InteractiveEnglishText } from "./InteractiveEnglishText";
 import { LookupCard } from "./LookupCard";
+import styles from "./QuestionViews.module.css";
 
 interface QuestionSetSummary {
   id: string;
@@ -60,6 +61,8 @@ export function QuestionLibrary() {
   const [error, setError] = useState("");
   const [lookupId, setLookupId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [masteryBusy, setMasteryBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
 
   const updateFilters = useCallback((updates: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -108,31 +111,19 @@ export function QuestionLibrary() {
   }), [searchParams]);
 
   async function toggleMastery(questionId: string, currentMastered: boolean) {
-    setData((prev) => ({
-      ...prev,
-      items: prev.items.map((q) => {
-        if (q.id !== questionId) return q;
-        const nextMastered = !currentMastered;
-        return {
-          ...q,
-          isMastered: nextMastered,
-          state: nextMastered ? "mastered" : (q.fourStepCompletedAt ? "learning_completed" : "learning_incomplete"),
-          stateLabel: nextMastered ? "自评已掌握" : (q.fourStepCompletedAt ? "已完成学习" : "未完成学习"),
-        };
-      }),
-    }));
-
+    if (masteryBusy) return;
+    setMasteryBusy(questionId); setError(""); setNotice("");
     try {
       const response = await fetch(`/api/questions/${encodeURIComponent(questionId)}/mastery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mastered: !currentMastered }),
       });
-      if (!response.ok) throw new Error("更新掌握状态失败");
-    } catch (err) {
-      console.error(err);
-      setReloadKey((k) => k + 1);
-    }
+      if (!response.ok) throw new Error("自评状态未保存，请重试。");
+      setNotice(currentMastered ? "已取消这道题的自评掌握，学习记录仍保留。" : "已标为自评已掌握；这不代表客观或跨日验证。");
+      setReloadKey((value) => value + 1);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "自评状态未保存，请重试。");
+    } finally { setMasteryBusy(null); }
   }
 
   async function openRandomQuestion() {
@@ -209,8 +200,8 @@ export function QuestionLibrary() {
               <select value={active.status} onChange={(event) => updateFilters({ status: event.target.value })}>
                 <option value="all">全部状态</option>
                 <option value="unanswered">未作答</option>
-                <option value="learning_incomplete">未完成学习</option>
-                <option value="learning_completed">已完成学习</option>
+                <option value="learning_incomplete">有新表达待学</option>
+                <option value="learning_completed">已过首轮（非掌握）</option>
                 <option value="mastered">自评已掌握</option>
               </select>
             </label>
@@ -236,6 +227,7 @@ export function QuestionLibrary() {
           </div>
         ) : null}
 
+        {notice && <p className={styles.notice} role="status">{notice}</p>}
         <section className="question-results" aria-live="polite" aria-busy={loading}>
           {loading ? (
             <div className="question-list-skeleton" aria-label="题目加载中">{[0, 1, 2, 3].map((value) => <span key={value} />)}</div>
@@ -246,63 +238,18 @@ export function QuestionLibrary() {
                   <div className="question-row-meta">
                     <span>Part {question.part}</span>
                     <span>{question.topicZh || question.topicEn || "未分类话题"}</span>
-                    {question.state === "mastered" ? (
-                      <span className="is-mastered" style={{ color: "#16a34a", fontWeight: 600 }}>🌟 自评已掌握</span>
-                    ) : question.state === "learning_completed" ? (
-                      <span className="is-complete" style={{ color: "#2563eb", fontWeight: 500 }}>✅ 已完成学习</span>
-                    ) : question.state === "learning_incomplete" ? (
-                      <span className="is-learning" style={{ color: "var(--warning)", fontWeight: 500 }}>📖 未完成学习</span>
-                    ) : (
-                      <span className="is-unanswered" style={{ color: "#64748b" }}>未作答</span>
-                    )}
-                    {question.daysSinceReview != null && question.state !== "unanswered" ? (
-                      <span
-                        className="review-badge"
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "2px 7px",
-                          borderRadius: "9999px",
-                          fontWeight: 500,
-                          backgroundColor: question.daysSinceReview >= 3 ? "#fee2e2" : "#f1f5f9",
-                          color: question.daysSinceReview >= 3 ? "#dc2626" : "#475569",
-                        }}
-                      >
-                        {question.daysSinceReview === 0 ? "今天已练" : `${question.daysSinceReview} 天未复习`}
-                      </span>
-                    ) : null}
+                    <span className={question.state === "mastered" ? styles.selfAssessed : styles.questionState}>{question.stateLabel}</span>
+                    {question.daysSinceReview != null && question.state !== "unanswered" && <span className={styles.lastActivity}>{question.daysSinceReview === 0 ? "今天有练习记录" : `上次练习 ${question.daysSinceReview} 天前`}</span>}
                     {question.repeatedGapCount ? <span>{question.repeatedGapCount} 个重复问题</span> : null}
                   </div>
                   {question.textEn.trim() ? <InteractiveEnglishText content={question.interactiveQuestion} onLookup={setLookupId} className="question-row-title" /> : <p className="question-row-title">历史回答 · 原始问句缺失</p>}
-                  <p className="question-row-translation">{question.textZh || "中文题干正在补全；英文原题与来源可正常使用。"}</p>
+                  <p className="question-row-translation">{question.textZh || "此题暂缺中文题干，可直接使用英文原题。"}</p>
                   <div className="question-row-footer">
                     <p>{question.setNames.join(" · ") || "个人题目"} · {question.answerCount ? `${question.answerCount} 次回答` : `${question.sourceCount} 个来源`}</p>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
-                      {question.answerCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => void toggleMastery(question.id, question.isMastered)}
-                          style={{
-                            fontSize: "0.8rem",
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            border: question.isMastered ? "1px solid #86efac" : "1px solid #cbd5e1",
-                            backgroundColor: question.isMastered ? "#f0fdf4" : "#ffffff",
-                            color: question.isMastered ? "#16a34a" : "#64748b",
-                            cursor: "pointer",
-                            fontWeight: 500,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                          title={question.isMastered ? "取消自评掌握" : "自评为已掌握（不代表跨日验证）"}
-                        >
-                          {question.isMastered ? "✓ 自评已掌握" : "自评掌握"}
-                        </button>
-                      ) : null}
-                      <Link href={`/questions/${encodeURIComponent(question.id)}`} className="question-open-link">
-                        {question.state === "learning_incomplete" ? "进入 4 步强化" : question.answerCount ? "查看/复习" : "查看并回答"}
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      </Link>
+                    <div className={styles.rowActions}>
+                      {question.answerCount > 0 && <button type="button" className={styles.selfAssessButton} disabled={!!masteryBusy} aria-pressed={question.isMastered} onClick={() => void toggleMastery(question.id, question.isMastered)} title={question.isMastered ? "取消自评掌握" : "自评为已掌握（不代表跨日验证）"}>{masteryBusy === question.id ? "正在保存…" : question.isMastered ? "取消自评掌握" : "自评掌握"}</button>}
+                      {question.primaryAction.href !== `/questions/${encodeURIComponent(question.id)}` && <Link href={`/questions/${encodeURIComponent(question.id)}`} className={styles.detailLink}>查看题目</Link>}
+                      {question.primaryAction.href ? <Link href={question.primaryAction.href} className="question-open-link">{question.primaryAction.label}<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></Link> : <span className={styles.questionState}>{question.primaryAction.label}</span>}
                     </div>
                   </div>
                 </li>

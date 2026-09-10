@@ -9,5 +9,5 @@ export default async function LightStudyPage({searchParams}:{searchParams:Promis
   let error=parsed.success?undefined:"学习范围不正确，请返回首页重新进入。";
   const sessionId=typeof params.session==="string"?params.session:undefined;
   if(sessionId)try{scope=(await getLightView(sessionId)).scope;error=undefined;}catch{error="暂时无法恢复这组学习，原记录没有被清空。";}
-  return <LightStudy key={JSON.stringify(scope)+sessionId} scope={scope} initialError={error} initialSessionId={sessionId} initialMode={params.mode==='review'?'review':undefined} />;
+  return <LightStudy scope={scope} initialError={error} initialSessionId={sessionId} initialMode={params.mode==='review'?'review':params.mode==='learn'?'learn':undefined} />;
 }

@@ -38,7 +38,7 @@ function project(row:V2Row,round:LightRound,cards:LightCard[],unavailable:string
   return {id:row.id,scope:JSON.parse(row.scope_json) as LightScope,mode:row.mode,status:row.status,version:row.version,
     index:round.cursor,total:round.queue.length,revealed:round.revealed,card:unavailable?null:current(round,cards)??null,nextCard:null,
     unavailable,notice,experienceVersion:"light_study_v2",phase:occurrence?.phase??null,initialTotal:round.initialCount,
-    initialIndex:occurrence?.sourceIndex??round.initialCount,questionId:cards[0]?.questionId??null,summary};
+    initialIndex:occurrence?.sourceIndex??round.initialCount,questionId:cards.length&&cards.every(card=>card.questionId===cards[0].questionId)?cards[0].questionId:null,summary};
 }
 export function createV2LightService(database:DatabasePort,allowMock=false) {
 async function getV2LightView(id:string,notice:string|null=null):Promise<LightView> {
@@ -47,6 +47,20 @@ async function getV2LightView(id:string,notice:string|null=null):Promise<LightVi
   const row=await readRow(db,id),{round,cards}=decode(row),card=current(round,cards);
   const unavailable=card ? !consolidationIsEligible(round)?"间隔还不够，留到下次复习。":await snapshotAvailability(card) : null;
   const view=project(row,round,cards,unavailable,notice);
+  if(row.status==='completed'){
+    const catalogue=await createLightCatalogue(db,allowMock).readLightCatalogue(view.scope);
+    const eligible=new Map(catalogue.cards.map(card=>[card.itemId,card]));
+    view.summary=await Promise.all((view.summary??[]).map(async item=>{
+      const snapshot=cards.find(card=>card.itemId===item.itemId)!;
+      try{
+        const source=await createLightCatalogue(db,allowMock).readLightCatalogue({type:'material',id:snapshot.materialId});
+        const live=source.cards.find(card=>card.itemId===item.itemId&&card.rowIndex===snapshot.rowIndex&&card.materialHash===snapshot.materialHash);
+        return {...item,english:live?snapshot.english:undefined};
+      }catch(error){if(error instanceof LightStudyError&&error.status===404)return {...item,english:undefined};throw error;}
+    }));
+    const due=view.summary?.flatMap(item=>eligible.has(item.itemId)&&catalogue.progress.has(item.itemId)?[catalogue.progress.get(item.itemId)!.due_at]:[]).sort();
+    view.nextDueAt=due?.[0]??null;
+  }
   const next=current(round,cards,round.cursor+1);
   if(row.status!=="completed"&&next&&!await snapshotAvailability(next))view.nextCard=next;
   return view;

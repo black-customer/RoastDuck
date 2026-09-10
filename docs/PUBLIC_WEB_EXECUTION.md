@@ -1,5 +1,7 @@
 # 网页执行契约：个人表达覆盖与低阻力学习
 
+后续网页优化以 [WEB_SIMPLICITY](WEB_SIMPLICITY.md) 为先：新增极简首页、活动记录与 personal-spoken-v2；此文保留已交付公开快照及兼容事实，本轮不再次上传。
+
 状态：现行；2026-09-08 PO批准。替代WEB_USABILITY中冲突的旧默认与冻结公开条款，其他可靠性约束继续有效。完成事实只看PROJECT_STATUS。
 
 ## 本轮顺序

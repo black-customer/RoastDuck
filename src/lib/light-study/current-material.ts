@@ -2,7 +2,9 @@
 export const currentReadyMaterialPredicate=`NOT EXISTS (
   SELECT 1 FROM practice_materials newer
   WHERE newer.source_type=pm.source_type AND newer.source_id=pm.source_id
-    AND newer.contract_version='evidence_v2' AND newer.status='ready'
+    AND newer.contract_version='evidence_v2' AND (newer.status='ready' OR EXISTS (
+      SELECT 1 FROM practice_material_revisions published WHERE published.material_id=newer.id
+    ))
     AND (julianday(newer.created_at)>julianday(pm.created_at)
       OR julianday(newer.created_at)=julianday(pm.created_at) AND newer.id>pm.id)
 )`;

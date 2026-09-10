@@ -73,6 +73,7 @@ test("保存失败时计时不会覆盖原操作，刷新后以同一事件重�
   await setup(page);await page.clock.install();
   await page.goto("/light-study?scope=question&id=light-e2e-recovery");
   await page.getByRole("button",{name:"开始复习",exact:true}).click();
+  await expect(page.getByRole('region',{name:'当前表达'})).toBeVisible();
   await page.getByText("播放与揭晓设置",{exact:true}).click();
   await page.getByRole("checkbox",{name:"五秒自动揭晓"}).check();
   await page.clock.fastForward(4000);
@@ -90,10 +91,9 @@ test("保存失败时计时不会覆盖原操作，刷新后以同一事件重�
   await expect(page.getByRole("button",{name:"揭晓表达",exact:true})).toBeDisabled();
   expect(events.map(e=>e.type)).toEqual(["pause"]);
   await page.reload();
-  await expect(page.getByRole("button",{name:"重试保存"})).toBeVisible();
-  await page.clock.fastForward(6000);expect(events.map(e=>e.type)).toEqual(["pause"]);
-  await page.getByRole("button",{name:"重试保存"}).click();
   await expect(page.getByRole("heading",{name:"位置已保存"})).toBeVisible();
+  await expect(page.getByRole('button',{name:'重试保存'})).toHaveCount(0);
+  await page.clock.fastForward(6000);
   expect(events.map(e=>e.type)).toEqual(["pause","pause"]);
   expect(events[0].clientEventId).toBe(events[1].clientEventId);
   await page.getByRole("button",{name:"继续上次位置"}).click();
@@ -181,8 +181,10 @@ test("V2五项新学最多再见三次，失败不强制循环，揭晓/移动�
 
 test("入口、无材料、无到期和错误范围明确；打开页面不创建训练",async({page,request})=>{
   await setup(page);const before=await readCounts();
-  await page.goto("/");await expect(page.getByRole("link",{name:"选择学习范围"})).toHaveAttribute("href","/light-study");
-  await page.goto("/questions/light-e2e-new");await expect(page.getByRole("link",{name:"轻松学本题"})).toHaveAttribute("href",/scope=question/);
+  await page.goto("/");await expect(page.getByRole("heading",{name:"我的学习记录"})).toBeVisible();
+  await page.goto("/questions/light-e2e-new");
+  await page.getByText('更多练习与回顾',{exact:true}).click();
+  await expect(page.getByRole("link",{name:/轻松学本题|继续轻松学/})).toHaveAttribute("href",/scope=question/);
   const {attempts}=await(await request.get("/api/speaking-practice/questions/light-e2e-new/attempts")).json();
   await page.goto(`/questions/light-e2e-new/attempts/${attempts[0].id}`);
   await expect(page.getByRole("link",{name:"轻松学本次表达"})).toHaveAttribute("href",/scope=material/);

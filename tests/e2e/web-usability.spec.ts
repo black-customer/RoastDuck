@@ -27,8 +27,9 @@ test('服务器不可用时先展示本机救援文字，不用空白覆盖',asy
 });
 test('当前材料可查找收藏、隐藏及恢复，隐藏不更新学习进度',async({page,request})=>{
   const {items}=await(await request.get('/api/expressions?scope=question&id=light-e2e-weak&includeHidden=1')).json(),item=items[0];
-  await page.goto('/review-content');await page.getByPlaceholder('搜索中文或英文表达').fill(item.english);const card=page.locator('.expression-row').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
-  await card.getByRole('button',{name:'收藏',exact:true}).click();await expect(card.getByRole('button',{name:'取消收藏',exact:true})).toBeVisible();
-  await card.getByRole('button',{name:'暂不学',exact:true}).click();await expect(card).toHaveCount(0);await page.getByLabel('表达范围').selectOption('hidden');await expect(card).toBeVisible();await card.getByRole('button',{name:'恢复学习',exact:true}).click();await page.getByLabel('表达范围').selectOption('all');await expect(card).toBeVisible();
+  await page.goto('/review-content');await page.getByPlaceholder('搜索中文或英文表达').fill(item.english);const card=page.getByTestId('expression-row').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
+  await card.getByText('说明、来源与管理',{exact:true}).click();
+  await card.getByRole('button',{name:'收藏',exact:true}).click();await expect(card.getByRole('button',{name:'已收藏',exact:true})).toBeVisible();
+  await card.getByRole('button',{name:'暂不学',exact:true}).click();await expect(card).toHaveCount(0);await page.locator('summary').filter({hasText:/^筛选表达/}).click();await page.getByLabel('表达范围').selectOption('hidden');await expect(card).toBeVisible();await card.getByText('说明、来源与管理',{exact:true}).click();await card.getByRole('button',{name:'恢复学习',exact:true}).click();await page.getByLabel('表达范围').selectOption('all');await expect(card).toBeVisible();
   const overview=(await(await request.get('/api/light-study/overview?scope=question&id=light-e2e-weak')).json()).overview;expect(overview.totalCount).toBe(5);
 });

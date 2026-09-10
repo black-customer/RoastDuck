@@ -85,3 +85,21 @@ it("withdrawn material does not count as exposure or as one of the intervening e
   expect(await db.all(sql`SELECT * FROM light_study_progress WHERE learning_item_id=${itemId}`)).toHaveLength(0);
   expect(view.summary).toHaveLength(4);
 });
+it('completed summaries retain their original cue/answer pair; changed material is not silently substituted',async()=>{
+  let view=await create('summary-binding');const first=view.card!;
+  while(view.status==='active')view=await rate(view,'remembered');
+  expect(view.summary?.find(item=>item.itemId===first.itemId)).toMatchObject({chinese:first.chinese,english:first.english});
+  expect(view.nextDueAt).toBeTruthy();
+  await db.run(sql`UPDATE practice_materials SET status='hidden' WHERE id=${first.materialId}`);
+  const changed=await service.getLightView(view.id);
+  expect(changed.summary?.find(item=>item.itemId===first.itemId)).toMatchObject({chinese:first.chinese,english:undefined});
+  expect(changed.status).toBe('completed');
+});
+it('explicitly resuming a paused group does not substitute a different active group in the same scope',async()=>{
+  const original=await create('explicit-source');
+  await db.run(sql`INSERT INTO light_study_sessions(id,scope_key,scope_json,mode,status,version,cursor,revealed,queue_json,experience_version,round_json,created_at,updated_at)
+    SELECT 'explicit-paused',scope_key,scope_json,mode,'paused',version,cursor,revealed,queue_json,experience_version,round_json,created_at,updated_at FROM light_study_sessions WHERE id=${original.id}`);
+  const resumed=await service.createLightSession({scope,mode:'learn',clientRequestId:'explicit-resume',resumeSessionId:'explicit-paused'},now);
+  expect(resumed.id).toBe('explicit-paused');expect(resumed.status).toBe('active');
+  expect((await service.getLightView(original.id)).status).toBe('paused');
+});

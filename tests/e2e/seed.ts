@@ -209,7 +209,7 @@ function annotate(contentType: "example" | "question", contentId: string, text: 
 
 for (const fixture of fixtures) annotate("example", `example_${fixture.id}`, fixture.sentence, fixture);
 annotate("question", "question_e2e_habits", "What helps you study effectively?");
-for(const questionId of ["light-e2e-new","light-e2e-review","light-e2e-recovery","light-e2e-weak"]) annotate("question",questionId,"What would you like to do?");
+for(const questionId of ["light-e2e-home","light-e2e-new","light-e2e-review","light-e2e-recovery","light-e2e-weak"]) annotate("question",questionId,"What would you like to do?");
 await db.insert(schema.lexemes).values([...lexemeRows.values()]);
 await db.insert(schema.textAnnotations).values(annotationRows);
 
@@ -230,6 +230,7 @@ const light = await import("../../src/lib/light-study/service");
 // Old-enough real self-rating fixture: do not assume all first ratings have a 24h interval.
 const earlier = new Date(Date.now()-14*86400000);
 await publishLightFixture(db,"light-e2e-recovery-0","make an appointment","预约","light-e2e-recovery");
+await publishLightFixture(db,"light-e2e-home-0","open the window","打开窗户","light-e2e-home");
 let introduction = await light.createLightSession({scope:{type:"question",id:"light-e2e-review"},mode:"learn",clientRequestId:"e2e-seed-exposure"},earlier);
 while(introduction.status==="active") {
   introduction=await light.applyLightEvent(introduction.id,{type:"reveal",clientEventId:`e2e-seed-show-${introduction.index}`,version:introduction.version},earlier);
@@ -239,5 +240,5 @@ let recoveryIntro=await light.createLightSession({scope:{type:"question",id:"lig
 recoveryIntro=await light.applyLightEvent(recoveryIntro.id,{type:"reveal",clientEventId:"e2e-seed-recovery-show",version:recoveryIntro.version},earlier);
 if((await light.applyLightEvent(recoveryIntro.id,{type:"rate",rating:"remembered",clientEventId:"e2e-seed-recovery-next",version:recoveryIntro.version},earlier)).status!=="completed")throw new Error("恢复夹具未完成初次接触");
 const lightOverview = await light.lightOverview({type:"all"});
-if(lightOverview.totalCount!==14 || lightOverview.newCount!==10 || lightOverview.dueCount!==4) throw new Error("轻学习E2E夹具未完整准备");
-console.log("轻学习隔离材料已核验：14项，其中10项新学、4项到期；Runtime调用0。");
+if(lightOverview.totalCount!==15 || lightOverview.newCount!==11 || lightOverview.dueCount!==4) throw new Error("轻学习E2E夹具未完整准备");
+console.log("轻学习隔离材料已核验：15项，其中11项新学、4项到期；Runtime调用0。");

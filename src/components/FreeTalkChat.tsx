@@ -7,6 +7,7 @@ import type {LightAudioState} from '@/lib/light-study/audio';
 import { VoiceSelector } from "./VoiceSelector";
 import { IeltsTopicDrawer, type IeltsQuestionItem } from "./IeltsTopicDrawer";
 import {MaterialResult} from './MaterialResult';
+import styles from './FreeTalkChat.module.css';
 
 interface ConversationSummary {
   id: string;
@@ -100,6 +101,10 @@ export function FreeTalkChat({
   const [expandedTranslations, setExpandedTranslations] = useState<Record<string, boolean>>({});
   const createRequest=useRef<string|null>(null);
   const [rangeStart,setRangeStart]=useState(''),[rangeEnd,setRangeEnd]=useState('');
+  const [conversationListOpen, setConversationListOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reviewRangeOpen, setReviewRangeOpen] = useState(false);
+  const candidateDialog = useRef<HTMLDialogElement>(null);
 
   const epochRef = useRef(0);
   const invalidateRequests = useCallback(() => { epochRef.current++; }, []);
@@ -115,6 +120,7 @@ export function FreeTalkChat({
     drafts.current[currentId] = input;
     releaseRecognition(); getTTS().stop();
     setRangeStart('');setRangeEnd('');setSpeechState(null);
+    setConversationListOpen(false); setReviewRangeOpen(false);
     setCurrentId(id); setMode(nextMode); setMessages([]); setInput(drafts.current[id] ?? ""); setError(""); setListening(false); setSpeakingMsgId(null); setBusy(pendingConversations.current.has(id));
   }
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -275,7 +281,7 @@ export function FreeTalkChat({
   const capturedGaps = messages.flatMap((m) => m.metadata.gaps ?? []);
   const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
   const [preparingReview, setPreparingReview] = useState(false);
-  async function startFourStepMastery() {
+  async function startMaterialReview() {
     if (!currentId || preparingReview) return;
     const generation = epochRef.current;
     setPreparingReview(true); setError("");
@@ -297,372 +303,125 @@ export function FreeTalkChat({
 
   if (activeMaterialId) return <><button className="exit-button" onClick={()=>setActiveMaterialId(null)}>← 返回聊天</button><MaterialResult id={activeMaterialId}/></>;
 
+  const hasUserMessages = messages.some((message) => message.role === "user");
+  const canReview = hasUserMessages && !busy && !loadingMessages && !preparingReview;
+
   return (
-    <div className="freetalk-shell">
-      {/* Sidebar: Conversation List */}
-      <aside className="freetalk-sidebar">
-        <div className="freetalk-sidebar-header">
-          <h2>Free Talk</h2>
-          <button
-            type="button"
-            className="primary-button new-conv-btn"
-            onClick={() => void handleCreateConversation(mode)}
-          >
-            + 新建对话
-          </button>
-        </div>
-
-        <div className="conv-list">
-          {conversations.map((conv) => (
-            <button
-              key={conv.id}
-              type="button"
-              className={`conv-item ${conv.id === currentId ? "is-active" : ""}`}
-              onClick={() => {
-                selectConversation(conv.id, conv.mode);
-              }}
-            >
-              <div className="conv-item-title">{conv.title}</div>
-              <div className="conv-item-meta">
-                <span className={`mode-badge ${conv.mode}`}>
-                  {conv.mode === "strict" ? "Strict" : "Relaxed"}
-                </span>
-                <span className="conv-item-date">
-                  {new Date(conv.updatedAt).toLocaleDateString()}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      {/* Main Chat Area */}
-      <section className="freetalk-main" aria-label="与 Chloe 对话">
-        {/* Header with Mode Toggle, WeChat typing status, Topic Picker, Voice Selector */}
-        <header className="freetalk-header">
-          <div className="header-info">
-            <div className="header-title-row">
-              <h1>AI Free Talk · 口语对练伙伴</h1>
-              {busy ? (
-                <div className="wechat-typing-status" aria-live="polite">
-                  <span className="typing-text">Chloe 正在输入</span>
-                  <span className="typing-dots">
-                    <span className="dot dot-1">.</span>
-                    <span className="dot dot-2">.</span>
-                    <span className="dot dot-3">.</span>
-                  </span>
-                </div>
-              ) : null}
+    <div className={styles.shell}>
+      <section className={styles.main} data-testid="freetalk-main" aria-label="与 Chloe 对话">
+        <header className={styles.header}>
+          <div className={styles.titleRow}>
+            <div>
+              <h1>与 Chloe 聊聊</h1>
+              <p>中文、英文或混合都可以，聊完再整理想学的表达。</p>
             </div>
-            <p className="freetalk-mode-desc">
-              {mode === "relaxed"
-                ? "【轻松畅聊模式】：注重对话流动。卡壳说中文或表达不自然时，AI 会在自然回复中以地道英语顺带纠错（Recast），对话不中断，后台保留待复盘候选。"
-                : "【精练纠错模式】：注重强化吸收。出现关键表达卡壳时，AI 会稍作停留教学，并请你复述一次正确表达，确认准确后再继续交流。"}
-            </p>
+            {busy && <span className={styles.status} role="status">正在等待 Chloe 回复…</span>}
           </div>
-          <div className="header-controls">
-            <div className="freetalk-conversation-switcher">
-              <select aria-label="当前对话" value={currentId} onChange={(event) => { const conv = conversations.find((item) => item.id === event.target.value); if (conv) selectConversation(conv.id, conv.mode); }}>
-                {!currentId && <option value="">请选择或新建对话</option>}
-                {conversations.map((conv) => <option key={conv.id} value={conv.id}>{conv.title}</option>)}
-              </select>
-              <button className="secondary-button" disabled={busy} onClick={() => void handleCreateConversation(mode)}>新建对话</button>
-            </div>
-            <button
-              type="button"
-              className="primary-button freetalk-mastery-btn"
-              onClick={startFourStepMastery}
-              disabled={busy || preparingReview || !messages.some((m) => m.role === "user")}
-              title="复盘本轮对话沉淀的表达并进入 4 步强化营"
-              style={{
-                backgroundColor: capturedGaps.length > 0 ? "var(--color-primary-600, #4f46e5)" : "#64748b",
-                color: "#ffffff",
-                fontWeight: 600,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>🎯 复盘本轮表达</span>
-              {capturedGaps.length > 0 ? (
-                <span
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.25)",
-                    padding: "1px 6px",
-                    borderRadius: "9999px",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  {capturedGaps.length}
-                </span>
-              ) : null}
+          <div className={styles.toolbar}>
+            <button type="button" className="secondary-button" aria-expanded={conversationListOpen} aria-controls="conversation-history" onClick={() => { setConversationListOpen(!conversationListOpen); setSettingsOpen(false); }}>
+              {conversationListOpen ? "收起历史" : "历史对话"}
             </button>
-            <button
-              type="button"
-              className="secondary-button topic-drawer-btn"
-              onClick={() => setIsTopicDrawerOpen(true)}
-              title="浏览雅思口语题库或随机抽题展开讨论"
-            >
-              🎯 雅思题库
+            <button type="button" className="secondary-button" disabled={busy || preparingReview} onClick={() => void handleCreateConversation(mode)}>新建对话</button>
+            <button type="button" className="secondary-button" aria-expanded={settingsOpen} aria-controls="conversation-settings" onClick={() => { setSettingsOpen(!settingsOpen); setConversationListOpen(false); }}>
+              对话设置
             </button>
-            <VoiceSelector compact />
-            <div className="mode-toggle-group">
-              <button
-                type="button"
-                className={`mode-toggle-btn ${mode === "relaxed" ? "active" : ""}`}
-                onClick={() => setMode("relaxed")}
-              >
-                Relaxed (轻松)
-              </button>
-              <button
-                type="button"
-                className={`mode-toggle-btn ${mode === "strict" ? "active" : ""}`}
-                onClick={() => setMode("strict")}
-              >
-                Strict (精练)
-              </button>
-            </div>
+            <button type="button" className="primary-button" aria-expanded={reviewRangeOpen} aria-controls="conversation-review-range" disabled={!canReview} onClick={() => { setReviewRangeOpen(!reviewRangeOpen); setConversationListOpen(false); setSettingsOpen(false); }}>
+              {preparingReview ? "正在准备材料…" : "复盘本轮表达"}
+            </button>
           </div>
+          {conversationListOpen && <nav id="conversation-history" className={styles.history} aria-label="历史对话">
+            {conversations.length ? conversations.map((conversation) => (
+              <button key={conversation.id} type="button" aria-current={conversation.id === currentId ? "true" : undefined} onClick={() => selectConversation(conversation.id, conversation.mode)}>
+                <span>{conversation.title}</span>
+                <small>{conversation.mode === "strict" ? "精练" : "轻松"} · {new Date(conversation.updatedAt).toLocaleDateString("zh-CN")}</small>
+              </button>
+            )) : <p>还没有对话。新建一段对话后，就可以开始聊。</p>}
+          </nav>}
+          {settingsOpen && <div id="conversation-settings" className={styles.settings}>
+            <div>
+              <h2>声音与模式</h2>
+              <VoiceSelector />
+            </div>
+            <div className={styles.modeOptions} aria-label="对话模式">
+              <button type="button" aria-pressed={mode === "relaxed"} onClick={() => setMode("relaxed")}>轻松畅聊</button>
+              <button type="button" aria-pressed={mode === "strict"} onClick={() => setMode("strict")}>精练纠错</button>
+            </div>
+            <p>{mode === "relaxed" ? "先把对话聊下去。遇到不会说的意思可以用中文，之后再复盘。" : "Chloe 会针对关键表达给出建议，并邀请你复述。可以随时切回轻松畅聊。"}</p>
+            <button type="button" className="secondary-button" disabled={!currentId || busy || loadingMessages} onClick={() => setIsTopicDrawerOpen(true)}>选择一道雅思话题</button>
+          </div>}
+          {reviewRangeOpen && <section id="conversation-review-range" className={styles.reviewRange} aria-label="选择复盘消息">
+            <h2>这次复盘哪些消息？</h2>
+            <p>默认最近 12 条，最多 24 条。确认范围后开始整理材料。</p>
+            <div className={styles.rangeFields}>
+              <label>从
+                <select value={rangeStart} onChange={(event) => setRangeStart(event.target.value)}>
+                  <option value="">最近 12 条的起点</option>
+                  {messages.map((message) => <option key={message.id} value={message.id}>{message.role === "user" ? "我" : "Chloe"}：{message.text.slice(0, 45)}</option>)}
+                </select>
+              </label>
+              <label>到
+                <select value={rangeEnd} onChange={(event) => setRangeEnd(event.target.value)}>
+                  <option value="">最新消息</option>
+                  {messages.map((message) => <option key={message.id} value={message.id}>{message.role === "user" ? "我" : "Chloe"}：{message.text.slice(0, 45)}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className={styles.actions}>
+              <button type="button" className="primary-button" disabled={!canReview} onClick={() => void startMaterialReview()}>{preparingReview ? "正在准备材料…" : "确认范围，开始复盘"}</button>
+              <button type="button" className="secondary-button" disabled={preparingReview} onClick={() => setReviewRangeOpen(false)}>继续聊天</button>
+            </div>
+          </section>}
         </header>
 
-        {error ? (
-          <div className="error-banner" role="alert">
-            <span>{error}</span>
-            <button type="button" onClick={() => setError("")}>
-              关闭
-            </button>
-          </div>
-        ) : null}
+        {error && <div className={styles.error} role="alert"><span>{error}</span><button type="button" onClick={() => setError("")}>关闭提示</button></div>}
 
-        <details className="recap-range"><summary>选择复盘的消息范围（默认最近 12 条）</summary><label>从<select value={rangeStart} onChange={e=>setRangeStart(e.target.value)}><option value="">默认起点</option>{messages.map(m=><option key={m.id} value={m.id}>{m.role==='user'?'我':'Chloe'}：{m.text.slice(0,45)}</option>)}</select></label><label>到<select value={rangeEnd} onChange={e=>setRangeEnd(e.target.value)}><option value="">最新消息</option>{messages.map(m=><option key={m.id} value={m.id}>{m.role==='user'?'我':'Chloe'}：{m.text.slice(0,45)}</option>)}</select></label><p>最多 24 条。只对所选真实消息复盘，不拼造你的回答。</p></details>
-        {/* Message Stream */}
-        <div className="freetalk-messages">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`msg-row ${msg.role === "user" ? "user-row" : "assistant-row"}`}
-            >
-              <div className="msg-bubble">
-                <div className="msg-header">
-                  <span className="msg-author">
-                    {msg.role === "user" ? "You" : "Chloe (AI)"}
-                  </span>
-                  {msg.role === "assistant" ? (
-                    <div className="msg-action-btns">
-                      <button
-                        type="button"
-                        className="tts-btn"
-                        onClick={() =>
-                          speakingMsgId === msg.id
-                            ? stopAudio()
-                            : playAudio(msg.id, msg.text)
-                        }
-                      >
-                        {speakingMsgId === msg.id ? "⏹ 停止" : "🔊 朗读"}
-                      </button>
-                      <button
-                        type="button"
-                        className={`translate-btn ${expandedTranslations[msg.id] ? "is-active" : ""}`}
-                        onClick={() =>
-                          setExpandedTranslations((prev) => ({
-                            ...prev,
-                            [msg.id]: !prev[msg.id],
-                          }))
-                        }
-                      >
-                        {expandedTranslations[msg.id] ? "收起翻译" : "文 翻译"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="msg-content" lang={msg.role === "assistant" ? "en" : undefined}>
-                  {msg.text}
-                </div>
-                {speechState?.id===msg.id&&<div className="speech-control-status" role="status">{speechState.state.message}{['result_unknown','invalid_audio'].includes(speechState.state.errorCode??'')&&<button type="button" onClick={()=>{if(window.confirm('重新合成此回复可能再次使用 MiMo 余额，继续？'))playAudio(msg.id,msg.text,true);}}>重新生成此声音</button>}</div>}
-
-                {msg.role === "user" && ["failed", "pending"].includes(msg.metadata.deliveryStatus ?? "") && <div role="status"><p>{msg.metadata.deliveryStatus === "pending" ? "正在等待回复，原文已保存。" : "回复未完成，原文已保留。"}</p><button className="secondary-button" disabled={busy} onClick={() => void sendDirectMessage(msg.text, msg)}>原地重试</button></div>}
-                {/* Assistant translation reveal */}
-                {msg.role === "assistant" && expandedTranslations[msg.id] ? (
-                  <div className="msg-translation-box">
-                    <div className="translation-tag">中文对照</div>
-                    <p className="translation-content">
-                      {msg.metadata?.translationZh || "（暂未提供本句中文翻译）"}
-                    </p>
-                  </div>
-                ) : null}
-
-                {/* User correction inline tip */}
-                {msg.role === "user" &&
-                msg.metadata?.userCorrection &&
-                !msg.metadata.userCorrection.natural ? (
-                  <div className="user-correction-tip">
-                    <div className="tip-tag">💡 地道表达建议</div>
-                    {msg.metadata.userCorrection.issue ? (
-                      <div className="tip-issue">
-                        <span className="issue-label">问题：</span>
-                        <span>{msg.metadata.userCorrection.issue}</span>
-                      </div>
-                    ) : null}
-                    {msg.metadata.userCorrection.betterExpression ? (
-                      <div className="tip-better">
-                        <span className="better-label">推荐说法：</span>
-                        <strong className="better-en" lang="en">
-                          {msg.metadata.userCorrection.betterExpression}
-                        </strong>
-                      </div>
-                    ) : null}
-                    {msg.metadata.userCorrection.explanationZh ? (
-                      <small className="tip-expl">
-                        {msg.metadata.userCorrection.explanationZh}
-                      </small>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {/* Captured Gap tags on message */}
-                {msg.metadata?.gaps && msg.metadata.gaps.length > 0 ? (
-                  <div className="msg-gap-tags">
-                    {msg.metadata.gaps.map((gap, idx) => (
-                      <span key={idx} className="gap-tag">
-                        🎯 {gap.intentZh} → <strong>{gap.targetEnglish}</strong>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+        <div className={styles.messages} aria-busy={loadingMessages}>
+          {loadingMessages && <p className={styles.empty} role="status">正在读取对话…</p>}
+          {!loadingMessages && !messages.length && <div className={styles.empty}><h2>{currentId ? "从你想说的事开始" : "先新建一段对话"}</h2><p>{currentId ? "可以聊今天发生的事，也可以直接用中文说出暂时不会表达的意思。" : "点击上方“新建对话”，已有记录会一直保留在历史里。"}</p></div>}
+          {messages.map((message) => <article key={message.id} className={`${styles.message} ${message.role === "user" ? styles.userMessage : styles.assistantMessage}`}>
+            <div className={styles.messageHeader}>
+              <span>{message.role === "user" ? "我" : "Chloe · AI"}</span>
+              {message.role === "assistant" && <div className={styles.messageActions}>
+                <button type="button" onClick={() => speakingMsgId === message.id ? stopAudio() : playAudio(message.id, message.text)}>{speakingMsgId === message.id ? "停止" : "朗读"}</button>
+                <button type="button" aria-expanded={!!expandedTranslations[message.id]} onClick={() => setExpandedTranslations((previous) => ({ ...previous, [message.id]: !previous[message.id] }))}>{expandedTranslations[message.id] ? "收起翻译" : "翻译"}</button>
+              </div>}
             </div>
-          ))}
-
+            <div className={styles.messageText} lang={message.role === "assistant" ? "en" : undefined}>{message.text}</div>
+            {speechState?.id === message.id && <div className={styles.audioStatus} role="status">{speechState.state.message}{["result_unknown", "invalid_audio"].includes(speechState.state.errorCode ?? "") && <button type="button" onClick={() => { if (window.confirm("重新合成此回复可能再次使用 MiMo 余额，继续？")) playAudio(message.id, message.text, true); }}>重新生成此声音</button>}</div>}
+            {message.role === "user" && ["failed", "pending"].includes(message.metadata.deliveryStatus ?? "") && <div className={styles.delivery} role="status"><p>{message.metadata.deliveryStatus === "pending" ? "正在等待回复，原文已保存。" : "回复未完成，原文已保留。"}</p><button className="secondary-button" disabled={busy} onClick={() => void sendDirectMessage(message.text, message)}>原地重试</button></div>}
+            {message.role === "assistant" && expandedTranslations[message.id] && <div className={styles.translation}><strong>中文对照</strong><p>{message.metadata.translationZh || "这条回复暂未提供中文翻译。"}</p></div>}
+            {message.role === "user" && message.metadata.userCorrection && !message.metadata.userCorrection.natural && <details className={styles.correction}>
+              <summary>看看表达建议</summary>
+              {message.metadata.userCorrection.issue && <p>{message.metadata.userCorrection.issue}</p>}
+              {message.metadata.userCorrection.betterExpression && <p lang="en"><strong>{message.metadata.userCorrection.betterExpression}</strong></p>}
+              {message.metadata.userCorrection.explanationZh && <p>{message.metadata.userCorrection.explanationZh}</p>}
+            </details>}
+          </article>)}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Strict mode repetition alert if pending */}
-        {isWaitingForRepetition ? (
-          <div className="repetition-prompt-banner">
-            <span className="rep-icon">🎤</span>
-            <div className="rep-text">
-              <strong>Chloe 正在聆听你的复述：</strong>
-              <span>“{lastMsg.targetRepetition}”</span>
+        {isWaitingForRepetition && <div className={styles.repetition}><strong>可以试着复述：</strong><span lang="en">{lastMsg.targetRepetition}</span></div>}
+        <footer className={styles.composer}>
+          {capturedGaps.length > 0 && <button type="button" className={styles.candidateButton} onClick={() => candidateDialog.current?.showModal()}>查看待复盘候选（{capturedGaps.length}）</button>}
+          <form className={styles.inputForm} onSubmit={handleSendMessage}>
+            <label className="sr-only" htmlFor="free-talk-message">给 Chloe 的消息</label>
+            <textarea id="free-talk-message" disabled={loadingMessages || !currentId} rows={3} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void handleSendMessage(); } }} placeholder={isWaitingForRepetition ? `试着复述：“${lastMsg.targetRepetition}”` : "说说你想聊的事，中英文都可以…"} />
+            <div className={styles.inputActions}>
+              <span>Enter 发送 · Shift + Enter 换行</span>
+              <button type="button" className="secondary-button" aria-pressed={listening} disabled={!currentId || loadingMessages} onClick={toggleSpeech}>{listening ? "停止听写" : "听写"}</button>
+              <button type="submit" className="primary-button" disabled={busy || loadingMessages || !currentId || !input.trim()}>发送</button>
             </div>
-          </div>
-        ) : null}
-
-        {/* Input Bar */}
-        <div className="freetalk-bottom-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", padding: "0 4px" }}>
-          <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-            {capturedGaps.length > 0 ? `已捕捉到 ${capturedGaps.length} 个表达缺口，可随时进入 4 步强化营巩固` : "交流时遇到卡壳直接说中文，可以在复盘后形成学习材料"}
-          </span>
-          {capturedGaps.length > 0 ? (
-            <button
-              type="button"
-              onClick={startFourStepMastery}
-              style={{
-                fontSize: "0.82rem",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                backgroundColor: "#eff6ff",
-                border: "1px solid #bfdbfe",
-                color: "#2563eb",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              🏁 结束并开启 4 步强化 ({capturedGaps.length})
-            </button>
-          ) : null}
-        </div>
-
-        <form className="freetalk-input-bar" onSubmit={handleSendMessage}>
-          <textarea
-            aria-label="给 Chloe 的消息"
-            disabled={loadingMessages || !currentId}
-            className="freetalk-textarea"
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void handleSendMessage();
-              }
-            }}
-            placeholder={
-              isWaitingForRepetition
-                ? `试着复述：“${lastMsg.targetRepetition}”`
-                : "用英文随心交流；遇到不会说的词直接换成中文继续说（按 Enter 发送）..."
-            }
-          />
-          <div className="freetalk-actions">
-            <button
-              type="button"
-              className={`mic-btn ${listening ? "is-listening" : ""}`}
-              onClick={toggleSpeech}
-              disabled={!currentId || loadingMessages}
-              title={listening ? "停止语音输入" : "语音输入"}
-            >
-              {listening ? "🔴 停止" : "🎙️ 听写"}
-            </button>
-            <button
-              type="submit"
-              className="primary-button send-btn"
-              disabled={busy || loadingMessages || !currentId || !input.trim()}
-            >
-              发送 (Send)
-            </button>
-          </div>
-        </form>
+          </form>
+        </footer>
       </section>
 
-      {/* Right Drawer: Captured Gaps in Conversation */}
-      <aside className="freetalk-gaps-drawer">
-        <div className="drawer-header">
-          <h3>本轮待复盘表达</h3>
-          <span className="gap-counter">{capturedGaps.length} 个</span>
-        </div>
-        <p className="drawer-desc">
-          你在对话中因卡壳使用中文或表达不自然的点，会在复盘时独立审核，确认后才能进入训练：
-        </p>
-
-        {capturedGaps.length === 0 ? (
-          <div className="drawer-empty">
-            <p>目前对话尚未触发新表达缺口。</p>
-            <small>在交流中如果遇到不会的词，直接用中文表达即可！</small>
-          </div>
-        ) : (
-          <>
-            <ul className="drawer-gap-list">
-              {capturedGaps.map((gap, idx) => (
-                <li key={idx} className="drawer-gap-item">
-                  <div className="drawer-gap-intent">{gap.intentZh}</div>
-                  <div className="drawer-gap-target" lang="en">
-                    {gap.targetEnglish}
-                  </div>
-                  <small className="drawer-gap-expl">{gap.explanationZh}</small>
-                </li>
-              ))}
-            </ul>
-            <div style={{ marginTop: "16px", padding: "8px 0" }}>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={startFourStepMastery}
-                style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontWeight: 600 }}
-              >
-                🚀 开始 4 步强化营 ({capturedGaps.length})
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
-
-      {/* IELTS Topic Selection Drawer */}
-      <IeltsTopicDrawer
-        isOpen={isTopicDrawerOpen}
-        onClose={() => setIsTopicDrawerOpen(false)}
-        onSelectTopic={(topic) => void handleStartTopic(topic)}
-      />
-
+      <dialog ref={candidateDialog} className={styles.candidateDrawer} aria-labelledby="candidate-drawer-title" onClick={(event) => { if (event.target === event.currentTarget) candidateDialog.current?.close(); }}>
+        <div className={styles.drawerHeader}><h2 id="candidate-drawer-title">待复盘候选</h2><button type="button" className="secondary-button" onClick={() => candidateDialog.current?.close()}>关闭</button></div>
+        <p>这些是对话中的候选表达，还需复盘审核。候选数量不代表最终学习项数量。</p>
+        <ul className={styles.candidateList}>{capturedGaps.map((gap, index) => <li key={`${gap.key}-${index}`}><h3>{gap.intentZh}</h3><p lang="en">{gap.targetEnglish}</p><p>{gap.explanationZh}</p></li>)}</ul>
+        <button type="button" className="primary-button" disabled={!canReview} onClick={() => { candidateDialog.current?.close(); setReviewRangeOpen(true); setSettingsOpen(false); setConversationListOpen(false); }}>选择消息范围，去复盘</button>
+      </dialog>
+      <IeltsTopicDrawer isOpen={isTopicDrawerOpen} onClose={() => setIsTopicDrawerOpen(false)} onSelectTopic={(topic) => void handleStartTopic(topic)} />
     </div>
   );
 }

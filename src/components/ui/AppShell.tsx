@@ -7,7 +7,7 @@ import { BrandMark, Icon, type IconName } from "./Icon";
 import styles from "./AppShell.module.css";
 
 const navigation: Array<{ href: string; label: string; icon: IconName; prefixes: string[] }> = [
-  { href: "/", label: "今日学习", icon: "home", prefixes: ["/learn", "/light-study"] },
+  { href: "/", label: "今日学习", icon: "home", prefixes: ["/learn", "/light-study", "/study"] },
   { href: "/questions", label: "雅思题库", icon: "questions", prefixes: ["/questions", "/speaking-arena", "/answer-studio"] },
   { href: "/free-talk", label: "AI Free Talk", icon: "speaking", prefixes: ["/free-talk"] },
   { href: "/review", label: "到期复习", icon: "answers", prefixes: ["/review", "/training"] },
@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const expanded = expandedPath === pathname;
   const menu = useRef<HTMLButtonElement>(null);
   const close = () => setExpandedPath(null);
-  return <div className={styles.shell} data-app-shell>
+  return <div className={`${styles.shell} ${pathname==='/'||pathname==='/study'?styles.simple:''}`} data-app-shell>
     <a className={styles.skipLink} href="#main-content">跳到主要内容</a>
     <aside className={styles.sidebar} aria-label="工作台导航">
       <div className={styles.brandRow}>

@@ -2,6 +2,7 @@ import {createBrowserSpeechProvider,getStoredVoicePreference,getTTS} from "@/lib
 import {LightAudioPlayer} from "./audio";
 import {LightStudyError} from "./contracts";
 import type {LightStudyClient} from "./client";
+import {scopeQuery} from './scope-links';
 async function request(url:string,body?:unknown){
   const response=await fetch(url,body===undefined?{cache:"no-store"}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
   const data=await response.json();
@@ -9,7 +10,7 @@ async function request(url:string,body?:unknown){
   return data;
 }
 export const webLightClient:LightStudyClient={
-  overview:async scope=>(await request(`/api/light-study/overview${scope.type==="all"?"":"?"+new URLSearchParams({scope:scope.type,id:scope.id})}`)).overview,
+  overview:async scope=>(await request(`/api/light-study/overview?${scopeQuery(scope)}`)).overview,
   get:async id=>(await request(`/api/light-study/sessions/${encodeURIComponent(id)}`)).session,
   create:async input=>(await request("/api/light-study/sessions",input)).session,
   event:async(id,event)=>(await request(`/api/light-study/sessions/${encodeURIComponent(id)}/events`,event)).session,

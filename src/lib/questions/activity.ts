@@ -41,7 +41,7 @@ export function questionPrimaryAction(id: string, state: QuestionState, latestAn
     if (state === "analysis_pending") return { label: "查看处理进度", href: attemptHref };
     if (state === "analysis_failed") return { label: "查看原因并重试", href: attemptHref };
     if (state === "materials_pending") return { label: "查看已保存回答", href: attemptHref };
-    if (["learning_incomplete", "ready_to_learn", "learning"].includes(state)) return { label: state === "learning" ? "继续轻松学" : "轻松学本题", href: `/light-study?scope=question&id=${question}` };
+    if (["learning_incomplete", "ready_to_learn", "learning"].includes(state)) return { label: state === "learning" ? "继续轻松学" : "轻松学本题", href: `/light-study?scope=question&id=${question}&mode=learn` };
     if (["learning_completed", "ready_to_reattempt"].includes(state)) return { label: "不看提示，重新回答", href: `/questions/${question}/practice?kind=independent&source=${answer}` };
   }
   switch (state) {
@@ -54,8 +54,8 @@ export function questionPrimaryAction(id: string, state: QuestionState, latestAn
     case "analysis_pending": return { label: "查看分析", href: answer ? `/answer-studio/${answer}` : `/questions/${question}` };
     case "analysis_failed": return { label: "查看原因", href: answer ? `/answer-studio/${answer}` : `/questions/${question}` };
     case "materials_pending": return { label: "材料待处理", href: `/questions/${question}#learning-units` };
-    case "ready_to_learn": return { label: "轻松学本题", href: `/light-study?scope=question&id=${question}` };
-    case "learning": return { label: "继续轻松学", href: `/light-study?scope=question&id=${question}` };
+    case "ready_to_learn": return { label: "轻松学本题", href: `/light-study?scope=question&id=${question}&mode=learn` };
+    case "learning": return { label: "继续轻松学", href: `/light-study?scope=question&id=${question}&mode=learn` };
     case "ready_to_reattempt": return { label: "开始重答", href: `/questions/${question}/practice` };
     case "reattempted": return { label: "查看重答对比", href: `/questions/${question}#reattempt-history` };
   }

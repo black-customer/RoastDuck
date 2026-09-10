@@ -18,9 +18,9 @@ test("回答到四步：不可跳过、错误保留、刷新恢复、移动和�
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
   await page.getByText("查看四列材料、收藏与调整",{exact:true}).click();
-  await page.locator(".expression-row").first().getByText("原句、入选理由与个人备注",{exact:true}).click();
-  await expect(page.locator(".expression-row").first()).toContainText("I saw a 井盖 outside.");
-  await expect(page.locator(".expression-row").first()).toContainText("我在外面看到了一个井盖。");
+  await page.getByTestId("expression-row").first().getByText("说明、来源与管理",{exact:true}).click();
+  await expect(page.getByTestId("expression-row").first()).toContainText("I saw a 井盖 outside.");
+  await expect(page.getByTestId("expression-row").first()).toContainText("我在外面看到了一个井盖。");
   await page.getByText("查看四列材料、收藏与调整",{exact:true}).click();
   for(const width of [1440,390,320]) {
     await page.setViewportSize({width,height:1000});
@@ -102,7 +102,7 @@ test("自然表达不因升级措辞制卡，零项提示不宣称完全掌握",
   await expect(page.getByText(/非常自然完整|意图表达非常完整自然/)).toHaveCount(0);
 });
 
-test("FreeTalk 使用真实消息快照复盘，无消息不伪造训练", async ({ request }) => {
+test("FreeTalk 使用真实消息快照复盘，无消息不伪造训练", async ({ request, page }) => {
   const { conversation } = await (await request.post("/api/free-talk/conversations", { data: { clientRequestId:"e2e-recap-create",title: "合成复盘测试", mode: "relaxed" } })).json();
   expect((await request.post(`/api/free-talk/conversations/${conversation.id}/materials`,{data:{startId:"missing",endId:"missing"}})).status()).toBe(400);
   await request.post(`/api/free-talk/conversations/${conversation.id}/messages`, { data: { clientMessageId:"e2e-recap-message",text: "I saw a 井盖 outside." } });
@@ -116,12 +116,21 @@ test("FreeTalk 使用真实消息快照复盘，无消息不伪造训练", async
   expect(session.sourceType).toBe("free_talk");
   expect(session.sourceId).toBe(conversation.id);
   expect(session.questionId).toBeNull();
+  const reviewWrites:string[]=[];
+  page.on("request",response=>{if(response.method()==="POST"&&new URL(response.url()).pathname===`/api/free-talk/conversations/${conversation.id}/materials`)reviewWrites.push(response.url());});
+  await page.goto(`/free-talk?conversation=${conversation.id}`);
+  await page.getByRole("button",{name:"复盘本轮表达",exact:true}).click();
+  await expect(page.getByRole("button",{name:"确认范围，开始复盘",exact:true})).toBeVisible();
+  expect(reviewWrites).toEqual([]);
+  await page.getByRole("button",{name:"确认范围，开始复盘",exact:true}).click();
+  await expect(page.getByRole("button",{name:"← 返回聊天",exact:true})).toBeVisible();
+  expect(reviewWrites).toHaveLength(1);
 });
 
 test("聊天响应丢失后原地重试，切换会话不串消息，题目抽屉显示真实字段", async ({ page, request }) => {
   const create = async (title: string) => (await (await request.post("/api/free-talk/conversations", { data: { clientRequestId:`create-${title}`,title, mode: "relaxed" } })).json()).conversation.id as string;
   const first = await create("消息恢复测试");
-  const second = await create("第二个独立对话");
+  await create("第二个独立对话");
   await page.goto(`/free-talk?conversation=${first}`);
   await expect(page.getByRole("textbox", { name: "给 Chloe 的消息" })).toBeEnabled();
   let dropped = false;
@@ -132,22 +141,24 @@ test("聊天响应丢失后原地重试，切换会话不串消息，题目抽�
     await route.fulfill({ status: 503, json: { error: "合成断线测试" } });
   });
   await page.getByRole("textbox", { name: "给 Chloe 的消息" }).fill("I saw a 井盖 outside.");
-  await page.getByRole("button", { name: "发送 (Send)", exact: true }).click();
+  await page.getByRole("button", { name: "发送", exact: true }).click();
   await expect(page.getByRole("button", { name: "原地重试" })).toBeVisible();
   await page.getByRole("button", { name: "原地重试" }).click();
   await expect(page.getByText("回复未完成，原文已保留。")).toHaveCount(0);
   expect((await (await request.get(`/api/free-talk/conversations/${first}/messages`)).json()).messages).toHaveLength(3);
-  await page.getByRole("combobox", { name: "当前对话" }).selectOption(second);
+  await page.getByRole("button", { name: "历史对话", exact: true }).click();
+  await page.getByRole("navigation", { name: "历史对话" }).getByRole("button", { name: /第二个独立对话/ }).click();
   await expect(page.getByText("I saw a 井盖 outside.", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "🎯 雅思题库", exact: true }).click();
+  await page.getByRole("button", { name: "对话设置", exact: true }).click();
+  await page.getByRole("button", { name: "选择一道雅思话题", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("What helps you study effectively?", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 1000 });
   const assertNoClipping = async () => {
-    const layout = await page.locator(".freetalk-main").evaluate((panel) => {
+    const layout = await page.getByTestId("freetalk-main").evaluate((panel) => {
       const bounds = panel.getBoundingClientRect();
-      return { scrollLeft: panel.scrollLeft, clipped: [...panel.querySelectorAll("h1, textarea, .header-controls button, .msg-content")].some((child) => {
+      return { scrollLeft: panel.scrollLeft, clipped: [...panel.querySelectorAll("h1, textarea, header button, article")].some((child) => {
         const rect = child.getBoundingClientRect();
         return rect.left < bounds.left - 1 || rect.right > bounds.right + 1;
       }) };

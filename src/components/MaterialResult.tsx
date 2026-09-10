@@ -5,11 +5,68 @@ import type {MaterialRow,MaterialInput} from '@/lib/four-step/material-types';
 import type {SpeakingAttemptAnalysis} from '@/lib/speaking-practice/schemas';
 import {MaterialsSummary} from './MaterialsSummary';
 import {FourStepMasteryStudio} from './FourStepMasteryStudio';
+import styles from './MaterialResult.module.css';
+
+type MaterialView={material:MaterialRow;analysis:SpeakingAttemptAnalysis|null;verified:boolean};
+function readableMessage(value:unknown,fallback:string){return typeof value==='string'&&/[\u3400-\u9fff]/u.test(value)?value:fallback;}
+function failureMessage(code:string|null){
+  if(code==='result_unknown')return '上次处理结果还未确认。请先重新读取进度；重新处理可能再次产生费用。';
+  if(code==='request_pending')return '上次请求仍在处理，可以稍后回来或重新读取进度。';
+  if(code&&/config|key|auth|credential/.test(code))return 'AI 服务配置暂时不可用。请在学习设置中检查服务状态，再继续处理。';
+  if(code&&/review|coverage|validation|material_.*invalid/.test(code))return '材料还未通过审核，暂时不能进入学习。可以重新处理，也可以先返回查看原内容。';
+  return '这次材料处理没有完成。原内容仍在，可以从这里继续处理。';
+}
 export function MaterialResult({id}:{id:string}){
-  const [data,setData]=useState<{material:MaterialRow;analysis:SpeakingAttemptAnalysis|null;verified:boolean}|null>(null),[error,setError]=useState(''),[strengthen,setStrengthen]=useState(false),[busy,setBusy]=useState(false);
-  useEffect(()=>{const controller=new AbortController();let inFlight=false;const load=async()=>{if(inFlight)return;inFlight=true;try{const response=await fetch(`/api/materials/${id}`,{signal:controller.signal}),result=await response.json();if(!response.ok)throw new Error(result.error);if(!controller.signal.aborted)setData(result);}catch(reason){if(!controller.signal.aborted)setError(reason instanceof Error?reason.message:'读取失败');}finally{inFlight=false;}};void load();const timer=setInterval(()=>void load(),2500);return()=>{controller.abort();clearInterval(timer);};},[id]);
-  async function retry(){if(busy)return;setBusy(true);try{const retryUnknown=data?.material.error_code==='result_unknown';if(retryUnknown&&!window.confirm('上次请求结果未知，重新处理可能再次使用 API 余额，继续？'))return;const response=await fetch(`/api/materials/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({retryUnknown})});if(!response.ok)throw new Error('重试未启动');setError('');}catch(reason){setError(reason instanceof Error?reason.message:'重试失败');}finally{setBusy(false);}}
+  const [data,setData]=useState<MaterialView|null>(null),[error,setError]=useState(''),[errorCode,setErrorCode]=useState('');
+  const [strengthen,setStrengthen]=useState(false),[busy,setBusy]=useState(false),[reload,setReload]=useState(0),[notice,setNotice]=useState('');
+  useEffect(()=>{
+    const controller=new AbortController();let inFlight=false;
+    const load=async()=>{
+      if(inFlight)return;inFlight=true;
+      try{
+        const response=await fetch(`/api/materials/${id}`,{signal:controller.signal}),result=await response.json();
+        if(!response.ok)throw Object.assign(new Error(readableMessage(result.error,'暂时无法读取材料，请稍后重新读取。')),{code:result.code});
+        if(!controller.signal.aborted){setData(result);setError('');setErrorCode('');if(!['queued','generating','reviewing','processing'].includes(result.material?.status))clearInterval(timer);}
+      }catch(reason){
+        if(!controller.signal.aborted){setError(readableMessage(reason instanceof Error?reason.message:null,'暂时无法读取材料，请稍后重新读取。'));setErrorCode(reason&&typeof reason==='object'&&'code' in reason?String(reason.code??''):'');}
+      }finally{inFlight=false;}
+    };
+    const timer=setInterval(()=>void load(),2500);void load();
+    return()=>{controller.abort();clearInterval(timer);};
+  },[id,reload]);
+  async function retry(){
+    if(busy)return;
+    const retryUnknown=data?.material.error_code==='result_unknown';
+    if(retryUnknown&&!window.confirm('上次请求结果未知，重新处理可能再次使用 API 余额，继续？'))return;
+    setBusy(true);setNotice('');
+    try{
+      const response=await fetch(`/api/materials/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({retryUnknown})}),result=await response.json();
+      if(!response.ok)throw Object.assign(new Error(readableMessage(result.error,'恢复处理没有启动，请稍后重试。')),{code:result.code});
+      setError('');setErrorCode('');setNotice('已请求继续处理，进度会在这里更新。');setReload(value=>value+1);
+    }catch(reason){setError(readableMessage(reason instanceof Error?reason.message:null,'恢复处理没有启动，请稍后重试。'));setErrorCode(reason&&typeof reason==='object'&&'code' in reason?String(reason.code??''):'');}
+    finally{setBusy(false);}
+  }
   if(strengthen)return <FourStepMasteryStudio materialId={id} onClose={()=>setStrengthen(false)}/>;
-  const input=data?JSON.parse(data.material.input_json) as MaterialInput:null;
-  return <div className="page-content"><Link className="exit-button" href={data?.material.source_type==='free_talk'?`/free-talk?conversation=${data.material.source_id}`:'/questions'}>← 返回来源</Link>{error&&<p role="alert">{error}</p>}{data?.verified&&data.analysis?<MaterialsSummary materialId={id} analysis={data.analysis} questionId={data.material.question_id??undefined} sourceId={data.material.source_id} originalEnglish={input?.actualAnswer??''} originalChinese={input?.intendedMeaningZh??''} onStrengthen={()=>setStrengthen(true)}/>:<section className="page-panel"><h1>材料{data?.material.status==='failed'?'暂未处理完成':'正在处理'}</h1><p>真实消息快照已保存，检查通过后可直接轻松学。</p><p>{data?.material.error_code}</p><button className="secondary-button" disabled={busy} onClick={()=>void retry()}>继续／恢复处理</button></section>}</div>;
+  let input:MaterialInput|null=null;
+  if(data){try{input=JSON.parse(data.material.input_json) as MaterialInput;}catch{/* Preserve the saved source when its snapshot cannot be read. */}}
+  const material=data?.material,unknown=material?.error_code==='result_unknown';
+  const failed=material?.status==='failed',unverified=material?.status==='ready'&&!data?.verified;
+  const unavailable=!!material&&!['queued','generating','reviewing','failed','ready'].includes(material.status);
+  const title=!material?'正在读取材料':unavailable?'这份材料暂不使用':unknown?'需要确认处理结果':failed||unverified?'材料暂未准备好':material.status==='reviewing'?'正在审核学习材料':'正在整理你的表达';
+  return <div className="page-content">
+    <Link className="exit-button" href={material?.source_type==='free_talk'?`/free-talk?conversation=${material.source_id}`:'/questions'}>返回来源</Link>
+    {error&&<div className={styles.error} role="alert"><p>{error}</p>{errorCode&&<details><summary>查看错误详情</summary><code>{errorCode}</code></details>}<button type="button" className="secondary-button" onClick={()=>setReload(value=>value+1)}>重新读取</button></div>}
+    {data?.verified&&data.analysis?<MaterialsSummary materialId={id} analysis={data.analysis} questionId={material?.question_id??undefined} sourceId={data.material.source_id} originalEnglish={input?.actualAnswer??''} originalChinese={input?.intendedMeaningZh??''} onStrengthen={()=>setStrengthen(true)}/>:<section className={styles.statePanel} aria-live="polite">
+      <h1>{title}</h1>
+      {material&&<p>原回答和消息快照已保留，不用重新输入。</p>}
+      <p>{!material?'稍等片刻，正在读取已保存的进度。':unavailable?'原内容和历史记录仍保留，请返回来源查看。':unverified?'这份材料尚未通过可学习检查。可以重新读取，或返回来源查看原内容。':failed||material.error_code?failureMessage(material.error_code):'材料检查通过后，就可以开始轻松学。你也可以先离开，稍后从原回答或对话回来。'}</p>
+      {notice&&<p role="status">{notice}</p>}
+      {material&&!unavailable&&<div className={styles.actions}>
+        {(failed||unknown||unverified)&&<button type="button" className="secondary-button" onClick={()=>setReload(value=>value+1)}>重新读取进度</button>}
+        {!unverified&&<button type="button" className={failed&&!unknown?'primary-button':'secondary-button'} disabled={busy} onClick={()=>void retry()}>{busy?'正在请求恢复…':unknown?'确认后重新处理':'继续／恢复处理'}</button>}
+        {material.error_code&&/config|key|auth|credential/.test(material.error_code)&&<Link className="secondary-button" href="/settings">查看学习设置</Link>}
+      </div>}
+      {material?.error_code&&<details className={styles.details}><summary>查看处理详情</summary><p>错误代码：<code>{material.error_code}</code></p></details>}
+    </section>}
+  </div>;
 }

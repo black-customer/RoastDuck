@@ -86,7 +86,9 @@ check("5. Prompt 版本化管理", () => {
   if (files.length === 0) return "pipeline/prompts 中没有 Prompt 文件";
   const pipeline = fs.readFileSync(path.join(ROOT, "src/lib/four-step/stage-contracts.ts"), "utf8");
   const requiredPersonalPrompts = [...pipeline.matchAll(/prompt:\s*["']([^"']+\.md)["']/g)].map(m => m[1]);
-  if (requiredPersonalPrompts.length < 4 || requiredPersonalPrompts.length % 4 !== 0) return "材料版本缺少完整四阶段Prompt声明";
+  // Contracts may inherit unchanged stages. Counting declarations modulo four rejects valid inheritance;
+  // stage completeness is checked by the typed map and material-contract tests, not this file scan.
+  if (requiredPersonalPrompts.length < 4) return "材料版本缺少阶段Prompt声明";
   const missing = requiredPersonalPrompts.filter((file) => !files.includes(file));
   if (missing.length > 0) return `缺少个人内容 Prompt：${missing.join(", ")}`;
   return null;
@@ -130,7 +132,7 @@ check("8. 仓库密钥泄漏扫描", () => {
 check("9. 学习契约与兼容边界存在", () => {
   const product = fs.readFileSync(path.join(ROOT, "docs/PRODUCT.md"), "utf8");
   const learning = fs.readFileSync(path.join(ROOT, "docs/LEARNING_EXPERIENCE.md"), "utf8");
-  if (!product.includes("WEB_USABILITY") || !learning.includes("light_study_v2")) return "现行网页执行依据缺失";
+  if (!product.includes("WEB_SIMPLICITY") || !fs.existsSync(path.join(ROOT,"docs/WEB_SIMPLICITY.md")) || !learning.includes("light_study_v2")) return "现行网页执行依据缺失";
   if (!learning.includes("light_study_v1") || !learning.includes("four_step_v1")) return "旧会话兼容版本说明缺失";
   return null;
 });

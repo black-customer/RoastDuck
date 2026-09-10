@@ -61,10 +61,10 @@ async function readLightCatalogue(scope:LightScope,includeHidden=false,includeSe
       const source:LightSource={materialId:material.id,sourceType:material.source_type as LightSource["sourceType"],sourceId:material.source_id,
         title:material.title||"我的表达",questionId:material.question_id,questionTitle:material.question_title??'',topicId:material.topic_id,topicTitle:material.topic_title??'未标注',
         seasons:seasons.filter(season=>season.question_id===material.question_id).map(({id,title})=>({id,title})),
-        href:material.question_id ? `/questions/${encodeURIComponent(material.question_id)}/attempts/${encodeURIComponent(material.source_id)}` : "/free-talk"};
+        href:material.question_id ? `/questions/${encodeURIComponent(material.question_id)}/attempts/${encodeURIComponent(material.source_id)}` : `/free-talk?conversation=${encodeURIComponent(material.source_id)}`};
       cards.push({itemId:link.learning_item_id,materialId:material.id,materialHash:materialFingerprint(material),
         rowIndex:link.row_index,progressVersion:progress.get(link.learning_item_id)?.version ?? 0,
-        chinese:row.chineseChunk,english:row.englishChunk,sentenceZh:row.yourChineseSentence,sentenceEn:row.naturalEnglishSentence,
+        chinese:row.recallPromptZh??row.chineseChunk,english:row.recallAnswerEn??row.englishChunk,pattern:row.pattern,sentenceZh:row.yourChineseSentence,sentenceEn:row.naturalEnglishSentence,
         originalEnglish:row.originalEnglish ?? "",reasonZh:row.inclusionReasonZh ?? "",
         sourceTitle:source.title,questionId:material.question_id,sourceHref:source.href,sourceType:source.sourceType,sources:[source],
       });

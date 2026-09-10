@@ -66,6 +66,7 @@ test("题库中心支持 URL 筛选、英文小卡、收藏、来源和随机题
   await page.getByRole("button", { name: "关闭英文小卡" }).click();
 
   await page.locator('a[href="/questions/question_e2e_habits"]').click();
+  await page.getByText('题目与来源',{exact:true}).click();
   await expect(page.getByText("Part1新题.pdf", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "打开第 8 页" })).toHaveAttribute("href", /part1_new_2026q1#page=8$/);
   await page.getByRole("button", { name: "收藏", exact: true }).click();

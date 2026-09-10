@@ -1,6 +1,12 @@
 import {afterEach,expect,it,vi} from "vitest";
 import {webLightClient} from "../src/lib/light-study/web-client";
 afterEach(()=>vi.unstubAllGlobals());
+it('overview preserves every collection filter',async()=>{
+  const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({overview:{totalCount:3}})));vi.stubGlobal('fetch',fetch);
+  await webLightClient.overview({type:'collection',id:'ielts',questionId:'q1',topicId:'t1',seasonId:'s1'});
+  const params=new URL(fetch.mock.calls[0][0],'http://localhost').searchParams;
+  expect(Object.fromEntries(params)).toEqual({scope:'collection',id:'ielts',questionId:'q1',topicId:'t1',seasonId:'s1'});
+});
 it("desktop client preserves conflict codes for explicit latest-state recovery",async()=>{
   vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response(JSON.stringify({error:"已有更新",code:"version_conflict"}),{status:409})));
   await expect(webLightClient.event("session",{type:"reveal",version:1,clientEventId:"stable"})).rejects.toMatchObject({status:409,code:"version_conflict"});

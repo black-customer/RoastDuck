@@ -23,16 +23,29 @@ export const selectionReviewSchema = z.object({
   units: z.array(z.object({ unitId: id, status: unitStatusSchema, evidenceQuote: text, reasonZh: text })),
   gaps: z.array(z.object({ gapId: id, decision: z.enum(["train", "exclude", "uncertain"]), evidenceQuote: text, reasonZh: text })),
 });
-export type SelectionReview = z.infer<typeof selectionReviewSchema>;
+export const evidencedSelectionReviewSchema=selectionReviewSchema.extend({units:z.array(selectionReviewSchema.shape.units.element.extend({
+  noTrainingNeeded:z.object({kind:z.literal('editorial_only'),evidenceQuote:text,reasonZh:text,noConfirmedLanguageError:z.literal(true),noUnexpressedIntention:z.literal(true)}).optional(),
+}))});
+export type SelectionReview = z.infer<typeof evidencedSelectionReviewSchema>;
+export const selectionSchemaForSource=(source:SelectionSource):z.ZodType<SelectionReview>=>source.selectionPolicyVersion==='evidence-exclusion-v1'?evidencedSelectionReviewSchema:selectionReviewSchema;
+export const recallFieldsSchema=z.object({
+  recallPromptZh:z.string().trim().min(1).max(500),
+  recallAnswerEn:z.string().trim().min(1).max(800),
+  pattern:z.string().trim().min(1).max(500).optional(),
+});
+const draftRowSchema=z.object({gapId:id,sentenceId:id,surfaceInSentence:text});
 export const materialDraftSchema = z.object({
   sentences: z.array(z.object({ id, intentUnitIds: z.array(id).min(1), english: text })),
-  rows: z.array(z.object({ gapId: id, sentenceId: id, surfaceInSentence: text })),
+  rows: z.array(draftRowSchema),
   examFeedback: z.object({
     transcriptBasedNotice: text, lexicalResource:text, grammaticalRange:text, coherence:text, paraphrasing:text,
     strengths:z.array(text), weaknesses:z.array(text), approximateBand:z.string().nullable(),
   }).nullable().default(null),
 });
-export type MaterialDraft = z.infer<typeof materialDraftSchema>;
+// Storage can read added fields without changing the JSON Schema/hash of legacy Runtime requests.
+export const storedMaterialDraftSchema=materialDraftSchema.extend({rows:z.array(draftRowSchema.extend(recallFieldsSchema.partial().shape))});
+export type MaterialDraft = z.infer<typeof storedMaterialDraftSchema>;
+export const recallMaterialDraftSchema=materialDraftSchema.extend({sentences:z.array(materialDraftSchema.shape.sentences.element.extend({english:z.string().trim().min(1).max(1500)})),rows:z.array(draftRowSchema.extend(recallFieldsSchema.shape))});
 export const evidenceReviewSchema = z.object({
   approved: z.boolean(), reasonZh: text,
   rows: z.array(z.object({
@@ -53,9 +66,17 @@ export const spokenEvidenceReviewSchema=evidenceReviewSchema.extend({
     })).max(24),
   }),
 });
-export const materialEvidenceSchema = z.object({ diagnosis: diagnosisSchema, selection: selectionReviewSchema, draft: materialDraftSchema });
+export const recallEvidenceReviewSchema=spokenEvidenceReviewSchema.extend({
+  rows:z.array(evidenceReviewSchema.shape.rows.element.extend({recallCueUnambiguous:z.boolean(),recallAnswerConcrete:z.boolean(),recallAligned:z.boolean()})),
+  sentences:z.array(z.object({
+    sentenceId:id,sentenceQuote:text,meaningPreserved:z.boolean(),naturalEnglish:z.boolean(),grammarCorrect:z.boolean(),sourceUncertaintyHandled:z.boolean(),reasonZh:text,
+    evidence:z.array(z.object({sourceField:z.enum(['actualAnswer','intendedMeaningZh','rawInput']),sourceQuote:text})).min(1),
+  })),
+});
+export const reviewSchemaForSource=(source:Pick<SelectionSource,'spokenStyleVersion'>)=>source.spokenStyleVersion==='personal-spoken-v2'?recallEvidenceReviewSchema:source.spokenStyleVersion==='personal-spoken-v1'?spokenEvidenceReviewSchema:evidenceReviewSchema;
+export const materialEvidenceSchema = z.object({ diagnosis: diagnosisSchema, selection: evidencedSelectionReviewSchema, draft: storedMaterialDraftSchema });
 export type MaterialEvidence = z.infer<typeof materialEvidenceSchema>;
-export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1';inputFormat?:'mixed-v1';rawInput?:string }
+export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1'|'personal-spoken-v2';selectionPolicyVersion?:'evidence-exclusion-v1';inputFormat?:'mixed-v1';rawInput?:string }
 function fail(code: string, message: string): never { throw new TrainingError(message, 422, `material_${code}`); }
 function unique(ids: string[]) { return new Set(ids).size === ids.length; }
 function sourceQuotes(unit: Diagnosis["units"][number]) { return [...unit.english,...unit.chinese,...unit.raw??[]].map((q) => q.text); }
@@ -102,10 +123,15 @@ export function validateSelection(diagnosis: Diagnosis, selection: SelectionRevi
   for (const unit of diagnosis.units) {
     const review = selection.units.find((u) => u.unitId === unit.id);
     if (!review || !hasQuote(unit,review.evidenceQuote)) fail("selection_evidence", "审核未引用当前原文");
+    const hasTraining=unit.gaps.some(g=>selection.gaps.some(r=>r.gapId===g.id&&r.decision==='train'));
+    const editorial=review.noTrainingNeeded;
+    if(editorial){
+      if(source?.selectionPolicyVersion!=='evidence-exclusion-v1'||source.spokenStyleVersion!=='personal-spoken-v2'||unit.status!=='repair'||review.status!=='repair'||hasTraining||unit.gaps.some(g=>selection.gaps.find(r=>r.gapId===g.id)?.decision!=='exclude')||!editorial.noConfirmedLanguageError||!editorial.noUnexpressedIntention||!hasQuote(unit,editorial.evidenceQuote)||!unit.english.some(q=>q.text.includes(editorial.evidenceQuote))||!/[a-z]/i.test(editorial.evidenceQuote)||/[\u3400-\u9fff]/u.test(editorial.evidenceQuote))fail('editorial_evidence','仅整理文本的零训练裁决需要独立英文证据，不能跳过缺失意图或确认错误');
+    }
     if(source?.spokenStyleVersion){
       if(review.status==='natural'&&(!unit.english.some(q=>/[a-z]/i.test(q.text)&&!/[\u3400-\u9fff]/u.test(q.text))))fail('natural_without_english','没有英文表达成功证据，不能以已会排除');
       if(review.status==='repair'&&!unit.english.some(q=>/[a-z]/i.test(q.text)))fail('repair_without_english','没有英文尝试证据，只能作为准备项，不能确认犯错');
-      if(['repair','missing'].includes(review.status)&&!unit.gaps.some(g=>selection.gaps.some(r=>r.gapId===g.id&&r.decision==='train')))fail('intent_not_covered','明确但尚未展示英文能力的意思必须有学习目标');
+      if(['repair','missing'].includes(review.status)&&!hasTraining&&!editorial)fail('intent_not_covered','明确但尚未展示英文能力的意思必须有学习目标');
     }
     for (const gap of unit.gaps) {
       const verdict = selection.gaps.find((g) => g.gapId === gap.id);
@@ -136,6 +162,8 @@ export function compileEvidence(source: SelectionSource, evidence: MaterialEvide
     const sentence = draft.sentences.find((s) => s.id === row.sentenceId);
     if (!found || !sentence?.intentUnitIds.includes(found.unit.id) || !findTargetSpan(sentence.english,[row.surfaceInSentence])) fail("row_alignment", "训练行没有关联正确意思或可用填空范围");
     if (selection.units.find((r)=>r.unitId===found.unit.id)!.status === "repair" && normalizeExpression(found.unit.english.map((q)=>q.text).join(" "))===normalizeExpression(sentence.english)) fail("no_op_repair", "推荐句与原句相同，没有可证明的修复");
+    const recall=source.spokenStyleVersion==='personal-spoken-v2'?recallFieldsSchema.parse(row):null;
+    if(recall&&(!findTargetSpan(sentence.english,[recall.recallAnswerEn])||!findTargetSpan(recall.recallAnswerEn,[row.surfaceInSentence])||/(?:\.{3}|…|_{2,}|\[[^\]]+\]|\{[^}]+\})/.test(recall.recallAnswerEn)))fail('recall_alignment','回想答案必须是当前例句中含目标表面形的具体英文，不得使用句式占位符');
     return {
       gapId: found.gap.id, sentenceId: sentence.id, intentUnitIds: sentence.intentUnitIds,
       chineseChunk: found.gap.cueZh, englishChunk: found.gap.targetEnglish, acceptableVariants: found.gap.acceptableVariants,
@@ -143,6 +171,7 @@ export function compileEvidence(source: SelectionSource, evidence: MaterialEvide
       naturalEnglishSentence: sentence.english, surfaceInSentence: row.surfaceInSentence,
       originalEnglish: found.unit.english.map((q) => q.text).join("\n"), originalChinese: found.unit.chinese.map((q) => q.text).join("\n"),
       inclusionReasonZh: selection.gaps.find((r) => r.gapId===found.gap.id)!.reasonZh,
+      ...(recall??{}),
       ...(source.spokenStyleVersion?{learningBasis:selection.units.find(u=>u.unitId===found.unit.id)!.status==='repair'&&found.gap.kind!=='unexpressed_intention'?'confirmed_error' as const:'preparation' as const,senseKey:found.gap.senseKey}:{}),
     };
   });
@@ -168,7 +197,7 @@ export function validateEvidenceReview(evidence: MaterialEvidence, review: z.inf
     const necessary=source?.spokenStyleVersion?row?.learningTargetNeeded===true&&row.repairNeeded===confirmed:row?.repairNeeded;
     if (!row || !row.approved || !necessary || !row.meaningPreserved || !row.minimalRepair || !row.cueUnambiguous || !row.sentenceAligned || !row.clozeValid || !hasQuote(unit,row.evidenceQuote)) fail("review_rejected", "材料必要性、原意或填空审核未通过");
   }
-  if(source?.spokenStyleVersion==='personal-spoken-v1'){
+  if(source?.spokenStyleVersion){
     const parsed=spokenEvidenceReviewSchema.safeParse(review);
     if(!parsed.success)fail('voice_review_missing','完整自然表达缺少个人说话风格审核');
     const whole=parsed.data.wholeAnswer;
@@ -179,6 +208,23 @@ export function validateEvidenceReview(evidence: MaterialEvidence, review: z.inf
       if(!source[item.sourceField]?.includes(item.sourceQuote))fail('voice_review_evidence','说话风格审核引用不属于本次原文');
       if(item.rendering&&!full.includes(item.rendering))fail('voice_review_evidence','说话风格审核未引用实际生成的英文');
       if(item.treatment!=='condensed'&&!item.rendering.trim())fail('voice_review_evidence','保留或适配的说话方式需要对应英文');
+    }
+  }
+  if(source?.spokenStyleVersion==='personal-spoken-v2'){
+    const parsed=recallEvidenceReviewSchema.safeParse(review);
+    if(!parsed.success)fail('sentence_review_missing','新版材料缺少逐句与具体回想实例审核');
+    const reviewed=parsed.data;
+    if(reviewed.rows.some(row=>!row.recallCueUnambiguous||!row.recallAnswerConcrete||!row.recallAligned))fail('recall_review_rejected','中文回想提示或具体英文实例未通过独立审核');
+    if(reviewed.sentences.length!==evidence.draft.sentences.length||!unique(reviewed.sentences.map(row=>row.sentenceId)))fail('sentence_review_coverage','完整自然回答必须逐句审核，即使没有学习目标');
+    for(const sentence of evidence.draft.sentences){
+      const verdict=reviewed.sentences.find(row=>row.sentenceId===sentence.id);
+      if(!verdict||verdict.sentenceQuote!==sentence.english||!verdict.meaningPreserved||!verdict.naturalEnglish||!verdict.grammarCorrect||!verdict.sourceUncertaintyHandled)fail('sentence_review_rejected','当前句子的原意、自然度、语法或来源不确定性审核未通过');
+      const units=sentence.intentUnitIds.map(unitId=>evidence.diagnosis.units.find(unit=>unit.id===unitId)!);
+      for(const ref of verdict.evidence){
+        const field=ref.sourceField==='actualAnswer'?'english':ref.sourceField==='intendedMeaningZh'?'chinese':'raw';
+        if(!source[ref.sourceField]?.includes(ref.sourceQuote)||!units.some(unit=>(unit[field]??[]).some(q=>q.text.includes(ref.sourceQuote))))fail('sentence_review_evidence','逐句审核必须引用当前句所关联的真实来源');
+      }
+      if(units.some(unit=>!verdict.evidence.some(ref=>{const field=ref.sourceField==='actualAnswer'?'english':ref.sourceField==='intendedMeaningZh'?'chinese':'raw';return (unit[field]??[]).some(q=>q.text.includes(ref.sourceQuote));})))fail('sentence_review_evidence','逐句审核遗漏了当前句的来源意思');
     }
   }
 }

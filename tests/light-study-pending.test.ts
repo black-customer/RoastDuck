@@ -1,5 +1,5 @@
 import {expect,it} from "vitest";
-import {savePending,clearPending,restorePending,type PendingOperation} from "@/lib/light-study/pending";
+import {savePending,clearPending,restorePending,listPending,type PendingOperation} from "@/lib/light-study/pending";
 function store(){
   const items=new Map<string,string>();
   return {getItem:(key:string)=>items.get(key)??null,setItem:(key:string,value:string)=>{items.set(key,value);},removeItem:(key:string)=>{items.delete(key);},key:(index:number)=>[...items.keys()][index]??null,get length(){return items.size;}};
@@ -22,4 +22,14 @@ it("隔离不同会话并忽略损坏/非法的重试记录",()=>{
 it("浏览器存储不可用时明确返回未保存，不冒充持久化",()=>{
   const storage={...store(),setItem:()=>{throw new Error("quota");}};
   expect(savePending({id:"s",event:{type:"pause",clientEventId:"id",version:1}},storage)).toBe(false);
+});
+it('pending events replay oldest first; cleanup failure cannot resurrect acknowledged events',()=>{
+  const storage=store();
+  const first:PendingOperation={id:'ordered',event:{type:'reveal',version:2,clientEventId:'first'}};
+  const second:PendingOperation={id:'ordered',event:{type:'rate',rating:'forgot',version:3,clientEventId:'second'}};
+  savePending(second,storage);savePending(first,storage);
+  expect(listPending('ordered',storage)).toEqual([first,second]);
+  const blocked={...storage,removeItem:()=>{throw new Error('blocked');}};
+  expect(clearPending(first,blocked)).toBe(false);
+  expect(listPending('ordered',storage)).toEqual([second]);
 });

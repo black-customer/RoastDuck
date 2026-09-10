@@ -1,28 +1,18 @@
 import { sql } from "drizzle-orm";
 import { getDbReady, withDbTransaction } from "@db/client";
-import { speakingAttemptAnalysisSchema } from "@/lib/speaking-practice/schemas";
-import { authoredMaterialSchema, authorHash, expandAuthored, offlineReviewSchema, recoverySourceSchema, type AuthoredMaterial, type OfflineReview, type RecoverySource } from "./offline-contracts";
-import { compileEvidence, validateEvidenceReview } from "./selection-contracts";
+import { authorHash,recoverySourceSchema, type AuthoredMaterial, type OfflineReview, type RecoverySource } from "./offline-contracts";
 import { getMaterial, prepareMaterial, publishMaterialItems, validateMaterial, type MaterialInput } from "./materials";
 import { materialStageContracts } from "./stage-contracts";
 import { hash, TrainingError } from "./shared";
 
-/** 离线作品和独立裁决的确定性编译；不创建 Provider，也不调用模型。 */
-export function compileOfflineMaterial(rawSource:RecoverySource,rawAuthor:AuthoredMaterial,rawReview:OfflineReview){
-  const source=recoverySourceSchema.parse(rawSource),author=authoredMaterialSchema.parse(rawAuthor),review=offlineReviewSchema.parse(rawReview);
-  if(review.authorHash!==authorHash(author)||review.contextId===author.contextId)throw new TrainingError("离线审核不独立或候选已变化",422,"offline_review_stale");
-  const candidate=expandAuthored(source,author);
-  const draft={...candidate.draft,rows:candidate.draft.rows.filter(r=>review.selection.gaps.some(g=>g.gapId===r.gapId&&g.decision==="train"))};
-  const evidence={diagnosis:candidate.diagnosis,selection:review.selection,draft};
-  const context={actualAnswer:source.english,intendedMeaningZh:source.chinese,...(source.spokenStyleVersion?{spokenStyleVersion:source.spokenStyleVersion}:{})};
-  const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence(context,evidence));
-  validateEvidenceReview(evidence,review.review,context);
-  return {source,author,review,analysis};
-}
+import {compileOfflineMaterial} from './offline-compile';
+export {compileOfflineMaterial} from './offline-compile';
 
 /** 仅本机 CLI 使用。先核对真实来源再原子发布；真实学习进度不变。 */
 export async function applyOfflineMaterial(rawSource:RecoverySource,rawAuthor:AuthoredMaterial,rawReview:OfflineReview){
-  const {source,author,review,analysis}=compileOfflineMaterial(rawSource,rawAuthor,rawReview);
+  const parsedSource=recoverySourceSchema.parse(rawSource);
+  const {source,author,review,analysis}=compileOfflineMaterial(rawSource,rawAuthor,rawReview,{selectionPolicyVersion:parsedSource.selectionPolicyVersion});
+  if(author.revisionBasis||author.units.some(unit=>unit.gaps.some(gap=>gap.priorLearningItem)))throw new TrainingError('追加修订必须通过离线版本映射入口，不能覆盖已有材料',422,'offline_revision_required');
   return withDbTransaction(async()=>{
     const db=await getDbReady();
     let attemptId=source.key;
@@ -40,7 +30,7 @@ export async function applyOfflineMaterial(rawSource:RecoverySource,rawAuthor:Au
     }
     const [original]=await db.all<{answer_text:string;intended_meaning_zh:string;question_id:string}>(sql`SELECT answer_text,intended_meaning_zh,question_id FROM speaking_question_attempts WHERE id=${attemptId}`);
     if(!original||original.answer_text!==source.english||original.intended_meaning_zh!==source.chinese||original.question_id!==source.questionId)throw new TrainingError("回答来源已变化",409,"offline_source_changed");
-    const input:MaterialInput={sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:source.mode,actualAnswer:source.english,intendedMeaningZh:source.chinese,...(source.spokenStyleVersion?{spokenStyleVersion:source.spokenStyleVersion}:{})};
+    const input:MaterialInput={sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:source.mode,actualAnswer:source.english,intendedMeaningZh:source.chinese,...(source.selectionPolicyVersion?{selectionPolicyVersion:source.selectionPolicyVersion}:{}),...(source.spokenStyleVersion?{spokenStyleVersion:source.spokenStyleVersion}:{}),...(source.inputFormat?{inputFormat:source.inputFormat,rawInput:source.rawInput}:{})};
     validateMaterial(analysis,input);
     const material=await prepareMaterial(input);
     if(material.status==="ready"){

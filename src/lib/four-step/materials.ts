@@ -24,7 +24,7 @@ export const prompt = (name: string) => fs.readFileSync(path.join(process.cwd(),
 
 /** Mock 只用于隔离自动化，不是 Reviewer 真实证据。 */
 export const fourStepMockResolver: typeof runtimeAnswerMockResolver = (request) => {
-  if (/^four_step_(diagnosis|selection|material|review)_v[23]$/.test(request.schemaName)) return selectionMockResolver(request);
+  if (/^four_step_(diagnosis|selection|material|review)_v[234]$/.test(request.schemaName)) return selectionMockResolver(request);
   if (request.schemaName === "four_step_material_review_v1") {
     const input = JSON.parse(request.input) as { candidate: SpeakingAttemptAnalysis };
     return { approved: true, reasonZh: "隔离测试夹具审核", rows: input.candidate.learningMaterials.map((_, index) => ({ index, approved: true, reasonZh: `测试行 ${index} 的语义对应` })) };
@@ -62,6 +62,7 @@ export async function prepareMaterial(input: MaterialInput) {
 export async function processMaterial(id: string) {
   let material = await getMaterial(id);
   if (material.status === "ready") return material;
+  if((JSON.parse(material.input_json) as MaterialInput).offlineRevision)throw new TrainingError('离线修订只能经独立审核后的本机发布入口继续',409,'offline_revision_required');
   const token = randomUUID();
   const now = new Date().toISOString();
   const lease = new Date(Date.now() + 10 * 60_000).toISOString();

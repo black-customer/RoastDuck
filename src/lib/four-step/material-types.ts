@@ -3,9 +3,12 @@ export interface MaterialInput {
   question: { id: string; textEn: string; textZh: string; part: number } | null;
   mode: string; actualAnswer: string; intendedMeaningZh: string;
   /** Bound to this material snapshot; old snapshots keep their original generation contract. */
-  spokenStyleVersion?: 'personal-spoken-v1';
+  spokenStyleVersion?: 'personal-spoken-v1' | 'personal-spoken-v2';
+  selectionPolicyVersion?: 'evidence-exclusion-v1';
   inputFormat?: 'mixed-v1';
   rawInput?: string;
+  /** Only the offline revision publisher may create/complete this snapshot. No item IDs come from a Web request. */
+  offlineRevision?: {parentMaterialId:string;parentInputHash:string;parentAnalysisHash:string;sourceHash:string;artifactHash:string};
   sourceMessages?: Array<{ id: string; role: string; text: string }>;
 }
 export interface MaterialRow {

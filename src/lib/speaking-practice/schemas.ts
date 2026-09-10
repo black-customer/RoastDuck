@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { materialEvidenceSchema } from "@/lib/four-step/selection-contracts";
+import { materialEvidenceSchema,recallFieldsSchema } from "@/lib/four-step/selection-contracts";
 
 export const gapItemSchema = z.object({
   learningBasis:z.enum(['confirmed_error','preparation']).optional(),
@@ -51,6 +51,7 @@ export const examFeedbackSchema = z.object({
 export type ExamFeedback = z.infer<typeof examFeedbackSchema>;
 
 export const learningMaterialRowSchema = z.object({
+  ...recallFieldsSchema.partial().shape,
   learningBasis:z.enum(['confirmed_error','preparation']).optional(),senseKey:z.string().optional(),
   gapId:z.string().optional(), sentenceId:z.string().optional(), intentUnitIds:z.array(z.string()).optional(),
   surfaceInSentence:z.string().optional(), originalEnglish:z.string().optional(), originalChinese:z.string().optional(), inclusionReasonZh:z.string().optional(),

@@ -6,7 +6,9 @@ import {normalizeExpression} from "./contracts";
 import {hash,TrainingError} from "./shared";
 
 /** Caller holds the publication transaction and has validated independent review evidence. */
-export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,input:MaterialInput,analysis:SpeakingAttemptAnalysis,now:Date){
+export interface ReviewedItemContinuity {learningItemId:string;canonicalKey:string}
+export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,input:MaterialInput,analysis:SpeakingAttemptAnalysis,now:Date,preservedItems?:ReadonlyMap<number,ReviewedItemContinuity>){
+  if(input.offlineRevision&&!preservedItems)throw new TrainingError('离线修订缺少已审核的学习项映射',422,'offline_revision_required');
   if(input.sourceType==="ielts_practice"){
     const [source]=await tx.all<{answer_text:string;intended_meaning_zh:string;question_id:string}>(sql`SELECT answer_text,intended_meaning_zh,question_id FROM speaking_question_attempts WHERE id=${input.sourceId}`);
     if(!source||source.answer_text!==input.actualAnswer||source.intended_meaning_zh!==input.intendedMeaningZh||source.question_id!==input.question?.id)throw new TrainingError("回答来源已经变化，旧结果不会覆盖新回答",409,"material_source_changed");
@@ -18,8 +20,9 @@ export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,inp
   for(const [rowIndex,row] of analysis.learningMaterials.entries()){
     const item=analysis.learningItems[rowIndex];
     if(!item)throw new TrainingError("材料中的表达没有对应训练项",422,"material_alignment");
-    let key=normalizeExpression(item.canonicalKey||item.targetEnglish);
-    if(input.spokenStyleVersion){
+    const preserved=preservedItems?.get(rowIndex);
+    let key=preserved?.canonicalKey??normalizeExpression(item.canonicalKey||item.targetEnglish);
+    if(input.spokenStyleVersion&&!preserved){
       // Reuse legacy progress only when both reviewed expression and meaning match, not by spelling alone.
       const legacy=await tx.all<{canonical_key:string;target_english:string;intention_zh:string}>(sql`SELECT canonical_key,target_english,intention_zh FROM learning_items WHERE canonical_key=${normalizeExpression(row.englishChunk)}`);
       if(legacy.some(i=>normalizeExpression(i.target_english)===normalizeExpression(row.englishChunk)&&normalizeExpression(i.intention_zh)===normalizeExpression(row.chineseChunk)))key=legacy[0].canonical_key;
@@ -29,7 +32,8 @@ export async function publishReviewedItems(tx:SqlWriter,material:MaterialRow,inp
       VALUES(${itemId},${key},${row.englishChunk},${row.chineseChunk},${item.itemType},${row.naturalEnglishSentence},${input.sourceType},${input.sourceId},${timestamp},${timestamp}) ON CONFLICT(canonical_key) DO NOTHING`);
     const [actual]=await tx.all<{id:string}>(sql`SELECT id FROM learning_items WHERE canonical_key=${key}`);
     if(!actual)throw new TrainingError("学习项保存未确认");
-    if(!inserted.changes&&!encountered.has(key))await tx.run(sql`UPDATE learning_items SET encounter_count=encounter_count+1,updated_at=${timestamp} WHERE id=${actual.id}`);
+    if(preserved&&actual.id!==preserved.learningItemId)throw new TrainingError('旧学习项身份已变化，修订不能重建进度',409,'offline_identity_changed');
+    if(!inserted.changes&&!preserved&&!encountered.has(key))await tx.run(sql`UPDATE learning_items SET encounter_count=encounter_count+1,updated_at=${timestamp} WHERE id=${actual.id}`);
     encountered.add(key);
     await tx.run(sql`INSERT INTO practice_material_items(material_id,learning_item_id,row_index) VALUES(${material.id},${actual.id},${rowIndex}) ON CONFLICT DO NOTHING`);
     const gap=analysis.gaps.find(value=>value.key===row.gapId)??analysis.gaps.find(value=>normalizeExpression(value.targetEnglish)===normalizeExpression(row.englishChunk));

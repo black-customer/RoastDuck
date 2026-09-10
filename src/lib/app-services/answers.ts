@@ -7,7 +7,7 @@ import {hash,TrainingError} from "@/lib/four-step/shared";
 import {speakingAttemptAnalysisSchema} from "@/lib/speaking-practice/schemas";
 import {auditPracticeMaterials} from "@/lib/four-step/audit";
 import {credentialValue,parseJson} from "./shared";
-import {SPOKEN_STYLE_VERSION} from '@/lib/four-step/stage-contracts';
+import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION} from '@/lib/four-step/stage-contracts';
 
 export interface AnswerDraft {id:string;question_id:string;english_text:string;chinese_text:string;english_unknown:number;raw_input?:string;input_format?:string;version:number;submitted_attempt_id:string|null;source_attempt_id:string|null;kind:'practice'|'independent'|'edit';english_committed_at:string|null;created_at:string;updated_at:string}
 export interface AppAttempt {id:string;question_id:string;mode:string;answer_text:string;intended_meaning_zh:string;natural_version:string;gap_count:number;status:string;analysis_json:string;created_at:string;updated_at:string}
@@ -85,7 +85,7 @@ export function createAnswerService(database:DatabasePort,materials:Pick<Materia
       await tx.run(sql`INSERT INTO speaking_question_attempts(id,question_id,mode,answer_text,intended_meaning_zh,status,created_at,updated_at)
         VALUES(${attemptId},${question.id},'practice',${english},${meaning},'processing',${timestamp},${timestamp})`);
       await tx.run(sql`INSERT INTO practice_submissions(request_id,input_hash,attempt_id) VALUES(${id},${hash(question.id,"practice",english,meaning)},${attemptId})`);
-      await materials.prepareIn(tx,{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:"practice",actualAnswer:english,intendedMeaningZh:meaning,spokenStyleVersion:SPOKEN_STYLE_VERSION,...(mixed?{inputFormat:'mixed-v1' as const,rawInput:english}:{})});
+      await materials.prepareIn(tx,{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.text_zh,part:question.part},mode:"practice",actualAnswer:english,intendedMeaningZh:meaning,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,...(mixed?{inputFormat:'mixed-v1' as const,rawInput:english}:{})});
       await tx.run(sql`UPDATE answer_drafts SET submitted_attempt_id=${attemptId},version=version+1,updated_at=${timestamp} WHERE id=${id}`);
       return {attemptId};
     });

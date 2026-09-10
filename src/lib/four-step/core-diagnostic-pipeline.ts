@@ -5,7 +5,7 @@ import type {RuntimeCalls,RuntimeCallOptions} from "@/lib/ai/runtime-ledger";
 import { speakingAttemptAnalysisSchema } from "@/lib/speaking-practice/schemas";
 import type { MaterialInput, MaterialRow } from "./material-types";
 import { hash, TrainingError } from "./shared";
-import { compileEvidence, diagnosisSchema, evidenceReviewSchema, spokenEvidenceReviewSchema,materialDraftSchema, selectionReviewSchema, validateDiagnosis, validateEvidenceReview, validateSelection } from "./selection-contracts";
+import { compileEvidence, diagnosisSchema, reviewSchemaForSource,recallMaterialDraftSchema,materialDraftSchema, selectionSchemaForSource, validateDiagnosis, validateEvidenceReview, validateSelection } from "./selection-contracts";
 
 import { STAGE_CONTRACTS,materialStageContracts,diagnosisRepairPrompt,SPOKEN_STYLE_VERSION } from "./stage-contracts";
 export { STAGE_CONTRACTS, DIAGNOSIS_REPAIR_PROMPT } from "./stage-contracts";
@@ -17,7 +17,7 @@ export interface DiagnosticPlatform {database:DatabasePort;runtime:RuntimeCalls;
 export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:DiagnosticPlatform) {
   const {database,runtime,loadPrompt,now,guard}=platform;
   const source=JSON.parse(material.input_json) as MaterialInput;
-  const contracts=materialStageContracts(source),repairPrompt=diagnosisRepairPrompt(source),version=source.spokenStyleVersion===SPOKEN_STYLE_VERSION?'v3':'v2';
+  const contracts=materialStageContracts(source),repairPrompt=diagnosisRepairPrompt(source),version=source.spokenStyleVersion===SPOKEN_STYLE_VERSION?'v4':source.spokenStyleVersion==='personal-spoken-v1'?'v3':'v2';
   let active:Stage="diagnosis";
   const stage = async <T>(name:Stage,schema:z.ZodType<T>,input:unknown,promptOverride?:string) => {
     active=name;
@@ -29,7 +29,7 @@ export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:Di
     const [{rejected}]=await database.read(db=>db.all<{rejected:number}>(sql`SELECT count(*) rejected FROM practice_material_stages WHERE material_id=${material.id} AND stage=${name} AND input_hash=${inputHash} AND status='rejected'`));
     const result=await runtime.call({
       role:spec.role,instructions:await loadPrompt(spec.prompt),
-      input:inputJson,schema,schemaName:`four_step_${name}_${version}`,schemaVersion:`four-step-${name}-${version}`,promptVersion:spec.prompt,
+      input:inputJson,schema,schemaName:`four_step_${name}_${version}`,schemaVersion:`four-step-${name}-${version}${name==='selection'&&source.selectionPolicyVersion?`-${source.selectionPolicyVersion}`:''}`,promptVersion:spec.prompt,
       idempotencyKey:rejected?`${inputHash}:revision-${rejected}`:inputHash,maxOutputTokens:12000,
     },platform.callOptions);
     const data=schema.parse(result.data);
@@ -51,13 +51,13 @@ export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:Di
       diagnosis=await stage("diagnosis",diagnosisSchema,{source,correction:{previousRunId:rejected.runId,previousDiagnosis:rejected.data,validationIssue:error.message}},repairPrompt);
       validateDiagnosis(source,diagnosis.data);
     }
-    const selection=await stage("selection",selectionReviewSchema,{source,diagnosis:diagnosis.data,diagnosisRunId:diagnosis.runId});
+    const selection=await stage("selection",selectionSchemaForSource(source),{source,diagnosis:diagnosis.data,diagnosisRunId:diagnosis.runId});
     validateSelection(diagnosis.data,selection.data,source);
-    const draft=await stage("material",materialDraftSchema,{source,diagnosis:diagnosis.data,selection:selection.data,selectionRunId:selection.runId});
+    const draft=await stage("material",version==='v4'?recallMaterialDraftSchema:materialDraftSchema,{source,diagnosis:diagnosis.data,selection:selection.data,selectionRunId:selection.runId});
     const evidence={diagnosis:diagnosis.data,selection:selection.data,draft:draft.data};
     // 在最终审核之前校验实际下游契约，避免长引用/句子导致审核后发布失败且永久复用坏检查点。
     const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence(source,evidence));
-    const review=await stage("review",version==='v3'?spokenEvidenceReviewSchema:evidenceReviewSchema,{source,compiled:analysis,generatorRunId:draft.runId});
+    const review=await stage("review",reviewSchemaForSource(source),{source,compiled:analysis,generatorRunId:draft.runId});
     validateEvidenceReview(evidence,review.data,source);
     return { analysis,generatorRunId:draft.runId,reviewed:{runId:review.runId,data:{approved:true,reasonZh:review.data.reasonZh,rows:analysis.learningMaterials.map((row,index)=>({index,approved:true,reasonZh:review.data.rows.find((r)=>r.gapId===row.gapId)!.reasonZh}))}} };
   } catch(error) {

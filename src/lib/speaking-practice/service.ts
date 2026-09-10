@@ -11,7 +11,7 @@ import { createAiProvider } from "@/lib/ai/provider-factory";
 import { runtimeAnswerMockResolver } from "@/lib/answers/runtime-mock";
 import { prepareMaterial, processMaterial } from "@/lib/four-step/materials";
 import { hash } from "@/lib/four-step/shared";
-import {SPOKEN_STYLE_VERSION} from '@/lib/four-step/stage-contracts';
+import {SPOKEN_STYLE_VERSION,SELECTION_POLICY_VERSION} from '@/lib/four-step/stage-contracts';
 import { materialFailureMessage } from "@/lib/four-step/material-status";
 import { executeAuditedAiCall } from "@/lib/ai/job-service";
 import {
@@ -83,7 +83,7 @@ export async function prepareSpeakingAttempt(input: CreateAttemptInput): Promise
     await tx.run(sql`INSERT INTO practice_submissions (request_id,input_hash,attempt_id) VALUES (${requestId},${inputHash},${id})`);
     return id;
   });
-  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh, part: question.part }, mode: input.mode, actualAnswer: input.answerText, intendedMeaningZh: input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION });
+  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh, part: question.part }, mode: input.mode, actualAnswer: input.answerText, intendedMeaningZh: input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION });
   return (await getSpeakingAttempt(attemptId))!;
 }
 
@@ -102,7 +102,7 @@ export async function prepareAttemptReanalysis(attemptId: string) {
       SELECT id,analysis_json,natural_version,${new Date().toISOString()} FROM speaking_question_attempts WHERE id=${attemptId} AND analysis_json!='{}' ON CONFLICT DO NOTHING`);
     const [previous]=await db.all<{input_json:string}>(sql`SELECT input_json FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} AND contract_version='evidence_v2' ORDER BY created_at DESC,id DESC LIMIT 1`);
     // Recover the exact saved version, including mixed-input and spoken-style markers.
-    const material = await prepareMaterial(previous?JSON.parse(previous.input_json):{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION});
+    const material = await prepareMaterial(previous?JSON.parse(previous.input_json):{sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION});
     if (material.status!=="ready") await db.update(speakingQuestionAttempts).set({status:"processing"}).where(eq(speakingQuestionAttempts.id,attemptId));
     return (await getSpeakingAttempt(attemptId))!;
   });
