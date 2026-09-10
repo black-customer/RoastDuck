@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "c0af236e6c911936c64437349f7571e6f0d8e25f",
-  "createdAt": "2026-09-10T14:30:07.355Z",
+  "sourceCommit": "d148905ec1f3869d355bfdf786b4a9a550d86b4e",
+  "createdAt": "2026-09-10T16:03:43.020Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -42,7 +42,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "19b85aa6abc442981cac45641101b3f5b1cd58fb2824e8818ab803a8c68d86ec"
+      "sha256": "7dd04a6f0af0ab5893a6f84e03072f917e971330e3c66c2ea0d95ec214bf21a5"
     },
     {
       "path": "android/.gitignore",
@@ -430,7 +430,7 @@
     },
     {
       "path": "docs/AI_PROVIDER.md",
-      "sha256": "56502ad54bdea19068ba1a54270eb0035478a6687ad97692fef4a3f677fddb30"
+      "sha256": "e8c84e2204e41a88aa674bae10ca275b40637c1b6fbe61bf795fa2fbab19c6d2"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -454,7 +454,7 @@
     },
     {
       "path": "docs/DESIGN.md",
-      "sha256": "76c4ad51e4ecf412df2ae61ad512a702edf8dc45753d6cc6419f33d5780eb50f"
+      "sha256": "b5d2cd7d75b77dd27aa499a3881cb7bb04dd4b013718cc103c05f0a2a4c14678"
     },
     {
       "path": "docs/DESKTOP_LAUNCHER.md",
@@ -502,7 +502,7 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "72f208ae99c01ae60fed618142deb095986b602fb65b69998d31921d3031c262"
+      "sha256": "2d0f3b102436c87eef841ff03b85720ea75731d4ab46520615cd8401cebb69d7"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -1411,6 +1411,10 @@
     {
       "path": "scripts/desktop/start.mjs",
       "sha256": "33df47049486738d7bb4355b196af525f0f973e932739106f0d8f83331501b0e"
+    },
+    {
+      "path": "scripts/finalize-cached-material.ts",
+      "sha256": "4b6114aa2ed710dbeb60b360d01d953af38905ba44cfcbb72d3eef115daffc53"
     },
     {
       "path": "scripts/governance-check.mjs",
@@ -2477,8 +2481,12 @@
       "sha256": "44e3112dfe96c350b216e0e392e02da5786b68c1ff855b8e04808d03974f9a0a"
     },
     {
+      "path": "src/lib/four-step/approved-pipeline.ts",
+      "sha256": "78777ef2031f4c269e68b00629f17588f62f51df8b04b0b3190f275be5cebf8d"
+    },
+    {
       "path": "src/lib/four-step/audit.ts",
-      "sha256": "ea54718b307643a63f3fb0c47bd8fcea3cb4f76787702d6709964dfd4a421fbe"
+      "sha256": "69ae4f7b08e7d5bcfef89ac3b6a65311a2c28acbe143688718962313f0fe19c5"
     },
     {
       "path": "src/lib/four-step/contracts.ts",
@@ -2486,7 +2494,7 @@
     },
     {
       "path": "src/lib/four-step/core-diagnostic-pipeline.ts",
-      "sha256": "c9eb01611ace266d96aa1b87deea43d6d97c94803b44ab6409b13c669c0c6518"
+      "sha256": "0766ba12abc5a418a8331a0a6502465b93ece8af8787bdcbcdc6b941ad41b5fa"
     },
     {
       "path": "src/lib/four-step/core-materials.ts",
@@ -2507,6 +2515,10 @@
     {
       "path": "src/lib/four-step/export-material-review.ts",
       "sha256": "fdd90c6b34df08c99d8f34140d08363ce79ff17c7dfc41085bf100e0935878de"
+    },
+    {
+      "path": "src/lib/four-step/finalize-cached.ts",
+      "sha256": "95b5c43183b66bd95be0e36ab09dbc7e8bad497ec8f2acf1db98ef4931da8926"
     },
     {
       "path": "src/lib/four-step/material-status.ts",
@@ -2553,12 +2565,20 @@
       "sha256": "e63f966b18bef4203b97a797e884fb26c5a3b88a442254f169cda55d51c46f2e"
     },
     {
+      "path": "src/lib/four-step/reviewed-projection.ts",
+      "sha256": "480c98e0138c59e7ca9036377659dfbd89b1bf1f3a42d8f573bae951bd56c78e"
+    },
+    {
       "path": "src/lib/four-step/revision-source.ts",
       "sha256": "55733754f92117e48fab6d1fb023b578fd42f35de1f37935208089e153a3fe21"
     },
     {
       "path": "src/lib/four-step/selection-contracts.ts",
-      "sha256": "e51deec604aed484d609652a363737b834c70d8670025e28946dcabceb930812"
+      "sha256": "cc48e37966c1c2ed2036e5e6519b51463515c038e17853abad7749100aa26f3b"
+    },
+    {
+      "path": "src/lib/four-step/selection-identity.ts",
+      "sha256": "da52e09b161664106b1f3ce09cd1d2fe2301795e4cca5b57bd7783e5e08806be"
     },
     {
       "path": "src/lib/four-step/selection-mock.ts",
@@ -3005,6 +3025,18 @@
       "sha256": "0f510ec058a291a2847d5cee20a3ce35014397f0fa60510099dd77ae803e218f"
     },
     {
+      "path": "tests/approved-pipeline-projection.test.ts",
+      "sha256": "a3ba4be19bebc3bcee9640c2715e83be022330c7887975fff088ac62e76b9ead"
+    },
+    {
+      "path": "tests/approved-selection-pipeline.test.ts",
+      "sha256": "b0f7bf6510ffb016b0661b8cb10470c00c8c845e0dec12649671d4e93a0fa763"
+    },
+    {
+      "path": "tests/approved-selection-recovery.test.ts",
+      "sha256": "a4e4966dac312d7eb9501e5e3ca91c8d019653d3637b8addb35638a8e494ad6b"
+    },
+    {
       "path": "tests/coaching-service.test.ts",
       "sha256": "43328cbfe007245547257d0ae6104f7afa7972957b82e7a0865408119d88ede7"
     },
@@ -3413,6 +3445,10 @@
       "sha256": "68d3c449342bf8eae4b4a165f2b1d11cf31bb3bef56c95565816585cf33646c1"
     },
     {
+      "path": "tests/preparation-and-mixed-review.test.ts",
+      "sha256": "bcd9ce2abbad6ef05031d16be1409aa0b71b1da75ba16a325579e44a04c77956"
+    },
+    {
       "path": "tests/project-runtime.test.ts",
       "sha256": "01496714348ef292211bc85de3aafe004b8e5c036e94ccab7f6e59847a22c3f0"
     },
@@ -3433,12 +3469,20 @@
       "sha256": "ef9494c05b5c1867297d30c572f4ad10e2676422ce8922c4b09dece76732d18d"
     },
     {
+      "path": "tests/rejected-draft-recovery.test.ts",
+      "sha256": "0ebc07ff0d88d7db32ad1a78822350de962358d92c50cea381b0692898b6d2c6"
+    },
+    {
       "path": "tests/retrieval-contracts.test.ts",
       "sha256": "d0fc9b3f36be6fe7e1210b06af5c5f084560f07092f1b29be2bc0f035a16ee49"
     },
     {
       "path": "tests/retrieval-session.test.ts",
       "sha256": "734f380a453afa102771fe12d2efe1e1df2e7a67c79c8f7252612f073d252272"
+    },
+    {
+      "path": "tests/review-reference-list.test.ts",
+      "sha256": "640abade4ff69d07ac8abcefe61d58d81ad9a58d3e8ddc116efbb0d42e20f059"
     },
     {
       "path": "tests/review-remediation.test.ts",
@@ -3459,6 +3503,14 @@
     {
       "path": "tests/segment-recovery.test.ts",
       "sha256": "c134d8b8d284d507d46b3e89632e225283460592f67c849ea4616bb20e714c00"
+    },
+    {
+      "path": "tests/selection-identity-recovery.test.ts",
+      "sha256": "d1d5f3079c15ea5f90abda80780da1c495ac037c200c09be9102451ef1f07cb9"
+    },
+    {
+      "path": "tests/selection-identity.test.ts",
+      "sha256": "3dfde942582c139ae26d603b4ad6ae10ef51a36a61094f2dd28e9ba4f1ce955a"
     },
     {
       "path": "tests/sentence-highlights-client.test.ts",

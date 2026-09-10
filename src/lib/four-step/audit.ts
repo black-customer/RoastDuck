@@ -6,6 +6,7 @@ import type { MaterialInput, MaterialRow } from "./material-types";
 import {materialStageContracts,diagnosisRepairPrompt} from "./stage-contracts";
 import { reviewSchemaForSource, validateEvidenceReview,diagnosisSchema } from "./selection-contracts";
 import {normalizeUniqueQuoteOccurrences} from './quote-normalization';
+import {matchesReviewedProjection} from './reviewed-projection';
 import { hash } from "./shared";
 import {compileOfflineMaterial} from './offline-compile';
 import {authorHash} from './offline-contracts';
@@ -77,9 +78,10 @@ export async function auditPracticeMaterials(client: MaterialAuditReader, allowM
           const expected=name==='diagnosis'&&input.registerProfileVersion?normalizeUniqueQuoteOccurrences(input,diagnosisSchema.parse(original)).diagnosis:original;
           if(JSON.stringify(expected)!==JSON.stringify(output)) fail("stage_output_chain");
         }
-        if(JSON.stringify(speakingAttemptAnalysisSchema.parse(expectedInputs.review.compiled))!==JSON.stringify(analysis)) fail("reviewed_material_drift");
         const reviewSchema=reviewSchemaForSource(input);
-        validateEvidenceReview(evidence,reviewSchema.parse(JSON.parse(String(stage("review").output_json))),input);
+        const finalReview=reviewSchema.parse(JSON.parse(String(stage("review").output_json)));
+        validateEvidenceReview(evidence,finalReview,input);
+        if(!matchesReviewedProjection(input,expectedInputs.review.compiled,analysis,finalReview))fail("reviewed_material_drift");
         if(offline.length){
           const receipt=(name:string)=>offline.find(r=>r.run_id===stage(name).run_id);
           if(["diagnosis","selection","material","review"].some(n=>!receipt(n))||receipt("diagnosis")?.context_id===receipt("selection")?.context_id||receipt("material")?.context_id===receipt("review")?.context_id||new Set(offline.filter(r=>stages.some(s=>s.run_id===r.run_id)).map(r=>r.artifact_hash)).size!==1)fail("offline_independence");
