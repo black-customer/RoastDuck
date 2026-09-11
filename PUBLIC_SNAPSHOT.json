@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "0e212db550e8b082f2ac634a4fec68dc66bfaf95",
-  "createdAt": "2026-09-11T11:56:32.651Z",
+  "sourceCommit": "ecc920704a82c3727146c8a3b666bdf06b7dd925",
+  "createdAt": "2026-09-11T12:11:47.973Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -510,7 +510,7 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "09ad5178729ff1689072a7fef030845b36b3e3623f1b6f4654bbe9f82dc22ef2"
+      "sha256": "09279dc329ab08b7593bba39e6ee0359203e0bd9be0e104c83aabcdfb56c1909"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -3274,7 +3274,7 @@
     },
     {
       "path": "tests/integration/current-material-retry.integration.test.ts",
-      "sha256": "c2fcbbb042a5dcd606a10d0e609a93975f6bb1ad2da9c793f9d86a8a972b0b11"
+      "sha256": "8a09115913a2e4c8acaebf6fb331cf8712ccb8dfd71bc084026db966ba5c2858"
     },
     {
       "path": "tests/integration/expression-activity.integration.test.ts",

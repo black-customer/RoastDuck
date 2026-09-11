@@ -7,7 +7,12 @@ const background=vi.hoisted(()=>[] as Array<()=>Promise<void>>);
 vi.mock('next/server',async original=>({...await original<typeof import('next/server')>(),after:(work:()=>Promise<void>)=>background.push(work)}));
 let route:typeof import('@/app/api/materials/[id]/route'),retryRoute:typeof import('@/app/api/speaking-practice/attempts/[id]/retry/route');
 const request=(url:string)=>new Request('http://127.0.0.1:3001'+url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({retryUnknown:false})});
-beforeAll(async()=>{route=await import('@/app/api/materials/[id]/route');retryRoute=await import('@/app/api/speaking-practice/attempts/[id]/retry/route');});
+beforeAll(async()=>{
+  // Cold schema/bootstrap is fixture setup, not part of either HTTP recovery
+  // scenario's five-second budget. Keep every recovery/receipt assertion below.
+  await(await import('@db/client')).getDbReady();
+  route=await import('@/app/api/materials/[id]/route');retryRoute=await import('@/app/api/speaking-practice/attempts/[id]/retry/route');
+});
 async function oldFailure(id:string){
   const {getDbReady}=await import('@db/client'),db=await getDbReady();
   await db.run(sql`INSERT INTO questions(id,book_id,part,text,text_zh,norm_text) VALUES(${id+'q'},'retired',1,'Do you live alone?','你一个人住吗？',${id+'q'})`);
