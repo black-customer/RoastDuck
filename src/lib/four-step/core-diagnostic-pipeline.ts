@@ -13,6 +13,7 @@ import {normalizeUniqueQuoteOccurrences} from './quote-normalization';
 import {recoverApprovedSelection,recoverDiagnosisFromMalformedSelection,selectionSchemaForDiagnosis,type StoredReviewStage} from './selection-identity';
 import {sha256Text} from '@/lib/platform/hash';
 import {recoverApprovedPipeline} from './approved-pipeline';
+import {teachingMaterialDraftSchema} from './selection-contracts';
 export { STAGE_CONTRACTS, DIAGNOSIS_REPAIR_PROMPT } from "./stage-contracts";
 type Stage = keyof typeof STAGE_CONTRACTS;
 export type MaterialGuard = (work:(tx:SqlWriter)=>Promise<unknown>)=>Promise<unknown>;
@@ -22,7 +23,7 @@ export interface DiagnosticPlatform {database:DatabasePort;runtime:RuntimeCalls;
 export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:DiagnosticPlatform) {
   const {database,runtime,loadPrompt,now,guard}=platform;
   const source=JSON.parse(material.input_json) as MaterialInput;
-  const contracts=materialStageContracts(source),repairPrompt=diagnosisRepairPrompt(source),version=source.sentenceStudyVersion?'v5':source.spokenStyleVersion===SPOKEN_STYLE_VERSION?'v4':source.spokenStyleVersion==='personal-spoken-v1'?'v3':'v2';
+  const contracts=materialStageContracts(source),repairPrompt=diagnosisRepairPrompt(source),version=source.teachingVersion?'v6':source.sentenceStudyVersion?'v5':source.spokenStyleVersion===SPOKEN_STYLE_VERSION?'v4':source.spokenStyleVersion==='personal-spoken-v1'?'v3':'v2';
   const canonicalDiagnosis=(value:Diagnosis)=>source.registerProfileVersion?normalizeUniqueQuoteOccurrences(source,value).diagnosis:value;
   const correctionDetails=(value:Diagnosis,issue:string)=>{
     const refs=value.units.flatMap(unit=>(['english','chinese','raw'] as const).flatMap(field=>(unit[field]??[]).map(ref=>{
@@ -51,7 +52,7 @@ export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:Di
           const draft=schema.parse(JSON.parse(candidate.output_json)),receipt=schema.parse(JSON.parse(candidate.response_json).data);
           if(JSON.stringify(draft)===JSON.stringify(receipt)){
             const current=input as {diagnosis:Diagnosis;selection:z.infer<ReturnType<typeof selectionSchemaForSource>>};
-            speakingAttemptAnalysisSchema.parse(compileEvidence(source,{diagnosis:current.diagnosis,selection:current.selection,draft:recallMaterialDraftSchema.parse(draft)}));
+            speakingAttemptAnalysisSchema.parse(compileEvidence(source,{diagnosis:current.diagnosis,selection:current.selection,draft:(source.teachingVersion?teachingMaterialDraftSchema:recallMaterialDraftSchema).parse(draft)}));
             await guard(tx=>tx.run(sql`UPDATE practice_material_stages SET status='completed' WHERE material_id=${material.id} AND run_id=${candidate.run_id} AND stage='material' AND status='rejected'`));
             return {data:draft,runId:candidate.run_id};
           }
@@ -113,11 +114,11 @@ export async function runCoreDiagnosticPipeline(material:MaterialRow,platform:Di
     // this exact original diagnostic run. All rejected review rows remain unchanged.
     if(reusedDiagnosis)await guard(tx=>tx.run(sql`UPDATE practice_material_stages SET status='completed' WHERE material_id=${material.id} AND run_id=${diagnosis.runId} AND stage='diagnosis' AND status='rejected'`));
     if(approvedCheckpoint)await guard(tx=>tx.run(sql`UPDATE practice_material_stages SET status='completed' WHERE material_id=${material.id} AND run_id IN (${diagnosis.runId},${selection.runId}) AND status='rejected'`));
-    const draft=await stage("material",version==='v4'||version==='v5'?recallMaterialDraftSchema:materialDraftSchema,{source,diagnosis:diagnosis.data,selection:selection.data,selectionRunId:selection.runId});
+    const draft=await stage("material",source.teachingVersion?teachingMaterialDraftSchema:version==='v4'||version==='v5'?recallMaterialDraftSchema:materialDraftSchema,{source,diagnosis:diagnosis.data,selection:selection.data,selectionRunId:selection.runId});
     const evidence={diagnosis:diagnosis.data,selection:selection.data,draft:draft.data};
     // 在最终审核之前校验实际下游契约，避免长引用/句子导致审核后发布失败且永久复用坏检查点。
     const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence(source,evidence));
-    const review=await stage("review",source.registerProfileVersion?sentenceReviewSchemaForDraft(draft.data):reviewSchemaForSource(source),{source,compiled:analysis,generatorRunId:draft.runId});
+    const review=await stage("review",source.registerProfileVersion?sentenceReviewSchemaForDraft(draft.data,!!source.teachingVersion):reviewSchemaForSource(source),{source,compiled:analysis,generatorRunId:draft.runId});
     validateEvidenceReview(evidence,review.data,source);
     return { analysis,generatorRunId:draft.runId,reviewed:{runId:review.runId,data:{approved:true,reasonZh:review.data.reasonZh,rows:analysis.learningMaterials.map((row,index)=>({index,approved:true,reasonZh:review.data.rows.find((r)=>r.gapId===row.gapId)!.reasonZh}))}} };
   } catch(error) {

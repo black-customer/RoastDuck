@@ -19,7 +19,7 @@ test('个人中英文高亮可保存、刷新、失败重试和键盘取消，�
   await expect(chinese).toContainText('我想阅读第1章。');
   await selectText(chinese,'阅读');await page.getByRole('button',{name:'高亮',exact:true}).click();
   await expect(chinese.locator('mark')).toHaveText('阅读');
-  await page.getByRole('button',{name:'看自然表达',exact:true}).click();
+  await page.getByRole('button',{name:'看自然表达与讲解',exact:true}).click();
   await expect(english).toBeVisible();await selectText(english,'read chapter');
   let failed=false;await page.route('**/api/sentence-study/highlights',async route=>{if(route.request().method()==='POST'&&!failed){failed=true;await route.fulfill({status:503,contentType:'application/json',body:'{"error":"模拟断网：高亮尚未保存","code":"unavailable"}'});}else await route.continue();});
   await page.getByRole('button',{name:'高亮',exact:true}).click();await expect(page.getByText('模拟断网：高亮尚未保存',{exact:false})).toBeVisible();

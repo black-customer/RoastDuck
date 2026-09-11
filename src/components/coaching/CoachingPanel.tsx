@@ -3,12 +3,12 @@ import {useEffect,useId,useRef,useState} from 'react';
 import type {CoachingContext,CoachingMode,CoachingSubmit,CoachingView} from '@/lib/coaching/contracts';
 import styles from './CoachingPanel.module.css';
 
-export interface CoachingPanelProps {materialId:string;sentenceId?:string;questionId?:string;mode:CoachingMode;onNext?:()=>void;onClose?:()=>void}
+export interface CoachingPanelProps {materialId:string;sentenceId?:string;questionId?:string;mode:CoachingMode;initialDraft?:string;onNext?:()=>void;onClose?:()=>void}
 type Receipt=Pick<CoachingSubmit,'context'|'clientMessageId'|'text'|'correctionHint'>;
 type Failure={message:string;code?:string};
 const titles:Record<CoachingMode,string>={sentence_guided:'再表达一次',answer_guided:'把整道题串起来说',answer_independent:'不看提示，独立回答'};
 export function CoachingPanel(props:CoachingPanelProps){return <CoachingSession key={[props.materialId,props.sentenceId??'',props.mode].join(':')} {...props}/>;}
-function CoachingSession({materialId,sentenceId,questionId,mode,onNext,onClose}:CoachingPanelProps){
+function CoachingSession({materialId,sentenceId,questionId,mode,initialDraft='',onNext,onClose}:CoachingPanelProps){
   const key=['roastduck-coaching-v1',materialId,sentenceId??'',mode].join(':'),inputId=useId();
   const [context,setContext]=useState<CoachingContext|null>(null),[view,setView]=useState<CoachingView|null>(null),[draft,setDraft]=useState('');
   const [receipt,setReceipt]=useState<Receipt|null>(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState<Failure|null>(null),[correction,setCorrection]=useState(false);
@@ -17,10 +17,11 @@ function CoachingSession({materialId,sentenceId,questionId,mode,onNext,onClose}:
   useEffect(()=>{alive.current=true;try{
     const stored=localStorage.getItem(key),record=stored?JSON.parse(stored) as {practiceId:string;draft?:string;receipt?:Receipt}:null;
     const current={materialId,sentenceId,questionId,mode,practiceId:record?.practiceId??crypto.randomUUID()};
-    setContext(current);setDraft(record?.draft??'');setReceipt(record?.receipt??null);
-    if(!stored)localStorage.setItem(key,JSON.stringify({practiceId:current.practiceId,draft:''}));
+    const restoredDraft=record?.receipt?record.draft??'':initialDraft||record?.draft||'';
+    setContext(current);setDraft(restoredDraft);setReceipt(record?.receipt??null);
+    if(!record?.receipt)localStorage.setItem(key,JSON.stringify({...record,practiceId:current.practiceId,draft:restoredDraft}));
   }catch{setError({message:'浏览器暂时不能保存练习草稿。请保留文字，恢复本机存储后再提交。'});setLoading(false);}
-  return ()=>{alive.current=false;};},[key,materialId,sentenceId,questionId,mode]);
+  return ()=>{alive.current=false;};},[key,materialId,sentenceId,questionId,mode,initialDraft]);
   function persist(text:string,nextReceipt:Receipt|null){
     if(!context)throw new Error('练习还没有准备好');
     localStorage.setItem(key,JSON.stringify({practiceId:context.practiceId,draft:text,receipt:nextReceipt}));

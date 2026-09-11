@@ -6,12 +6,13 @@ import {materialFingerprint} from '@/lib/light-study/core-catalogue';
 import {SENTENCE_VALIDATION_VERSION} from './materials';
 import {SentenceStudyError,type SentenceCard,type SentenceScope,type SentenceSourceOption} from './contracts';
 import {projectStoredSentenceHighlights,type StoredSentenceHighlight} from './highlights';
+import {readTeachingAttachments,withTeaching} from './teaching-editions';
 export interface SentenceProgress {sentence_id:string;first_seen_at:string;last_seen_at:string;due_at:string;fsrs_json:string;review_count:number;version:number;last_rating:string}
 type EligibleMaterial=MaterialRow&{cache_fingerprint:string|null;cache_rule:string|null;cache_valid:number|null;title:string;question_en:string;part:number|null;topic_id:string|null;topic:string;actual_answer:string|null;actual_chinese:string|null};
 export function sentenceGroup(card:SentenceCard){return card.source.questionId?`question:${card.source.questionId}`:`conversation:${card.source.id}`;}
 
 /** No audit or AI in the click path: verify publication fingerprint, current source and preferences. */
-export async function readSentenceCatalogue(db:SqlReader,scope:SentenceScope={type:'all'},now=new Date()){
+export async function readSentenceCatalogue(db:SqlReader,scope:SentenceScope={type:'all'},now=new Date(),includeTeaching=true){
   const filters=scope.type==='collection'?scope:undefined;
   const where=scope.type==='question'?sql`pm.question_id=${scope.id}`:scope.type==='material'?sql`pm.id=${scope.id}`:scope.type==='conversation'?sql`pm.source_type='free_talk' AND pm.source_id=${scope.id}`:filters?sql`pm.source_type=${filters.id==='ielts'?'ielts_practice':'free_talk'}`:sql`1=1`;
   const materials=await db.all<EligibleMaterial>(sql`SELECT pm.*,v.fingerprint cache_fingerprint,v.rule_version cache_rule,v.valid cache_valid,
@@ -40,11 +41,12 @@ export async function readSentenceCatalogue(db:SqlReader,scope:SentenceScope={ty
   const progressRows=rows.length?await db.all<SentenceProgress>(sql`SELECT p.* FROM sentence_study_progress p JOIN sentence_learning_units u ON u.id=p.sentence_id WHERE u.active=1 AND u.material_id IN (${selectedIds})`):[];
   const progress=new Map(progressRows.map(p=>[p.sentence_id,p]));
   const highlights=rows.length?await db.all<StoredSentenceHighlight>(sql`SELECT h.* FROM sentence_highlights h JOIN sentence_learning_units u ON u.id=h.sentence_id WHERE u.active=1 AND u.material_id IN (${selectedIds}) AND h.state='active'`):[];
+  const teaching=includeTeaching?await readTeachingAttachments(db,selected.map(m=>m.id)):new Map();
   const cards:SentenceCard[]=selected.flatMap(material=>rows.filter(r=>r.material_id===material.id).map(row=>{
     const card=JSON.parse(row.body_json) as SentenceCard;
     if(card.id!==row.id||card.version!==row.version||card.materialId!==material.id)throw new SentenceStudyError('句子资料已变化，暂时无法学习',409,'material_changed');
     const userHighlights=(['zh','en'] as const).flatMap(language=>projectStoredSentenceHighlights(highlights,{sentenceId:card.id,language,textVersion:card.version},language==='zh'?card.chinese:card.english).highlights);
-    return {...card,userHighlights,progressVersion:progress.get(row.id)?.version??0,source:{...card.source,title:material.title}};
+    return withTeaching({...card,userHighlights,progressVersion:progress.get(row.id)?.version??0,source:{...card.source,title:material.title}},teaching);
   }));
   const seasons=await db.all<{question_id:string;id:string;name:string}>(sql`SELECT l.question_id,s.id,s.name_zh name FROM question_set_links l JOIN question_sets s ON s.id=l.question_set_id ORDER BY s.sort,s.id`);
   const sources:SentenceSourceOption[]=selected.map(m=>{

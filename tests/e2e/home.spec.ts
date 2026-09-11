@@ -46,12 +46,12 @@ test('自动组选启动丢响应，刷新重试使用同一提交与会话',asy
   await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
   await expect(page.getByRole('alert')).toBeVisible();await page.reload();
   await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
-  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);expect(new Set(ids).size).toBe(1);
   await page.getByRole('button',{name:'暂停学习'}).click();
   await expect.poll(async()=>(await(await request.get(`/api/sentence-study/sessions/${id}`)).json()).session.status).toBe('paused');
   await page.goto('/');await page.getByRole('button',{name:'学习',exact:true}).click();
-  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);
 });
 
@@ -61,10 +61,12 @@ test('选题直接开始本题新表达，不改变范围或经过四步',async(
   await page.getByPlaceholder('输入题目中的中文或英文').fill(question.textEn);
   const choices=page.locator('[data-question-id="light-e2e-home"]').getByRole('button',{name:/^学习：/});
   await expect(choices.first()).toBeVisible();await choices.first().click();
-  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
   const sessionId=new URL(page.url()).searchParams.get('session');
   const session=(await(await request.get(`/api/sentence-study/sessions/${sessionId}`)).json()).session;
   expect(session.scope).toEqual({type:'question',id:'light-e2e-home'});expect(session.mode).toBe('learn');
-  await expect(page.getByRole('button',{name:'看自然表达',exact:true})).toBeVisible();
-  await expect(page.getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'写下你的尝试（可留空）',exact:true})).toHaveValue('');
+  await expect(page.getByRole('slider',{name:'揭晓英文进度',exact:true})).toHaveValue('0');
+  await expect(page.getByTestId('guided-english')).not.toContainText(session.cards[session.index].english);
 });

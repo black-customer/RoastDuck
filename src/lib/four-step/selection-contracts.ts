@@ -2,6 +2,7 @@ import { z } from "zod";
 import { normalizeExpression, findTargetSpan } from "./contracts";
 import { TrainingError } from "./shared";
 import {assertSelectionIdentity} from './selection-identity';
+import {sentenceTeachingSchema,validateTeachingAnchors} from '@/lib/sentence-study/teaching-contracts';
 
 const text = z.string().trim().min(1).max(8000);
 const id = z.string().trim().min(1).max(100);
@@ -44,9 +45,10 @@ export const materialDraftSchema = z.object({
   }).nullable().default(null),
 });
 // Storage can read added fields without changing the JSON Schema/hash of legacy Runtime requests.
-export const storedMaterialDraftSchema=materialDraftSchema.extend({rows:z.array(draftRowSchema.extend(recallFieldsSchema.partial().shape))});
+export const storedMaterialDraftSchema=materialDraftSchema.extend({sentences:z.array(materialDraftSchema.shape.sentences.element.extend({teaching:sentenceTeachingSchema.optional()})),rows:z.array(draftRowSchema.extend(recallFieldsSchema.partial().shape))});
 export type MaterialDraft = z.infer<typeof storedMaterialDraftSchema>;
 export const recallMaterialDraftSchema=materialDraftSchema.extend({sentences:z.array(materialDraftSchema.shape.sentences.element.extend({english:z.string().trim().min(1).max(1500)})),rows:z.array(draftRowSchema.extend(recallFieldsSchema.shape))});
+export const teachingMaterialDraftSchema=recallMaterialDraftSchema.extend({sentences:z.array(recallMaterialDraftSchema.shape.sentences.element.extend({teaching:sentenceTeachingSchema}))});
 export const evidenceReviewSchema = z.object({
   approved: z.boolean(), reasonZh: text,
   rows: z.array(z.object({
@@ -74,16 +76,19 @@ export const recallEvidenceReviewSchema=spokenEvidenceReviewSchema.extend({
     evidence:z.array(z.object({sourceField:z.enum(['actualAnswer','intendedMeaningZh','rawInput']),sourceQuote:text})).min(1),
   })),
 });
-export const reviewSchemaForSource=(source:Pick<SelectionSource,'spokenStyleVersion'>)=>source.spokenStyleVersion==='personal-spoken-v2'?recallEvidenceReviewSchema:source.spokenStyleVersion==='personal-spoken-v1'?spokenEvidenceReviewSchema:evidenceReviewSchema;
-export function sentenceReviewSchemaForDraft(draft:MaterialDraft){
+export const teachingEvidenceReviewSchema=recallEvidenceReviewSchema.extend({teaching:z.array(z.object({sentenceId:id,meaningCovered:z.boolean(),explanationsCorrect:z.boolean(),examplesNatural:z.boolean(),alternativesAccurate:z.boolean(),noUnsupportedMeaning:z.boolean(),teachingQuote:text,reasonZh:text}))});
+export const reviewSchemaForSource=(source:Pick<SelectionSource,'spokenStyleVersion'|'teachingVersion'>)=>source.teachingVersion?teachingEvidenceReviewSchema:source.spokenStyleVersion==='personal-spoken-v2'?recallEvidenceReviewSchema:source.spokenStyleVersion==='personal-spoken-v1'?spokenEvidenceReviewSchema:evidenceReviewSchema;
+export function sentenceReviewSchemaForDraft(draft:MaterialDraft,withTeaching=false){
   const gaps=draft.rows.map(row=>row.gapId),sentences=draft.sentences.map(sentence=>sentence.id);
   const row=gaps.length?recallEvidenceReviewSchema.shape.rows.element.extend({gapId:z.enum(gaps as [string,...string[]])}):recallEvidenceReviewSchema.shape.rows.element;
   const sentence=sentences.length?recallEvidenceReviewSchema.shape.sentences.element.extend({sentenceId:z.enum(sentences as [string,...string[]])}):recallEvidenceReviewSchema.shape.sentences.element;
-  return recallEvidenceReviewSchema.extend({rows:z.array(row).length(gaps.length),sentences:z.array(sentence).length(sentences.length)});
+  const result=recallEvidenceReviewSchema.extend({rows:z.array(row).length(gaps.length),sentences:z.array(sentence).length(sentences.length)});
+  const teaching=sentences.length?teachingEvidenceReviewSchema.shape.teaching.element.extend({sentenceId:z.enum(sentences as [string,...string[]])}):teachingEvidenceReviewSchema.shape.teaching.element;
+  return withTeaching?result.extend({teaching:z.array(teaching).length(sentences.length)}):result;
 }
 export const materialEvidenceSchema = z.object({ diagnosis: diagnosisSchema, selection: evidencedSelectionReviewSchema, draft: storedMaterialDraftSchema });
 export type MaterialEvidence = z.infer<typeof materialEvidenceSchema>;
-export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1'|'personal-spoken-v2';selectionPolicyVersion?:'evidence-exclusion-v1';sentenceStudyVersion?:'sentence-material-v1';registerProfileVersion?:'young-us-v1';inputFormat?:'mixed-v1';rawInput?:string }
+export interface SelectionSource { actualAnswer: string; intendedMeaningZh: string; spokenStyleVersion?:'personal-spoken-v1'|'personal-spoken-v2';selectionPolicyVersion?:'evidence-exclusion-v1';sentenceStudyVersion?:'sentence-material-v1';registerProfileVersion?:'young-us-v1';teachingVersion?:'sentence-teaching-v1';inputFormat?:'mixed-v1';rawInput?:string }
 function fail(code: string, message: string): never { throw new TrainingError(message, 422, `material_${code}`); }
 function unique(ids: string[]) { return new Set(ids).size === ids.length; }
 function sourceQuotes(unit: Diagnosis["units"][number]) { return [...unit.english,...unit.chinese,...unit.raw??[]].map((q) => q.text); }
@@ -223,6 +228,10 @@ export function selectedGaps(diagnosis: Diagnosis, selection: SelectionReview) {
 }
 export function compileEvidence(source: SelectionSource, evidence: MaterialEvidence) {
   const { diagnosis,selection,draft } = evidence;
+  if(source.teachingVersion)for(const sentence of draft.sentences){
+    const teaching=sentenceTeachingSchema.parse(sentence.teaching),chinese=sentence.intentUnitIds.map(id=>diagnosis.units.find(u=>u.id===id)?.intentZh??'').join('\n');
+    try{validateTeachingAnchors(teaching,chinese,sentence.english);}catch{fail('teaching_coverage','教学缺少准确的中英文片段与完整意思覆盖');}
+  }
   validateDiagnosis(source,diagnosis); validateSelection(diagnosis,selection,source);
   const included = diagnosis.units.filter((u) => !["uncertain","non_answer"].includes(selection.units.find((r) => r.unitId===u.id)!.status));
   const selected = selectedGaps(diagnosis,selection);
@@ -271,6 +280,17 @@ export function compileEvidence(source: SelectionSource, evidence: MaterialEvide
   };
 }
 export function validateEvidenceReview(evidence: MaterialEvidence, review: z.infer<typeof evidenceReviewSchema>,source?:SelectionSource) {
+  if(source?.teachingVersion){
+    const parsed=teachingEvidenceReviewSchema.safeParse(review);
+    if(!parsed.success)fail('teaching_review','缺少独立教学审核');
+    const rows=parsed.data.teaching;
+    if(rows.length!==evidence.draft.sentences.length||!unique(rows.map(r=>r.sentenceId)))fail('teaching_review','教学审核没有逐句覆盖');
+    for(const sentence of evidence.draft.sentences){const row=rows.find(r=>r.sentenceId===sentence.id),teaching=sentence.teaching;
+      if(!row||!teaching||!row.meaningCovered||!row.explanationsCorrect||!row.examplesNatural||!row.alternativesAccurate||!row.noUnsupportedMeaning)fail('teaching_review','教学准确性或原意范围未通过独立审核');
+      const actual=[teaching.overviewZh,...teaching.parts.flatMap(p=>[p.explanationZh,p.contrastZh,...p.examples.flatMap(e=>[e.english,e.chinese]),...p.alternatives.flatMap(a=>[a.english,a.whenZh])])];
+      if(!actual.some(s=>s.includes(row.teachingQuote)))fail('teaching_review','教学审核未引用当前讲解');
+    }
+  }
   const selected = selectedGaps(evidence.diagnosis,evidence.selection);
   if (!review.approved || review.rows.length!==selected.length || !unique(review.rows.map((r)=>r.gapId))) fail("review_rejected", "材料未通过独立审核");
   for (const {unit,gap} of selected) {

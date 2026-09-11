@@ -22,7 +22,7 @@ async function fixture(){
   });
   const service=createSentenceService(f.database,clock);return {...f,clock,input,analysis,service};
 }
-const event=(v:SentenceSession,type:'rate'|'reveal',id:string,rating='remembered')=>({type,version:v.version,clientEventId:id,sentenceId:v.cards[v.index].id,unitVersion:v.cards[v.index].version,...(type==='rate'?{rating}:{})});
+const event=(v:SentenceSession,type:'rate'|'reveal',id:string,rating='remembered')=>({type,version:v.version,clientEventId:id,sentenceId:v.cards[v.index].id,unitVersion:v.cards[v.index].version,...(v.experienceVersion?{experienceVersion:v.experienceVersion}:{}),...(type==='rate'?{rating}:{})});
 it('projects one full reviewed sentence, not one copy per gap, and marks Chinese provenance',async()=>{const f=await fixture();const cards=projectSentenceMaterials('m',f.input,f.analysis);expect(cards).toHaveLength(1);expect(cards[0]).toMatchObject({chinese:f.input.intendedMeaningZh,english:'I am used to living alone.',meaningOrigin:'user_chinese'});expect(cards[0].usages[0]).toMatchObject({text:'used to living'});});
 it('a server-resolved edit lineage keeps unchanged sentence identity but updates its display version',async()=>{
   const f=await fixture(),original=projectSentenceMaterials('m',f.input,f.analysis)[0];
@@ -72,4 +72,28 @@ it('a second session skips a sentence graded elsewhere after explicit recovery',
   const latest=await f.service.get(b.id);expect(latest.status).toBe('paused');
   const recovered=await f.service.event(b.id,{type:'resume',version:latest.version,clientEventId:'resume'});expect(recovered.status).toBe('completed');expect(recovered.assessments).toHaveLength(0);
   expect(await f.database.read(tx=>tx.all(sql`SELECT * FROM sentence_study_events WHERE kind='rate'`))).toHaveLength(1);
+});
+
+it.each(['remembered','uncertain','forgot'])('guided %s saves once and resumes the rated last sentence until explicit completion',async rating=>{
+  const f=await fixture();let v=await f.service.create({scope:{type:'question',id:'q'},mode:'learn',clientRequestId:`guided-${rating}`,experienceVersion:'guided-reveal-v1'});
+  const unit=()=>({sentenceId:v.cards[v.index].id,unitVersion:v.cards[v.index].version,version:v.version,experienceVersion:v.experienceVersion});
+  v=await f.service.event(v.id,{type:'checkpoint',...unit(),clientEventId:'draft',revealCount:2,maxRevealCount:2,draft:'I am',retryDraft:''});
+  expect(await f.database.read(tx=>tx.all(sql`SELECT * FROM sentence_study_progress`))).toHaveLength(0);
+  v=await f.service.event(v.id,{type:'enter_teaching',...unit(),clientEventId:'teach'});
+  const grade={type:'rate',...unit(),clientEventId:'grade',rating};v=await f.service.event(v.id,grade);
+  expect(v).toMatchObject({status:'active',index:0,stage:'rated'});expect((await f.service.overview()).resumable.learn?.id).toBe(v.id);
+  const before=await f.database.read(tx=>tx.all(sql`SELECT * FROM sentence_study_progress`));await f.service.event(v.id,grade);
+  v=await f.service.event(v.id,{type:'start_retry',...unit(),clientEventId:'retry'});v=await f.service.event(v.id,{type:'pause',version:v.version,clientEventId:'pause'});
+  v=await f.service.event(v.id,{type:'resume',version:v.version,clientEventId:'resume'});expect(v.stage).toBe('retry');expect(v.revealed).toBe(false);
+  v=await f.service.event(v.id,{type:'reveal_retry',...unit(),clientEventId:'compare'});
+  expect(await f.database.read(tx=>tx.all(sql`SELECT * FROM sentence_study_progress`))).toEqual(before);
+  v=await f.service.event(v.id,{type:'advance',...unit(),clientEventId:'finish'});expect(v.status).toBe('completed');expect(v.assessments).toHaveLength(1);
+});
+it('guided rating correction retains the active sentence and recomputes from original before state',async()=>{
+  const f=await fixture();let v=await f.service.create({scope:{type:'question',id:'q'},mode:'learn',clientRequestId:'guided-revision',experienceVersion:'guided-reveal-v1'});
+  v=await f.service.event(v.id,event(v,'reveal','show'));v=await f.service.event(v.id,event(v,'rate','rated'));
+  v=await f.service.event(v.id,{type:'revise_rating',version:v.version,clientEventId:'fix',targetEventId:'rated',rating:'forgot'});
+  expect(v).toMatchObject({status:'active',stage:'rated',index:0});expect(v.cards[0].unavailable).toBeUndefined();
+  const [p]=await f.database.read(tx=>tx.all<{fsrs_json:string;review_count:number;version:number}>(sql`SELECT * FROM sentence_study_progress`));
+  expect(JSON.parse(p.fsrs_json)).toEqual(JSON.parse(JSON.stringify(gradeLightCard(null,'forgot',f.clock.now()))));expect(p.review_count).toBe(0);expect(v.cards[0].progressVersion).toBe(p.version);
 });

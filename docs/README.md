@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | [README](README.md) | 现行 | 本索引 |
 | [SENTENCE_STUDY](SENTENCE_STUDY.md) | 现行 | 2026-09-10唯一默认句子学习路线；冲突时优先于其他执行契约 |
+| [GUIDED_REVEAL](GUIDED_REVEAL.md) | 现行 | 2026-09-11增量：跟手揭晓、完整教学、自评停留及本地再练；冲突时优先 |
 | [PERSONAL_FOCUS](PERSONAL_FOCUS.md) | 现行 | 真实生成修复、年轻美式文本/Milo、高亮、错误记忆及版本发布增量 |
 | [WEB_USABILITY](WEB_USABILITY.md) | 兼容 | 旧网页版收敛要求，未冲突部分仍参考 |
 | [WEB_SIMPLICITY](WEB_SIMPLICITY.md) | 兼容 | 旧轻学习与首页实施记录，句子主线优先 |

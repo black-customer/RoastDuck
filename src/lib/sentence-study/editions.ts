@@ -9,16 +9,32 @@ import {materialSourceHash} from '@/lib/four-step/revision-source';
 import {materialFingerprint} from '@/lib/light-study/core-catalogue';
 import {projectSentenceMaterials,SENTENCE_VALIDATION_VERSION,sentenceDisplayVersion} from './materials';
 import {SentenceStudyError,type SentenceCard} from './contracts';
+import {teachingAuthorSchema,teachingReviewSchema,teachingCandidateHash} from './teaching-contracts';
+import {compileTeachingSentenceRevision} from './teaching-revisions';
 const text=z.string().min(1),usage=z.object({id:text,text,meaningZh:text,kind:z.enum(['confirmed_error','preparation'])});
 const note=z.object({id:text,textZh:text,kind:z.enum(['correction','suggestion']),evidence:text});
-export const sentenceEditionSchema=z.object({version:z.literal('sentence-material-v1'),materialId:text,sourceHash:text,analysisHash:text,authorContext:text,runId:text,sentences:z.array(z.object({id:text,sourceSentenceId:text,sourceSentenceIds:z.array(text).optional(),chinese:text,english:text,reasonZh:text,status:z.enum(['ready','needs_attention']).default('ready'),usages:z.array(usage).optional(),notes:z.array(note).optional()}))});
+export const sentenceEditionSchema=z.object({version:z.literal('sentence-material-v1'),materialId:text,sourceHash:text,analysisHash:text,authorContext:text,runId:text,sentences:z.array(z.object({id:text,sourceSentenceId:text,sourceSentenceIds:z.array(text).optional(),chinese:text,english:text,reasonZh:text,status:z.enum(['ready','needs_attention']).default('ready'),usages:z.array(usage).optional(),notes:z.array(note).optional()})),teachingEvidence:z.object({author:teachingAuthorSchema,review:teachingReviewSchema,sourceSentenceIds:z.array(text)}).optional()});
 export type SentenceEdition=z.infer<typeof sentenceEditionSchema>;
 export const sentenceEditionReviewSchema=z.object({candidateHash:text,reviewerContext:text,runId:text,approved:z.literal(true),sentences:z.array(z.object({id:text,approved:z.literal(true),meaningPreserved:z.literal(true),naturalEnglish:z.literal(true),cueAligned:z.literal(true),sourceQuote:text,reasonZh:text})),coverageReasonZh:text});
 export type SentenceEditionReview=z.infer<typeof sentenceEditionReviewSchema>;
 export const sentenceEditionHash=(raw:unknown)=>hash(JSON.stringify(sentenceEditionSchema.parse(raw)));
 export function compileSentenceEdition(material:MaterialRow,raw:unknown,rawReview:unknown){
+  if(raw&&typeof raw==='object'&&'version'in raw&&raw.version==='sentence-teaching-revision-v1'){
+    const result=compileTeachingSentenceRevision(material,raw);
+    if(JSON.stringify(result.review)!==JSON.stringify(rawReview))throw new SentenceStudyError('句子修订审核记录不一致',422,'edition_review');
+    return result;
+  }
   const draft=sentenceEditionSchema.parse(raw),review=sentenceEditionReviewSchema.parse(rawReview);
   if(draft.materialId!==material.id||review.candidateHash!==sentenceEditionHash(draft)||review.reviewerContext===draft.authorContext||review.runId===draft.runId)throw new SentenceStudyError('候选已变化或缺少独立审核',422,'edition_review');
+  if(draft.teachingEvidence){
+    const {author,review:teachingReview,sourceSentenceIds}=draft.teachingEvidence;
+    if(!teachingReview.approved||teachingReview.candidateHash!==teachingCandidateHash(author)||teachingReview.reviewerContext===author.authorContext||teachingReview.runId===author.runId||draft.authorContext!==author.authorContext||review.reviewerContext!==teachingReview.reviewerContext||author.materialId!==material.id||author.sourceHash!==sha256Text(material.input_json)||author.analysisHash!==sha256Text(material.analysis_json)||sourceSentenceIds.length!==draft.sentences.length)throw new SentenceStudyError('句子修订没有绑定真实教学审核',422,'edition_teaching_evidence');
+    for(const [index,sentence] of draft.sentences.entries()){
+      const item=author.sentences.find(s=>s.sentenceId===sourceSentenceIds[index]),verdict=teachingReview.sentences.find(s=>s.sentenceId===sourceSentenceIds[index]);
+      if(!item||!verdict?.approved||!verdict.naturalEnglish||!verdict.meaningCovered||!verdict.teachingCorrect||!verdict.examplesCorrect)throw new SentenceStudyError('句子修订未逐项审核',422,'edition_teaching_evidence');
+      if(item.issue&&(sentence.english!==item.issue.suggestedEnglish||item.issue.suggestedChinese&&sentence.chinese!==item.issue.suggestedChinese))throw new SentenceStudyError('句子修订漂移于独立审核文本',422,'edition_teaching_evidence');
+    }
+  }
   const input=JSON.parse(material.input_json) as MaterialInput,analysis=speakingAttemptAnalysisSchema.parse(JSON.parse(material.analysis_json));
   if(materialSourceHash(input)!==draft.sourceHash||sha256Text(material.analysis_json)!==draft.analysisHash)throw new SentenceStudyError('原材料已变化，需要重新核对',409,'edition_source_changed');
   const base=projectSentenceMaterials(material.id,input,analysis),ids=new Set(draft.sentences.map(s=>s.id));

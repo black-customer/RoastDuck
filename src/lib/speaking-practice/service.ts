@@ -89,7 +89,7 @@ export async function prepareSpeakingAttempt(input: CreateAttemptInput): Promise
     await tx.run(sql`INSERT INTO practice_submissions (request_id,input_hash,attempt_id) VALUES (${requestId},${inputHash},${id})`);
     return id;
   });
-  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh, part: question.part }, mode: input.mode, actualAnswer: input.answerText, intendedMeaningZh: input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION });
+  await prepareMaterial({ sourceType: "ielts_practice", sourceId: attemptId, question: { id: question.id, textEn: question.text, textZh: question.textZh,part:question.part},mode:input.mode,actualAnswer:input.answerText,intendedMeaningZh:input.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION,teachingVersion:'sentence-teaching-v1'});
   return (await getSpeakingAttempt(attemptId))!;
 }
 
@@ -108,7 +108,7 @@ export async function prepareAttemptReanalysis(attemptId: string,options:{retryU
       SELECT id,analysis_json,natural_version,${new Date().toISOString()} FROM speaking_question_attempts WHERE id=${attemptId} AND analysis_json!='{}' ON CONFLICT DO NOTHING`);
     const [previous]=await db.all<{id:string}>(sql`SELECT id FROM practice_materials WHERE source_type='ielts_practice' AND source_id=${attemptId} AND contract_version='evidence_v2' ORDER BY julianday(created_at) DESC,id DESC LIMIT 1`);
     // An explicit retry can append an upgraded failed contract, but never rewrite the original snapshot.
-    const material = previous?(await prepareCurrentMaterialRetry(nodeDatabase,previous.id,new Date(),options)).material:await prepareMaterial({sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION});
+    const material = previous?(await prepareCurrentMaterialRetry(nodeDatabase,previous.id,new Date(),options)).material:await prepareMaterial({sourceType:"ielts_practice",sourceId:attemptId,question:{id:question.id,textEn:question.text,textZh:question.textZh,part:question.part},mode:attempt.mode,actualAnswer:attempt.answerText,intendedMeaningZh:attempt.intendedMeaningZh,spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION,teachingVersion:'sentence-teaching-v1'});
     if (material.status!=="ready") await db.update(speakingQuestionAttempts).set({status:"processing"}).where(eq(speakingQuestionAttempts.id,attemptId));
     return (await getSpeakingAttempt(attemptId))!;
   });

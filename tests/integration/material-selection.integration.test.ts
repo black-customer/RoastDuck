@@ -24,7 +24,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_material_v5") (result.data as {sentences:Array<{english:string}>}).sentences[0].english="I'm used to living alone. "+"An oversized synthetic sentence. ".repeat(80);
+      if(request.schemaName==="four_step_material_v6") (result.data as {sentences:Array<{english:string}>}).sentences[0].english="I'm used to living alone. "+"An oversized synthetic sentence. ".repeat(80);
       return result;
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -38,18 +38,19 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     const retry=vi.spyOn(MockAiProvider.prototype,'generate');
     const recovered=await service.processSpeakingAttempt(attempt.id,{retry:true});
     expect(recovered?.status).toBe("completed");expect(recovered?.materialId).toBe(attempt.materialId);
-    expect(retry.mock.calls.map(([request])=>request.schemaName)).toEqual(['four_step_material_v5','four_step_review_v5']);
+    expect(retry.mock.calls.map(([request])=>request.schemaName)).toEqual(['four_step_material_v6','four_step_review_v6']);
     expect(await db.all(sql`SELECT run_id,stage FROM practice_material_stages WHERE material_id=${attempt.materialId} AND stage IN ('diagnosis','selection') ORDER BY stage`)).toEqual(checkpoints);
   });
   it("四个独立输入和运行，仅最后审核通过后发布；重复处理不再调用",async()=>{
     const spy=vi.spyOn(MockAiProvider.prototype,"generate");
     const attempt=await service.createSpeakingAttempt(answer);
     expect(attempt.status).toBe("completed");
-    expect(spy.mock.calls.map(([r])=>r.schemaName)).toEqual(["four_step_diagnosis_v5","four_step_selection_v5","four_step_material_v5","four_step_review_v5"]);
+    expect(spy.mock.calls.map(([r])=>r.schemaName)).toEqual(["four_step_diagnosis_v6","four_step_selection_v6","four_step_material_v6","four_step_review_v6"]);
     expect(new Set(spy.mock.calls.map(([r])=>r.instructions)).size).toBe(4);
     expect(attempt.analysis.learningMaterials[0].originalEnglish).toBe(answer.answerText);
     expect(attempt.analysis.learningMaterials[0].yourChineseSentence).toBe(answer.intendedMeaningZh);
     expect(attempt.analysis.learningMaterials.map((r)=>r.englishChunk)).toEqual(["be used to doing"]);
+    expect(attempt.analysis.evidence?.draft.sentences[0].teaching?.version).toBe('sentence-teaching-v1');
     await service.processSpeakingAttempt(attempt.id);
     expect(spy).toHaveBeenCalledTimes(4);
     const stages=await db.all<{run_id:string;stage:string;input_json:string}>(sql`SELECT * FROM practice_material_stages WHERE material_id=${attempt.materialId}`);
@@ -68,7 +69,7 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
   it("最后审核网络失败先确认未知结果，授权重试仅运行该阶段且保留三个检查点",async()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
-      if(request.schemaName==="four_step_review_v5") throw new Error("synthetic network failure");
+      if(request.schemaName==="four_step_review_v6") throw new Error("synthetic network failure");
       return original.call(this,request);
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -83,13 +84,13 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     expect(retry).not.toHaveBeenCalled();
     expect((await service.processSpeakingAttempt(attempt.id,{retry:true,retryUnknown:true}))?.status).toBe("completed");
     expect(retry).toHaveBeenCalledTimes(1);
-    expect(retry.mock.calls[0][0].schemaName).toBe("four_step_review_v5");
+    expect(retry.mock.calls[0][0].schemaName).toBe("four_step_review_v6");
   });
   it("诊断审核拒绝时根本不运行材料生成，拒绝证据不被覆盖",async()=>{
     const original=MockAiProvider.prototype.generate;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_selection_v5") (result.data as {approved:boolean}).approved=false;
+      if(request.schemaName==="four_step_selection_v6") (result.data as {approved:boolean}).approved=false;
       return result;
     });
     const attempt=await service.createSpeakingAttempt(answer);
@@ -123,12 +124,37 @@ describe("选材四阶段恢复、审计与旧分析兼容",()=>{
     expect(spy).toHaveBeenCalledTimes(4);
     expect(await db.all(sql`SELECT * FROM practice_material_items WHERE material_id=${saved.materialId}`)).toHaveLength(1);
   });
+  it("已创建的v5快照仍按旧合同完成，不强加v6教学或替换旧Prompt",async()=>{
+    const schema=await import("@db/schema");
+    await db.insert(schema.speakingQuestionAttempts).values({id:'frozen_v5_attempt',mode:'practice',questionId:answer.questionId,answerText:answer.answerText,intendedMeaningZh:answer.intendedMeaningZh,status:'processing'});
+    const source:import('@/lib/four-step/material-types').MaterialInput={
+      sourceType:'ielts_practice',sourceId:'frozen_v5_attempt',mode:'practice',
+      actualAnswer:answer.answerText,intendedMeaningZh:answer.intendedMeaningZh,
+      question:{id:answer.questionId,textEn:'Do you live alone?',textZh:'你独居吗？',part:1},
+      spokenStyleVersion:'personal-spoken-v2',selectionPolicyVersion:'evidence-exclusion-v1',
+      sentenceStudyVersion:'sentence-material-v1',registerProfileVersion:'young-us-v1',
+    };
+    const frozen=await materials.prepareMaterial(source),spy=vi.spyOn(MockAiProvider.prototype,'generate');
+    const completed=await materials.processMaterial(frozen.id);
+    expect(completed.status).toBe('ready');
+    expect(completed.input_json).toBe(frozen.input_json);
+    expect(spy.mock.calls.map(([request])=>request.schemaName)).toEqual([
+      'four_step_diagnosis_v5','four_step_selection_v5','four_step_material_v5','four_step_review_v5',
+    ]);
+    expect(spy.mock.calls.map(([request])=>request.promptVersion)).toEqual([
+      'sentence_intention.generator.v2.md','answer_gap_diagnosis.reviewer.v5.md',
+      'sentence_material.generator.v2.md','sentence_material.reviewer.v2.md',
+    ]);
+    expect(JSON.parse(completed.analysis_json).evidence.draft.sentences[0].teaching).toBeUndefined();
+    await materials.processMaterial(frozen.id);
+    expect(spy).toHaveBeenCalledTimes(4);
+  });
   it("原文引用不合法时带校验原因修复一次，保留被拒记录再独立审核",async()=>{
     const original=MockAiProvider.prototype.generate;
     let corrupted=false;
     const spy=vi.spyOn(MockAiProvider.prototype,"generate").mockImplementation(async function(this:MockAiProvider,request){
       const result=await original.call(this,request);
-      if(request.schemaName==="four_step_diagnosis_v5"&&!corrupted){
+      if(request.schemaName==="four_step_diagnosis_v6"&&!corrupted){
         corrupted=true;
         (result.data as {units:Array<{english:Array<{text:string}>}>}).units[0].english[0].text="A fabricated quote.";
       }

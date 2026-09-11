@@ -54,7 +54,7 @@ afterAll(() => client.close());
 describe("v15 Gap 提取与 Chloe 统一记忆迁移", () => {
   it("从连续 v14 升级到 v33，并完整保留旧迁移校验和", async () => {
     const history = await migrationHistory(client);
-    expect(history.map(row => row.version)).toEqual(Array.from({ length:34 }, (_, index) => index + 1));
+    expect(history.map(row => row.version)).toEqual(Array.from({ length:35 }, (_, index) => index + 1));
     expect(history.slice(0, 14)).toEqual(originalHistory);
   });
 

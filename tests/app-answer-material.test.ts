@@ -11,11 +11,11 @@ import {createLightService} from "@/lib/light-study/core-service";
 import {createQuestionService} from "@/lib/app-services/queries";
 const opened:Array<ReturnType<typeof portableTestDatabase>>=[];
 afterEach(()=>{for(const fixture of opened.splice(0))fixture.close();});
-function setup(){
+function setup(resolver=selectionMockResolver){
   const fixture=portableTestDatabase();opened.push(fixture);const {database,connection}=fixture;let seq=0;
   connection.exec("INSERT INTO questions(id,book_id,part,text,text_zh,norm_text) VALUES('q','removed',1,'Do you live alone?','你一个人住吗？','q')");
   const clock={now:()=>new Date("2026-09-07T12:00:00Z"),newId:()=>`app-${++seq}`,bootId:"app-test"};
-  const runtime=createRuntimeCalls(database,new MockAiProvider(selectionMockResolver),clock);
+  const runtime=createRuntimeCalls(database,new MockAiProvider(resolver),clock);
   const materials=createMaterialService({database,runtime,...clock,allowMock:true,loadPrompt:name=>fs.readFileSync(path.join("pipeline/prompts",name),"utf8")});
   return {database,connection,clock,materials,answers:createAnswerService(database,materials,{...clock,allowMock:true}),questions:createQuestionService(database)};
 }
@@ -29,6 +29,7 @@ it("English/Chinese draft → independent material pipeline → click-only learn
   const pending=await answers.detail(saved.attemptId);expect(pending.learnable).toBe(false);expect(pending.material?.status).toBe("queued");
   expect((await materials.process(pending.material!.id)).status).toBe("ready");
   const detail=await answers.detail(saved.attemptId);expect(detail.audit?.ok).toBe(true);expect(detail.learnable).toBe(true);
+  expect(detail.analysis?.evidence?.draft.sentences[0].teaching?.version).toBe('sentence-teaching-v1');
   expect(connection.prepare("SELECT * FROM ai_runs").all()).toHaveLength(4);
   expect(connection.prepare("SELECT * FROM speaking_question_attempts").all()).toHaveLength(1);
   const light=createLightService(database,{...clock,enabled:()=>true,allowMock:true});
@@ -64,4 +65,25 @@ it('independent English is sealed before optional Chinese; old facts are not cop
   const saved=await answers.submit(retry.id,retry.version),detail=await answers.detail(saved.attemptId);
   expect(detail.attempt.intended_meaning_zh).toBe('');expect(detail.previous?.answer_text).toBe('I live alone.');expect(detail.origin?.kind).toBe('independent');
   const edit=await answers.start('q','edit',source.attemptId,'edit');expect(edit.english_text).toBe('I live alone.');expect(edit.english_committed_at).toBeNull();
+});
+
+it.each(['negative','missing'])('does not publish when the independent teaching review is %s',async outcome=>{
+  const {answers,materials,connection}=setup(request=>{
+    const result=selectionMockResolver(request) as {teaching?:Array<{explanationsCorrect:boolean}>};
+    if(request.schemaName==='four_step_review_v6'){if(outcome==='missing')delete result.teaching;else result.teaching![0].explanationsCorrect=false;}
+    return result;
+  });
+  let draft=await answers.start('q',`bad-teaching-${outcome}`);draft=await answers.saveDraft(draft.id,{version:0,english:"I'm used to live alone.",chinese:'我已经习惯一个人住了。',englishUnknown:false});
+  const saved=await answers.submit(draft.id,draft.version),pending=await answers.detail(saved.attemptId);
+  expect((await materials.process(pending.material!.id)).status).not.toBe('ready');
+  expect(connection.prepare('SELECT * FROM sentence_learning_units').all()).toHaveLength(0);
+  expect((await answers.detail(saved.attemptId)).learnable).toBe(false);
+});
+
+it('legacy v5 material keeps its creation contract and does not require invented teaching',async()=>{
+  const {materials,connection}=setup();const answer="I'm used to live alone.",meaning='我已经习惯一个人住了。';
+  connection.prepare("INSERT INTO speaking_question_attempts(id,question_id,mode,answer_text,intended_meaning_zh,status) VALUES('legacy','q','practice',?,?,'processing')").run(answer,meaning);
+  const material=await materials.prepare({sourceType:'ielts_practice',sourceId:'legacy',mode:'practice',actualAnswer:answer,intendedMeaningZh:meaning,question:{id:'q',textEn:'Do you live alone?',textZh:'你一个人住吗？',part:1},spokenStyleVersion:'personal-spoken-v2',selectionPolicyVersion:'evidence-exclusion-v1',sentenceStudyVersion:'sentence-material-v1',registerProfileVersion:'young-us-v1'});
+  expect((await materials.process(material.id)).status).toBe('ready');
+  expect(connection.prepare("SELECT prompt_version FROM ai_runs WHERE role='learning_material_compiler'").get()).toMatchObject({prompt_version:'sentence_material.generator.v2.md'});
 });

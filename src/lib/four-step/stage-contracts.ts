@@ -13,6 +13,7 @@ export const DIAGNOSIS_REPAIR_PROMPT="answer_gap_diagnosis.repair.v1.md";
 export const SPOKEN_STYLE_VERSION='personal-spoken-v2' as const;
 export const SELECTION_POLICY_VERSION='evidence-exclusion-v1' as const;
 export const SENTENCE_STUDY_VERSION='sentence-material-v1' as const;
+export const SENTENCE_TEACHING_VERSION='sentence-teaching-v1' as const;
 export const SPOKEN_STAGE_CONTRACTS={
   diagnosis:{prompt:'answer_gap_diagnosis.generator.v3.md',role:'gap_generator'},
   selection:{prompt:'answer_gap_diagnosis.reviewer.v3.md',role:'gap_reviewer'},
@@ -28,7 +29,11 @@ export const SPOKEN_DIAGNOSIS_REPAIR_PROMPT='answer_gap_diagnosis.repair.v2.md';
 export const EVIDENCED_STAGE_CONTRACTS={...RECALL_STAGE_CONTRACTS,selection:{prompt:'answer_gap_diagnosis.reviewer.v4.md',role:'gap_reviewer'}} satisfies Record<keyof typeof STAGE_CONTRACTS,{prompt:string;role:AiRole}>;
 export const SENTENCE_STAGE_CONTRACTS={...EVIDENCED_STAGE_CONTRACTS,diagnosis:{prompt:'sentence_intention.generator.v1.md',role:'gap_generator'},material:{prompt:'sentence_material.generator.v1.md',role:'learning_material_compiler'},review:{prompt:'sentence_material.reviewer.v1.md',role:'reviewer'}} satisfies Record<keyof typeof STAGE_CONTRACTS,{prompt:string;role:AiRole}>;
 export const YOUNG_US_STAGE_CONTRACTS={...SENTENCE_STAGE_CONTRACTS,diagnosis:{prompt:'sentence_intention.generator.v2.md',role:'gap_generator'},selection:{prompt:'answer_gap_diagnosis.reviewer.v5.md',role:'gap_reviewer'},material:{prompt:'sentence_material.generator.v2.md',role:'learning_material_compiler'},review:{prompt:'sentence_material.reviewer.v2.md',role:'reviewer'}} satisfies typeof SENTENCE_STAGE_CONTRACTS;
-export function materialStageContracts(source:Pick<MaterialInput,'spokenStyleVersion'|'selectionPolicyVersion'|'sentenceStudyVersion'|'registerProfileVersion'>){
+export function materialStageContracts(source:Pick<MaterialInput,'spokenStyleVersion'|'selectionPolicyVersion'|'sentenceStudyVersion'|'registerProfileVersion'|'teachingVersion'>){
+  if(source.teachingVersion){
+    if(source.teachingVersion!==SENTENCE_TEACHING_VERSION||source.sentenceStudyVersion!==SENTENCE_STUDY_VERSION||source.registerProfileVersion!==SPOKEN_REGISTER_VERSION||source.spokenStyleVersion!==SPOKEN_STYLE_VERSION||source.selectionPolicyVersion!==SELECTION_POLICY_VERSION)throw new TrainingError('教学合同不兼容',422,'teaching_version');
+    return {...YOUNG_US_STAGE_CONTRACTS,material:{prompt:'sentence_material.generator.v3.md',role:'learning_material_compiler' as const},review:{prompt:'sentence_material.reviewer.v3.md',role:'reviewer' as const}};
+  }
   if(source.registerProfileVersion&&source.registerProfileVersion!==SPOKEN_REGISTER_VERSION)throw new TrainingError('材料表达风格版本不兼容',422,'material_register_version');
   if(source.sentenceStudyVersion){if(source.sentenceStudyVersion!==SENTENCE_STUDY_VERSION||source.spokenStyleVersion!==SPOKEN_STYLE_VERSION||source.selectionPolicyVersion!==SELECTION_POLICY_VERSION)throw new TrainingError('句子材料版本不兼容',422,'sentence_material_version');return source.registerProfileVersion?YOUNG_US_STAGE_CONTRACTS:SENTENCE_STAGE_CONTRACTS;}
   if(source.selectionPolicyVersion){

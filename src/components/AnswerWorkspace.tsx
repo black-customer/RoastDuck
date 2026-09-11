@@ -21,10 +21,14 @@ export function AnswerWorkspace({ initialAnswer }: { initialAnswer: PersonalAnsw
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [editorReady, setEditorReady] = useState(false);
   const autoProcessStarted = useRef(false);
   const draftDirty = useRef(false);
 
   useEffect(() => { if (!draftDirty.current) setDraft(current?.textEn ?? ""); }, [current?.id, current?.textEn]);
+  // The server-rendered textarea must not accept input before React has attached
+  // its change handler; hydration could otherwise restore the old value mid-edit.
+  useEffect(() => { setEditorReady(true); }, []);
   useEffect(() => {
     if (answer.status === "superseded") return;
     if (!["queued", "processing"].includes(answer.status) && !["queued", "generating", "reviewing", "applying"].includes(answer.job?.status ?? "")) return;
@@ -96,8 +100,8 @@ export function AnswerWorkspace({ initialAnswer }: { initialAnswer: PersonalAnsw
       <div className="workspace-grid">
         <section className="workspace-card workspace-original"><div className="workspace-card-title"><div><h2>你的原始回答</h2></div><small>永不覆盖</small></div><p>{answer.rawText}</p></section>
         <section className="workspace-card workspace-revision"><div className="workspace-card-title"><div><h2>{current?.kind === "normalized_transcript" ? "整理后的回答" : current?.kind === "raw" || current?.kind === "raw_transcript" ? "原始英文版本" : "自然英文版本"}</h2></div><small>{current ? `V${current.versionNo}` : "待生成"}</small></div>
-          {draft || current?.textEn ? <><label className="sr-only" htmlFor="answer-english-version">{answer.status === "superseded" ? "英文答案版本（只读）" : "可编辑的英文答案版本"}</label><textarea id="answer-english-version" value={draft} readOnly={answer.status === "superseded"} maxLength={8000} onChange={(event) => { draftDirty.current = true; setDraft(event.target.value); }} /><div className="workspace-actions"><button type="button" className="secondary-button" disabled={answer.status === "superseded" || busy || !draft.trim() || draft.trim() === current?.textEn.trim()} onClick={() => void saveVersion()}>{busy ? "处理中…" : "另存为新版本"}</button></div></> : <div className="workspace-pending"><strong>{statusLabel[answer.status] || "等待处理"}</strong><p>原始回答已经安全保存。</p></div>}
-          {['draft', 'failed', 'needs_attention'].includes(answer.status) ? <div className="workspace-actions"><p>原文和当前编辑内容会保留，可以重新处理 AI 任务。</p><button type="button" className="secondary-button" disabled={busy} onClick={() => void retry()}>{busy ? "正在处理…" : "重新处理"}</button></div> : null}
+          {draft || current?.textEn ? <><label className="sr-only" htmlFor="answer-english-version">{answer.status === "superseded" ? "英文答案版本（只读）" : "可编辑的英文答案版本"}</label><textarea id="answer-english-version" value={draft} readOnly={!editorReady || answer.status === "superseded"} aria-busy={!editorReady} maxLength={8000} onChange={(event) => { draftDirty.current = true; setDraft(event.target.value); }} />{!editorReady&&<p role="status">正在准备编辑区域，原回答已保留。</p>}<div className="workspace-actions"><button type="button" className="secondary-button" disabled={!editorReady || answer.status === "superseded" || busy || !draft.trim() || draft.trim() === current?.textEn.trim()} onClick={() => void saveVersion()}>{busy ? "处理中…" : "另存为新版本"}</button></div></> : <div className="workspace-pending"><strong>{statusLabel[answer.status] || "等待处理"}</strong><p>原始回答已经安全保存。</p></div>}
+          {['draft', 'failed', 'needs_attention'].includes(answer.status) ? <div className="workspace-actions"><p>原文和当前编辑内容会保留，可以重新处理 AI 任务。</p><button type="button" className="secondary-button" disabled={!editorReady || busy} onClick={() => void retry()}>{busy ? "正在处理…" : "重新处理"}</button></div> : null}
         </section>
       </div>
       <section className="version-history"><div><h2>全部版本</h2></div><ol>{answer.versions.map((version) => <li key={version.id}><strong>V{version.versionNo} · {({ raw: "原始版本", raw_transcript: "原始转写", normalized_transcript: "断句与切分整理", ai_revised: "AI 修订", user_edited: "用户编辑" })[version.kind]}</strong><span>{new Date(version.createdAt).toLocaleString("zh-CN")}</span></li>)}</ol></section>

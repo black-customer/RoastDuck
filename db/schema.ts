@@ -1430,4 +1430,9 @@ export const sentenceHighlights=sqliteTable('sentence_highlights',{
   id:text('id').primaryKey(),sentenceId:text('sentence_id').notNull(),language:text('language').notNull(),textVersion:text('text_version').notNull(),textHash:text('text_hash').notNull(),startOffset:integer('start_offset').notNull(),endOffset:integer('end_offset').notNull(),quote:text('quote').notNull(),prefix:text('prefix').notNull(),suffix:text('suffix').notNull(),state:text('state').notNull().default('active'),clientRequestId:text('client_request_id').notNull().unique(),requestHash:text('request_hash').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
 },t=>[index('sentence_highlights_lookup').on(t.sentenceId,t.language,t.state)]);
 
+/** v35: independently reviewed explanations attached to existing sentence text versions. */
+export const sentenceTeachingEditions=sqliteTable('sentence_teaching_editions',{
+  id:text('id').primaryKey(),materialId:text('material_id').notNull(),sourceHash:text('source_hash').notNull(),candidateHash:text('candidate_hash').notNull(),authorJson:text('author_json').notNull(),reviewJson:text('review_json').notNull(),teachingsJson:text('teachings_json').notNull(),status:text('status').notNull().default('ready'),createdAt:text('created_at').notNull(),
+},t=>[index('sentence_teaching_material').on(t.materialId,t.createdAt,t.id)]);
+
 

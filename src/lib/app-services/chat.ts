@@ -151,7 +151,7 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     if(selected.length>24||selected.reduce((sum,row)=>sum+row.text.length,0)>24000)throw new TrainingError("这一段较长，请选择较短范围复盘",400,"recap_too_large");
     if(!selected.some(row=>row.role==="user"))throw new TrainingError("需要包含你的实际表达",400,"no_user_message");
     if(selected.some(row=>row.role==="user"&&meta(row).deliveryStatus!=="completed"&&!(meta(row).deliveryStatus===undefined&&history.some(reply=>reply.role==="assistant"&&reply.sequence_no>row.sequence_no))))throw new TrainingError("请先恢复未完成的回复，再复盘",409,"message_unresolved");
-    return materials.prepare({sourceType:"free_talk",sourceId:conversationId,question:null,mode:"free_talk",actualAnswer:selected.filter(row=>row.role==="user").map(row=>row.text).join("\n"),intendedMeaningZh:"",sourceMessages:selected.map(row=>({id:row.id,role:row.role,text:row.text})),spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION});
+    return materials.prepare({sourceType:"free_talk",sourceId:conversationId,question:null,mode:"free_talk",actualAnswer:selected.filter(row=>row.role==="user").map(row=>row.text).join("\n"),intendedMeaningZh:"",sourceMessages:selected.map(row=>({id:row.id,role:row.role,text:row.text})),spokenStyleVersion:SPOKEN_STYLE_VERSION,selectionPolicyVersion:SELECTION_POLICY_VERSION,sentenceStudyVersion:SENTENCE_STUDY_VERSION,registerProfileVersion:SPOKEN_REGISTER_VERSION,teachingVersion:'sentence-teaching-v1'});
   }
   return {list,get,messages,create,prepare,process,recap};
 }

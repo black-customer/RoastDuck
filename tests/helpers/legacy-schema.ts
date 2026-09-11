@@ -10,9 +10,10 @@ import {V31_DDL} from '../../db/migrations/v31-web-material-controls';
 import {V32_DDL} from '../../db/migrations/v32-expression-study';
 import {V33_DDL} from '../../db/migrations/v33-sentence-study';
 import {V34_DDL} from '../../db/migrations/v34-personal-focus';
+import {V35_DDL} from '../../db/migrations/v35-guided-reveal';
 import {assertInsideTestResults,TEST_RESULTS_DIRECTORY} from './temp-db';
 
-export async function migrationHistory(client:Client,maxVersion=34){
+export async function migrationHistory(client:Client,maxVersion=35){
   const {rows}=await client.execute({sql:'SELECT version,checksum FROM _schema_migrations WHERE version<=? ORDER BY version',args:[maxVersion]});
   return rows.map(row=>({version:Number(row.version),checksum:String(row.checksum)}));
 }
@@ -27,8 +28,8 @@ export async function removePostV25Schema(client:Client,url:string):Promise<void
   const main=databases.rows.find(row=>row.name==='main'),actual=main?.file?fs.realpathSync(String(main.file)):null;
   if(actual!==realExpected)throw new Error('旧结构夹具连接与指定测试文件不一致');
   const before=await migrationHistory(client);
-  if(before.map(row=>row.version).join(',')!==Array.from({length:34},(_,index)=>index+1).join(','))throw new Error('旧结构夹具要求完整且连续的 v34 起始库');
-  const reverseStatements=[V34_DDL,V33_DDL,V32_DDL,V31_DDL,V30_DDL,V29_DDL,V28_DDL,V27_DDL,V26_DDL].flatMap(statements=>[...statements].reverse().map(statement=>{
+  if(before.map(row=>row.version).join(',')!==Array.from({length:35},(_,index)=>index+1).join(','))throw new Error('旧结构夹具要求完整且连续的 v35 起始库');
+  const reverseStatements=[V35_DDL,V34_DDL,V33_DDL,V32_DDL,V31_DDL,V30_DDL,V29_DDL,V28_DDL,V27_DDL,V26_DDL].flatMap(statements=>[...statements].reverse().map(statement=>{
     const addColumn=/^ALTER TABLE ([a-z_][a-z0-9_]*) ADD COLUMN ([a-z_][a-z0-9_]*)\b/i.exec(statement.trim());
     if(addColumn)return `ALTER TABLE "${addColumn[1]}" DROP COLUMN "${addColumn[2]}"`;
     const createIndex=/^CREATE (?:UNIQUE )?INDEX ([a-z_][a-z0-9_]*)\b/i.exec(statement.trim());

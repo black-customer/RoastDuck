@@ -1,4 +1,7 @@
 import {expect,test} from '@playwright/test';
+import {readFileSync} from 'node:fs';
+
+const appVersion=(JSON.parse(readFileSync(new URL('../../package.json',import.meta.url),'utf8')) as {version:string}).version;
 
 test('Milo美式默认、独立口音与倍速可保存，改设置不合成音频',async({page})=>{
   let synthesis=0;
@@ -13,7 +16,7 @@ test('Milo美式默认、独立口音与倍速可保存，改设置不合成音�
   await expect(page.getByRole('combobox',{name:'口音',exact:true})).toHaveValue('en-GB');
   await page.getByRole('combobox',{name:'口音',exact:true}).selectOption('en-US');
   for(const width of [1440,390,320]){await page.setViewportSize({width,height:950});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/visual/personal-focus-settings-${width}.png`,fullPage:true});}
-  expect(synthesis).toBe(0);await expect(page.getByText('鱼块学英语 · v0.2.0 · 本机网页版',{exact:true})).toBeVisible();
+  expect(synthesis).toBe(0);await expect(page.getByText(`鱼块学英语 · v${appVersion} · 本机网页版`,{exact:true})).toBeVisible();
 });
 
 test('纯英文的中文补充提醒可跳过，跳过只创建一份回答',async({page})=>{

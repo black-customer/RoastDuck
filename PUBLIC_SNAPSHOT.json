@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "d148905ec1f3869d355bfdf786b4a9a550d86b4e",
-  "createdAt": "2026-09-10T16:03:43.020Z",
+  "sourceCommit": "0e212db550e8b082f2ac634a4fec68dc66bfaf95",
+  "createdAt": "2026-09-11T11:56:32.651Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -38,11 +38,11 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "7e976b711a7a2e19bdcd340d3c4c82f34186e866776e7272b8c8e3ac1d62dc43"
+      "sha256": "67ab39ab76177b7ba695db220f8582b7a23d85e57ba66385dbc3df7573dd5dbd"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "7dd04a6f0af0ab5893a6f84e03072f917e971330e3c66c2ea0d95ec214bf21a5"
+      "sha256": "a486029eb35c7cbe7b480e454cb049744389e636a4f82cdbb71efe4bab4f8743"
     },
     {
       "path": "android/.gitignore",
@@ -354,7 +354,7 @@
     },
     {
       "path": "db/migrate.ts",
-      "sha256": "caba586f2bdae4cc0b1650ab23595566edd9ebdc0c95e9fec0e974be2cfcdb65"
+      "sha256": "3ceeab11e4d6338967a2672e9bff12f53c86500232e3dbd5ee2676d0e8862831"
     },
     {
       "path": "db/migrations/v18-retired-learning.ts",
@@ -425,8 +425,12 @@
       "sha256": "308c64f78896d2f25571559c3e5559a7cae8bfb5eab2a4ce058ee8445bebf929"
     },
     {
+      "path": "db/migrations/v35-guided-reveal.ts",
+      "sha256": "956b2ff43369c809842fe402c125072ce83cc396b8c9742f5faf6b5448e626c9"
+    },
+    {
       "path": "db/schema.ts",
-      "sha256": "cb05cf5014291bcdba58de6dd8762d2faa6f96c8aa437df13acfc6afdaf7287e"
+      "sha256": "6b1eec26869ead0ff68ac31453eba3d4e3a3cc2bd8c9582e56bc81001ecead5c"
     },
     {
       "path": "docs/AI_PROVIDER.md",
@@ -446,7 +450,7 @@
     },
     {
       "path": "docs/DATA_MODEL.md",
-      "sha256": "aaed13b9b834091756b28cc42b8290375d4d40948df2c75354022f7bc6639c0d"
+      "sha256": "d074af7ccc164d970639fc51277706cd1a222f11e8637fe5a525ea117aaa4251"
     },
     {
       "path": "docs/DECISIONS.md",
@@ -454,7 +458,7 @@
     },
     {
       "path": "docs/DESIGN.md",
-      "sha256": "b5d2cd7d75b77dd27aa499a3881cb7bb04dd4b013718cc103c05f0a2a4c14678"
+      "sha256": "90be1d3f90b49c83709dfa4a8c97a36c0ffadedf5bbd959970b54a22463cbe6f"
     },
     {
       "path": "docs/DESKTOP_LAUNCHER.md",
@@ -469,12 +473,16 @@
       "sha256": "a3698ab9ee5ef7325f5fa6704fe9aa613fd46cbf5996f8fd84b00836ec081ede"
     },
     {
+      "path": "docs/GUIDED_REVEAL.md",
+      "sha256": "fe93912c99648c23aa69ff660aceae98dafdbed714b4a6fc5c0ac7ff4aea0bc6"
+    },
+    {
       "path": "docs/HISTORICAL_ANSWER_IMPORT.md",
       "sha256": "c9708f23a5f202931ce5558b49a1312e9769119b94283911299959ee96ca368e"
     },
     {
       "path": "docs/LEARNING_EXPERIENCE.md",
-      "sha256": "b38c83bb2b5154634fca5ac676fa258d79ea0dbe642d45598a02f21e0e6997fe"
+      "sha256": "28af55800ae6b7103215b3228748c88cee2e7fe74c88e8913273cfe54a7fc906"
     },
     {
       "path": "docs/LIGHT_STUDY_V2_ANDROID.md",
@@ -498,11 +506,11 @@
     },
     {
       "path": "docs/PRODUCT.md",
-      "sha256": "e0c14e81c9d5c412d982ae522813fa7199dc57d4aa4d1c4bcb4f75dbd5611450"
+      "sha256": "533aa030ea2de37a5c7ba5741aa28af57e1df88e5e86d4d08bc0081892651ce7"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "2d0f3b102436c87eef841ff03b85720ea75731d4ab46520615cd8401cebb69d7"
+      "sha256": "09ad5178729ff1689072a7fef030845b36b3e3623f1b6f4654bbe9f82dc22ef2"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -510,7 +518,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "5ea1e02f081e8e5be1604e3c69f17717a7e8b8da192ba5066eba2a732b203755"
+      "sha256": "c34d2a4119518f8c8c1c92fd7effe5ca367a56822c3a4ca8808bf40596a70cda"
     },
     {
       "path": "docs/REVIEW_REMEDIATION.md",
@@ -518,11 +526,11 @@
     },
     {
       "path": "docs/ROADMAP.md",
-      "sha256": "a534596fb6a94d092c01c67d73048e549b36c26839b1c5ff41fa1c7a3e6f20f1"
+      "sha256": "9fc4a27caf9d3676f70c852ff72c554316d85f1c1cb3b329881bed052f3af483"
     },
     {
       "path": "docs/SENTENCE_STUDY.md",
-      "sha256": "fedf254fb3f51b8e8861ce91eb060d9c05e1d843cdd34268d006d2b73b8b1321"
+      "sha256": "dae5da5aa9c6bc99f403e0baa802bc63a51c8100e78c8da8c5df40346d37df50"
     },
     {
       "path": "docs/SPEAKING_STUDIO.md",
@@ -534,7 +542,7 @@
     },
     {
       "path": "docs/TESTING.md",
-      "sha256": "97913a728e32f193e51aac5f5912ee714ccea6aa4fb01fe1510667c4d3665783"
+      "sha256": "e714ea186d42f1f24eee729562b81c8108f109604245f32a199a5f6969bec041"
     },
     {
       "path": "docs/THIRD_PARTY_NOTICES.md",
@@ -830,11 +838,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "2ee9a1ee9659c63d4b2b268a6cdd36ac706e4ae271bdb1c1f61ce744f79a4a78"
+      "sha256": "04a8980b5a8ab6bc2d02333d660a2473f2e7396866b49af6a1db005700b7c2e4"
     },
     {
       "path": "package.json",
-      "sha256": "4f338b830fb03c62e45ecbf1a06475dbd2656576fe7409fffdce542ebee60c3c"
+      "sha256": "3f9f5165fe9934d124532117e899b1ce6b5b01f58b99e6e3b0cc50bb8e5cb3e5"
     },
     {
       "path": "pipeline/golden/four-step.json",
@@ -1045,12 +1053,20 @@
       "sha256": "bb06b5d873c41866e077f3693813c182d7f61369e4b41a65fc2446b0c05a08e9"
     },
     {
+      "path": "pipeline/prompts/sentence_material.generator.v3.md",
+      "sha256": "ba4e537baf886fe9d49461a26adedac3f15a5e7ca01c1dc4b293ebe703db4615"
+    },
+    {
       "path": "pipeline/prompts/sentence_material.reviewer.v1.md",
       "sha256": "cad2649efba6bb400731ab9e973fac27afd50037c663e5b87481994570709049"
     },
     {
       "path": "pipeline/prompts/sentence_material.reviewer.v2.md",
       "sha256": "a0691ddc97a51aef4b8417f8443ea5e102f80f594e15b91d286aa2dc36b8ca03"
+    },
+    {
+      "path": "pipeline/prompts/sentence_material.reviewer.v3.md",
+      "sha256": "79e425079b9826b1a868416a326ae47e0001b07422348850c53d207d543ea869"
     },
     {
       "path": "pipeline/prompts/smoke.generator.v1.md",
@@ -1349,6 +1365,10 @@
       "sha256": "aec39aa073b1523b87a329ffcd17fedc617f3c5809473d90eca4559f2b98a562"
     },
     {
+      "path": "scripts/apply-sentence-teaching.ts",
+      "sha256": "9bab6c0e6739fe0333b04f362486e103d66a9867cbd94d87d9d5a1f8a7407185"
+    },
+    {
       "path": "scripts/audit-light-study.ts",
       "sha256": "fde091174853e74c9849f127e15efc6c5fc60c4987269a5367c5241d4e8efe7b"
     },
@@ -1370,7 +1390,7 @@
     },
     {
       "path": "scripts/benchmark-sentence-study.ts",
-      "sha256": "c0b6ff51e35ff38170b07ecf81bbe171a9b646cfb8fb508ae6234cc5af618d4c"
+      "sha256": "045eb8c9fe7d4df80d1815cdd0e374176c903534d611affaaec8628cf2665eed"
     },
     {
       "path": "scripts/build-android.mjs",
@@ -1507,6 +1527,10 @@
     {
       "path": "scripts/publish-snapshot.mjs",
       "sha256": "cb43d9186a2894119a818ced03728bdd4f09317e13efe2f89d5dbdb5626c98c4"
+    },
+    {
+      "path": "scripts/sentence-teaching-inventory.ts",
+      "sha256": "424ecd35fc88ac5e8870e71440b093b4596989ed2d4f5fd77af0c574432ac071"
     },
     {
       "path": "scripts/speech-prosody-preview.ts",
@@ -2026,7 +2050,7 @@
     },
     {
       "path": "src/components/AnswerWorkspace.tsx",
-      "sha256": "91d83803344c3e358f0d6bfbce6db3e50d03196db2745937579a07338fb63f4f"
+      "sha256": "cc65580021b6952252f6bb929a5d40c8b617377479c4e568e9ff5418c3c176b0"
     },
     {
       "path": "src/components/ChineseAlignment.tsx",
@@ -2102,7 +2126,7 @@
     },
     {
       "path": "src/components/MaterialsSummary.tsx",
-      "sha256": "f5fbfb2691ec723ae73704d1f9791e1f7f3d5b16b1aec795a7b2324e723996f9"
+      "sha256": "67b1d825b44044e3dfb1f4b2c5555681e684aefb1744e93880808dd7ad6d4a34"
     },
     {
       "path": "src/components/MemoryCenter.module.css",
@@ -2186,7 +2210,7 @@
     },
     {
       "path": "src/components/coaching/CoachingPanel.tsx",
-      "sha256": "b4bc4b930dcad89577ef85b7f76bb89c81b091398b9ea3e23e807541f4a3d67d"
+      "sha256": "46815e63deeeb8732a26e8303f129b97497090da3e5867a30a4bceb61f44bf9e"
     },
     {
       "path": "src/components/expressions/ExpressionCollection.module.css",
@@ -2241,6 +2265,14 @@
       "sha256": "ee3e2c5048f35b5e65f586020473e6ae15988f99c18728c1d8a4f80c968383b0"
     },
     {
+      "path": "src/components/sentence-study/GuidedReveal.module.css",
+      "sha256": "f1f15be0d5a503b88dbfb2a694917689e2d838c73f0d62da91926bd1f621b883"
+    },
+    {
+      "path": "src/components/sentence-study/GuidedReveal.tsx",
+      "sha256": "4bbc3426044f8b260a37c2b2e6f6a369205978a90d1c038fd5a1c91027cf2135"
+    },
+    {
       "path": "src/components/sentence-study/HighlightText.module.css",
       "sha256": "a2e3e96babfe7580952db10eb8726c7fd9cda34d15ac84fafaefbefb15d3eb93"
     },
@@ -2262,11 +2294,19 @@
     },
     {
       "path": "src/components/sentence-study/SentenceStudy.module.css",
-      "sha256": "218834a865cd60ab961d71af83abc991c5e7d9fc103994bac048a352eecca774"
+      "sha256": "7602c70992878dde5cba404409384bb51b6f9b2c87e0839097062197c426cc45"
     },
     {
       "path": "src/components/sentence-study/SentenceStudyPanel.tsx",
-      "sha256": "487cc07189bbc29d3c6472f268138f751e90f9a65db82dbb64678035d4d37145"
+      "sha256": "52cb420a47035eb962dff82fc7057cf4df7e604adbf0b1d5c0a45a71f9239fb2"
+    },
+    {
+      "path": "src/components/sentence-study/SentenceTeaching.module.css",
+      "sha256": "e524d60546a07cec88ad7f34465dfb8d2a6202b517eae9444bc6de422c673b7e"
+    },
+    {
+      "path": "src/components/sentence-study/SentenceTeaching.tsx",
+      "sha256": "748cebead9514453884fd86726197f2a4ef4d185fb26b98dba682a4897756b65"
     },
     {
       "path": "src/components/sentence-study/StartSentenceButton.tsx",
@@ -2370,11 +2410,11 @@
     },
     {
       "path": "src/lib/app-services/answers.ts",
-      "sha256": "b61781f2876bc38a92b6cb82baa085ef3bc44377c8eb29bcea3dfe26526bf41b"
+      "sha256": "2a24dfc5277b27761796485847b43b3bbbccfff03925231eb33a92e755db8fcd"
     },
     {
       "path": "src/lib/app-services/chat.ts",
-      "sha256": "1b2b0909e83a47be8fe9df606e0162f110e90796c0cc4fbde37d70de9cc18b88"
+      "sha256": "3f3af454fbbe67214e15dcc060a6a2c6b6d713664779f8bc94d1ea98a1e506d6"
     },
     {
       "path": "src/lib/app-services/dialogue-contracts.ts",
@@ -2410,7 +2450,7 @@
     },
     {
       "path": "src/lib/backup/web-business.ts",
-      "sha256": "12d573e3f078970df1df0f31151b6b1e9d2def94ac1f7def2eafc13b23772bab"
+      "sha256": "d94189ff6c902bc3b4c5e8e1041256b2204c62cdae624f30482d9473f7b5f47a"
     },
     {
       "path": "src/lib/coaching/contracts.ts",
@@ -2482,7 +2522,7 @@
     },
     {
       "path": "src/lib/four-step/approved-pipeline.ts",
-      "sha256": "78777ef2031f4c269e68b00629f17588f62f51df8b04b0b3190f275be5cebf8d"
+      "sha256": "1fd452a685d15d3c878b2ce73c8d1d4257375aa137dbc2f62ca2e89310f84a53"
     },
     {
       "path": "src/lib/four-step/audit.ts",
@@ -2494,7 +2534,7 @@
     },
     {
       "path": "src/lib/four-step/core-diagnostic-pipeline.ts",
-      "sha256": "0766ba12abc5a418a8331a0a6502465b93ece8af8787bdcbcdc6b941ad41b5fa"
+      "sha256": "6a7fcaf8570644079c3a76ebd396f3cc0f27b34bc0f2e012812e18cbae5834e6"
     },
     {
       "path": "src/lib/four-step/core-materials.ts",
@@ -2526,7 +2566,7 @@
     },
     {
       "path": "src/lib/four-step/material-types.ts",
-      "sha256": "326a1ed635b2ca4c02dc53d096e5b8f9da00e08b823b5e6b1ab45fe1505cadbb"
+      "sha256": "4a08f6814edefdc02c4ad255a697217ce5064cc5c41e577be22a9030a7cf8997"
     },
     {
       "path": "src/lib/four-step/material-validation.ts",
@@ -2534,7 +2574,7 @@
     },
     {
       "path": "src/lib/four-step/materials.ts",
-      "sha256": "70c6bf5080d50a9aa33da93121edaa322e66374f95d4936ba229ae4113fad337"
+      "sha256": "852b46a69c88359922ee70ae21666967b1dbaebfda10baf0b5da3aa51225243f"
     },
     {
       "path": "src/lib/four-step/offline-apply.ts",
@@ -2574,7 +2614,7 @@
     },
     {
       "path": "src/lib/four-step/selection-contracts.ts",
-      "sha256": "cc48e37966c1c2ed2036e5e6519b51463515c038e17853abad7749100aa26f3b"
+      "sha256": "1d3d90ce9a02e9c80811398a5b5d33b01656562817ef9d1ff4d56156b1954c5a"
     },
     {
       "path": "src/lib/four-step/selection-identity.ts",
@@ -2582,7 +2622,7 @@
     },
     {
       "path": "src/lib/four-step/selection-mock.ts",
-      "sha256": "573b845f75c2a617471f9c39daa9871d9a1dc4d491887a906a6879332fd5fa9b"
+      "sha256": "82e4ca3568569f152949dcd1375619ed6fdaa300923595c183a52349e44b57d3"
     },
     {
       "path": "src/lib/four-step/shared.ts",
@@ -2598,7 +2638,7 @@
     },
     {
       "path": "src/lib/four-step/stage-contracts.ts",
-      "sha256": "1aa213bc0d32f20f22c864917eadeba29ffcf2ef2344ed98eb259c320b1da720"
+      "sha256": "0808b36adac521f8571d22b07340a280b7720e73e0e70b8af031aeb6cf181c01"
     },
     {
       "path": "src/lib/four-step/training.ts",
@@ -2850,19 +2890,19 @@
     },
     {
       "path": "src/lib/sentence-study/audit.ts",
-      "sha256": "6599cc624a40115d3ed53390ace914eda15b5ed971ab401ea881a48d1cc375fa"
+      "sha256": "7367bb2233de65b3e1f6c9445cec252b5d833769b6b2565febd5722b6f33f214"
     },
     {
       "path": "src/lib/sentence-study/catalogue.ts",
-      "sha256": "d5855135b5c3d83142878cd2d095bec8f37a6046e527a7935a645e41ea8dafed"
+      "sha256": "332c394f293b74bac9f907f1b07bdc02bf9513fb4cd15e84b3030e3b53e90570"
     },
     {
       "path": "src/lib/sentence-study/client.ts",
-      "sha256": "70931cda62a3a517f95355c935a8f798be6eb70a3012188560f70dd4a523f52b"
+      "sha256": "5a775bdea942a676d5e55f6a9cff356c7cb7384b8744859f8a5018e0a6eb3ee7"
     },
     {
       "path": "src/lib/sentence-study/contracts.ts",
-      "sha256": "d9e14fc838c3d474849125888864cde2cd90113114d83ea432eaa786e823c6ab"
+      "sha256": "d96be92104cc03d4581904999c3855bb83dbe015ad88e38dc8e6a26c26daa5ea"
     },
     {
       "path": "src/lib/sentence-study/controller.ts",
@@ -2870,11 +2910,11 @@
     },
     {
       "path": "src/lib/sentence-study/core-service.ts",
-      "sha256": "a23d1aa6ac36464bca357ddd2a092d936fd134683a045c4c66c21f3a96343b4c"
+      "sha256": "ed3071a6f6d3c1f4d2a59c5e0e700e5df03eb6e35cd10613baccb5f2bc9bb158"
     },
     {
       "path": "src/lib/sentence-study/editions.ts",
-      "sha256": "c37e59e1b8b27eb6b23539bcbe5959e3d2c7a313a445d7fd1b32fbb4485b7fbc"
+      "sha256": "a340d9789a05d185fdd7d09395539a80c8e366bad4be1e9a539782de9bada060"
     },
     {
       "path": "src/lib/sentence-study/highlights-client.ts",
@@ -2902,11 +2942,23 @@
     },
     {
       "path": "src/lib/sentence-study/materials.ts",
-      "sha256": "9e7b939eb97aa99e5e11a8d348461653bc3ec09271aabe386f2d47944f23fda7"
+      "sha256": "579279c7ed3bb41de5b4107cdada3f87f6ff2841db50a4cf62628340ec55ee30"
     },
     {
       "path": "src/lib/sentence-study/service.ts",
       "sha256": "2f2993596eebc22ded4f26fbe4ae665814eb1014cdabd59ef9869b71aa81516d"
+    },
+    {
+      "path": "src/lib/sentence-study/teaching-contracts.ts",
+      "sha256": "bc86809a4f3b4b291da1644d97e3ae3f0f5ce4a79d4c8db0ae1e679316a8d364"
+    },
+    {
+      "path": "src/lib/sentence-study/teaching-editions.ts",
+      "sha256": "0d2860d19e9b447effcf3054bee6f14eac1ddab73bee6489f87a364d310aedd7"
+    },
+    {
+      "path": "src/lib/sentence-study/teaching-revisions.ts",
+      "sha256": "a9c05a609378fa4bcffbc7a20d69800defa6c2eb9d9ad4d1f5155b996b5078d8"
     },
     {
       "path": "src/lib/settings-credentials.ts",
@@ -2922,7 +2974,7 @@
     },
     {
       "path": "src/lib/speaking-practice/service.ts",
-      "sha256": "f89d7fab55c12cb871fb219a967622e1d7de0b716f36276ab579fec3fb6d1231"
+      "sha256": "3b5c0d000f1ba870669a86fd36079e2f471daa90f7196ac86ba3eb9621f29bf2"
     },
     {
       "path": "src/lib/speaking/gap-pipeline.ts",
@@ -3018,7 +3070,7 @@
     },
     {
       "path": "tests/app-answer-material.test.ts",
-      "sha256": "75cfa5edd67858e16a30eeddb0517805f193d4cc3957523cd34ea44428b09180"
+      "sha256": "a86b78a9ac8aaa8073c173336d92b8b653d0014a34ad2ccefe0d28382c0a6b05"
     },
     {
       "path": "tests/app-memory-chat.test.ts",
@@ -3093,8 +3145,12 @@
       "sha256": "808fbbbb10ca3f531e290a669d86142ae8ecaabbe5372132d718e3eaffaf6342"
     },
     {
+      "path": "tests/e2e/guided-reveal.spec.ts",
+      "sha256": "5ed2e308bf10759e03c91a2b056c725d8d07164ca64c9a9eb910924e0b25e1b2"
+    },
+    {
       "path": "tests/e2e/home.spec.ts",
-      "sha256": "df6ddf20b7eedc502118420ded2ef563e4c62fcc23c938cbc781594989d2b391"
+      "sha256": "f786054b667f88e5acdac97a1a4d845df3a197ea928183f6b68c03a983ce44bb"
     },
     {
       "path": "tests/e2e/learning.spec.ts",
@@ -3106,7 +3162,7 @@
     },
     {
       "path": "tests/e2e/personal-focus.spec.ts",
-      "sha256": "c56ab717b06dab228180eb6cc7ba84d5de5fedee31106386904ae53a9fe55d6a"
+      "sha256": "673d7df055e4f89abebbc2dd4d3b9cae35a5de4dd4683d075c746f9740586f83"
     },
     {
       "path": "tests/e2e/seed.ts",
@@ -3114,15 +3170,15 @@
     },
     {
       "path": "tests/e2e/sentence-highlights.spec.ts",
-      "sha256": "11a54d8c51b7e91b31c292759db6259f1f820dfd93572ad851b2729ee1196211"
+      "sha256": "1e903b26d76bcfd8437fc3e582064d4d6b96e37704c5a8341956e453d9e1c7c4"
     },
     {
       "path": "tests/e2e/sentence-study.spec.ts",
-      "sha256": "e62d28f9e731ee637eac0d992cc01d43b492041d32cf3a68b93d9cc467178b20"
+      "sha256": "6b72c0d0940b3ac586b46c4ca65c872da144a69928c3e48a0e0599f3759da707"
     },
     {
       "path": "tests/e2e/web-shell.spec.ts",
-      "sha256": "1fed47afa5152712231fc27860812e0e93b66c5906299d55b343c60bc0a49586"
+      "sha256": "dde3caed4690bcfd354443182efa3d84ea85c7506dee4d601cbb617f810182f0"
     },
     {
       "path": "tests/e2e/web-usability.spec.ts",
@@ -3145,8 +3201,12 @@
       "sha256": "6cd0882bb3ae3314ef86baecefc8718b7e23716ad86ffe7f23f8be77a42f5f57"
     },
     {
+      "path": "tests/guided-reveal.test.ts",
+      "sha256": "beb0d7072defc66488b0db1327a69ab4c612f4d74a5848d704791545a318215e"
+    },
+    {
       "path": "tests/helpers/legacy-schema.ts",
-      "sha256": "b43e2a9a672d92299074db78657efcfca47d193356030413f2d8ab24a9509b91"
+      "sha256": "ddbcc76487dd0e710bc7b6af075a254768a969b775ecb03d8e2b5a85d7110edb"
     },
     {
       "path": "tests/helpers/light-current-material.ts",
@@ -3162,7 +3222,7 @@
     },
     {
       "path": "tests/helpers/portable-db.ts",
-      "sha256": "14d43a227172f226569fa9cb0d825068db17e373e78562387aae59dca7038bc6"
+      "sha256": "33272b8894030546979eec0ddc4638a8bf557d6b88bef5dac36e7bb6227e0c72"
     },
     {
       "path": "tests/helpers/recall-material.ts",
@@ -3246,7 +3306,7 @@
     },
     {
       "path": "tests/integration/light-study-upgrade.integration.test.ts",
-      "sha256": "8a55be6c0a821ecc62035d08d47fc1e20900571f635329aca6f23c3d42d871ad"
+      "sha256": "723296594e9049a8d1a8e5c8fbcfe04fbbc7ffb16192905f3456ff0ccbf55d7b"
     },
     {
       "path": "tests/integration/light-study-v2.integration.test.ts",
@@ -3254,11 +3314,11 @@
     },
     {
       "path": "tests/integration/light-study.integration.test.ts",
-      "sha256": "f08dd7cf45ee4a715e3f45c003ac4f0b697781eb6b16deb62b7ebbd1cf036d7d"
+      "sha256": "9d24114b0b21f9aedd5755e2811e4a2e2dc4d03df1a16a6da17ffdf11c12e52c"
     },
     {
       "path": "tests/integration/material-selection.integration.test.ts",
-      "sha256": "d053e51159fe7ab56e079f462f8249a3aeaa27fe7bacf13ee8c244220c0ce35e"
+      "sha256": "0869ddff99c274639de6ddf52f0c2323f9bcf22c9848e513683ba339b4366b1a"
     },
     {
       "path": "tests/integration/native-bootstrap.integration.test.ts",
@@ -3302,19 +3362,19 @@
     },
     {
       "path": "tests/integration/v15-companion-migration.integration.test.ts",
-      "sha256": "13c51c5e9dd3799044aa43b60434e48a82bcff6074e8697aa3ca9f5db14c9bb6"
+      "sha256": "7e994e2f3ba4882ebbffb2a2354086b61bc99ed1e655b14bd3f53d4735243230"
     },
     {
       "path": "tests/integration/v18-retired-learning.integration.test.ts",
-      "sha256": "7d8f913ef341e9c2874a302ae5a7cfce2bd6d6cde2e9abdc98ecbafd3a775be0"
+      "sha256": "ef706b37eb5696c710e499ae4cb9c2861ade005c6a316a26d821e624d4994a64"
     },
     {
       "path": "tests/integration/v20-material-migration.integration.test.ts",
-      "sha256": "ec9666912d5aeec60afbd36eb744f039c855acd74867dfc63c18492133a77e63"
+      "sha256": "a9e3d9f1223b182991ffc3c7dd2aa294d75fcbb48c98ab3722628e72d081a0b6"
     },
     {
       "path": "tests/integration/v25-light-migration.integration.test.ts",
-      "sha256": "2d13497313ee32cc94030af2699931c833471d16b5893986dd8fa6e4e292a8af"
+      "sha256": "61dbe33e42d71b3393c385549dd72e787d1296498b87898caa2ed068d2ac83ad"
     },
     {
       "path": "tests/integration/v3-pilot-publication.integration.test.ts",
@@ -3378,7 +3438,7 @@
     },
     {
       "path": "tests/materials-summary.test.ts",
-      "sha256": "c8071be799d18571cf5a1a5f78b0ad3fa91d7e09046e09fd7f689d258346d798"
+      "sha256": "fe4515c0b540acd6473cd972e15f7efa699baa53872899c3fb3a2ae6d5df6352"
     },
     {
       "path": "tests/mixed-answer-material.test.ts",
@@ -3522,11 +3582,15 @@
     },
     {
       "path": "tests/sentence-outbox.test.ts",
-      "sha256": "356054bfbf8b7e4afb5a04d9591e049872ed50188564f12cb65793cb9721510d"
+      "sha256": "1b8961fb1d58cdc253261bdfcd814d7d38d1da519d9d8ce62e1b60453979f8c6"
     },
     {
       "path": "tests/sentence-study.test.ts",
-      "sha256": "375ec7afacd5680723f8dd88da2eafb21a69145473b69f204db0389512ba3bdd"
+      "sha256": "e4820403cd8aa57df7c74500d707a3d0d561245abe3c62aa585413ed12c725b9"
+    },
+    {
+      "path": "tests/sentence-teaching.test.ts",
+      "sha256": "a13f7bc2a49ed3353dffaabeb9601054bcf341979160df51d0e6d8f49e6c25d8"
     },
     {
       "path": "tests/session-service.test.ts",
@@ -3606,7 +3670,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "2037a05dcce7f91e5b206b9da561c5fadb1cb473d8cbae3ff99663f17b8b85b8"
+      "sha256": "282b8c7aa1d68035ce88616878d5c9c9d98044bbf9a2997aca0e3e9d31bdc996"
     }
   ],
   "excludedCounts": {

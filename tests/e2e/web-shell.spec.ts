@@ -25,6 +25,7 @@ test('英文原文处理失败后始终可重试，并保留未保存编辑', as
     await page.goto(`/answer-studio/${id}`);
     const draft = page.getByLabel('可编辑的英文答案版本');
     await draft.fill('My unsaved draft stays here.');
+    await expect(draft).toHaveValue('My unsaved draft stays here.');
     const retry = page.getByRole('button', { name: '重新处理', exact: true });
     await retry.focus();
     await expect(retry).toBeFocused();
@@ -40,6 +41,30 @@ test('英文原文处理失败后始终可重试，并保留未保存编辑', as
     await expect(draft).toHaveValue('My unsaved draft stays here.');
     await expect(page.locator('.workspace-original')).toContainText('I practice every day.');
   }
+});
+
+test('英文编辑在初始化前明确只读，就绪后立即输入不会拼回旧原文',async({page})=>{
+  const url=process.env.ROASTDUCK_DB!;assertInsideTestResults(path.resolve(url.slice(5)));
+  const id=`hydrate_${randomUUID()}`,versionId=`${id}_v1`,client=createClient({url});
+  try{
+    await client.execute({sql:"INSERT INTO personal_answers (id,question_id,input_language,raw_text,status,current_version_id) VALUES (?,'question_e2e_habits','en','I practice every day.','failed',?)",args:[id,versionId]});
+    await client.execute({sql:"INSERT INTO answer_versions (id,answer_id,version_no,kind,text_en) VALUES (?,?,1,'raw','I practice every day.')",args:[versionId,id]});
+  }finally{client.close();}
+  let releaseScripts!:()=>void;const scriptsBlocked=new Promise<void>(resolve=>{releaseScripts=resolve;});
+  await page.route('**/_next/static/**/*.js',async route=>{await scriptsBlocked;await route.continue();});
+  try{
+    await page.goto(`/answer-studio/${id}`,{waitUntil:'commit'});
+    const draft=page.getByLabel('可编辑的英文答案版本');
+    await expect(draft).toHaveAttribute('readonly','');
+    await expect(draft).toHaveAttribute('aria-busy','true');
+    await expect(draft).toHaveValue('I practice every day.');
+    releaseScripts();
+    await expect(draft).toBeEditable();
+    await draft.fill('My first input must stay unchanged.');
+    await expect(draft).toHaveValue('My first input must stay unchanged.');
+    await expect(page.locator('.workspace-original')).toContainText('I practice every day.');
+    await expect(page.getByRole('button',{name:'另存为新版本',exact:true})).toBeEnabled();
+  }finally{releaseScripts();}
 });
 
 test("全站共享蓝白 Web 框架，桌面/手机/放大无溢出，保留导航与无障碍", async ({ page, request }) => {

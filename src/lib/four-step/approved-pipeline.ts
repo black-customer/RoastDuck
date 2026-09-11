@@ -9,6 +9,7 @@ import {matchesReviewedProjection} from './reviewed-projection';
 import type {MaterialInput,MaterialRow} from './material-types';
 import {hash} from './shared';
 import {validateMaterial} from './material-validation';
+import {teachingMaterialDraftSchema} from './selection-contracts';
 
 type Stage={run_id:string;stage:string;status:string;prompt_version:string;input_hash:string;input_json:string;output_json:string;role:string;run_status:string;run_prompt:string;run_input_hash:string;receipt_state:string;response_json:string|null};
 /** Replays existing real/Mock receipts against current rules. It performs no
@@ -32,7 +33,7 @@ export async function recoverApprovedPipeline(tx:SqlReader,material:MaterialRow)
   const selection=selectionSchemaForSource(source).parse(JSON.parse(selectionStage.output_json));
   validateDiagnosis(source,diagnosis);validateSelection(diagnosis,selection,source);
   if(JSON.stringify(selectionInput.diagnosis)!==JSON.stringify(diagnosis)||JSON.stringify(draftInput.diagnosis)!==JSON.stringify(diagnosis)||JSON.stringify(draftInput.selection)!==JSON.stringify(selection))return null;
-  const draft=(source.spokenStyleVersion==='personal-spoken-v2'?recallMaterialDraftSchema:materialDraftSchema).parse(JSON.parse(latestDraft.output_json)),evidence={diagnosis,selection,draft};
+  const draft=(source.teachingVersion?teachingMaterialDraftSchema:source.spokenStyleVersion==='personal-spoken-v2'?recallMaterialDraftSchema:materialDraftSchema).parse(JSON.parse(latestDraft.output_json)),evidence={diagnosis,selection,draft};
   const analysis=speakingAttemptAnalysisSchema.parse(compileEvidence(source,evidence));validateMaterial(analysis,source);
   const reviewed=reviewSchemaForSource(source).parse(JSON.parse(reviewStage.output_json));validateEvidenceReview(evidence,reviewed,source);
   if(!matchesReviewedProjection(source,reviewInput.compiled,analysis,reviewed))return null;

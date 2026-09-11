@@ -1,0 +1,25 @@
+.teaching{margin-top:30px;padding-top:28px;border-top:1px solid var(--border);font-size:1rem;line-height:1.75;overflow-wrap:anywhere}
+.teaching h2{font-size:1.125rem;font-weight:650;color:var(--foreground);margin-bottom:12px}
+.overview{color:var(--muted-strong);max-width:70ch}
+.parts{margin-top:24px;display:grid;gap:26px}
+.part{min-width:0}
+.part h3,.notes h3{font-size:1rem;font-weight:600;margin-bottom:5px}
+.quote{font-family:var(--font-english);font-size:1.125rem;color:var(--primary-strong);margin-bottom:8px}
+.explanation{color:var(--foreground);max-width:70ch}
+.pattern{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:.9375rem}
+.pattern>span:first-child{color:var(--muted)}
+.pattern>span[lang]{color:var(--primary-strong)}
+.teaching summary{min-height:44px;display:list-item;padding-block:10px;cursor:pointer;color:var(--primary-strong);font-size:.875rem}
+.teaching summary:hover{text-decoration:underline;text-underline-offset:4px}
+.teaching details{margin-top:4px}
+.contrast{font-size:.9375rem;color:var(--muted-strong);margin-block:4px 14px}
+.examples,.alternatives{display:grid;gap:14px;margin-block:8px 18px}
+.subheading{font-size:.875rem;font-weight:600;color:var(--muted-strong)}
+.examples>div,.alternatives>div{padding-left:16px;border-left:1px solid var(--border)}
+.examples p[lang],.alternatives p[lang]{font-family:var(--font-english);color:var(--foreground)}
+.examples p:not([lang]),.alternatives p:not([lang]){font-size:.875rem;color:var(--muted-strong)}
+.alternatives .when{margin-top:5px}
+.notes{border-top:1px solid var(--border);margin-top:26px;padding-top:24px}
+.note{margin-top:14px}
+.note details{font-size:.875rem;color:var(--muted-strong)}
+.missing{font-size:.9375rem;color:var(--muted)}

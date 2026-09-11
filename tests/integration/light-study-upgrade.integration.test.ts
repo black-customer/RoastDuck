@@ -15,6 +15,8 @@ async function oldSession(name:string,count=1){
   return {id,scope,cards};
 }
 beforeAll(async()=>{db=await(await import('@db/client')).getDbReady();service=await import('@/lib/light-study/service');});
+// Total budget includes publishing eight isolated materials and many sequential
+// migration/learning transactions; this is not the separate click-latency SLA.
 it('old URLs read a transition, never answers; continue creates one five-item successor and retains the remainder',async()=>{
   const old=await oldSession('batch',8),before=await service.getLightView(old.id);
   expect(before).toMatchObject({needsUpgrade:true,revealed:false,card:null});
@@ -33,7 +35,7 @@ it('old URLs read a transition, never answers; continue creates one five-item su
   expect(current.initialTotal).toBe(3);expect(current.card?.itemId).toBe(old.cards[5].itemId);
   expect((await service.createLightSession(input,clock)).id).toBe(firstId);
   expect(await db.all(sql`SELECT * FROM light_study_succession_batches WHERE legacy_session_id=${old.id}`)).toHaveLength(2);
-});
+},15000);
 it('still-due review items with newer progress versions are reprojected, not dropped from a successor',async()=>{
   const old=await oldSession('stale-due');await db.run(sql`UPDATE light_study_sessions SET mode='review' WHERE id=${old.id}`);
   await db.run(sql`INSERT INTO light_study_progress(learning_item_id,first_seen_at,last_seen_at,due_at,version) VALUES(${old.cards[0].itemId},'2026-09-01','2026-09-02','2026-09-03',8)`);

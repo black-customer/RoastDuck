@@ -26,6 +26,8 @@ if(scale>1){
         const card=JSON.parse(String(u.body_json));card.id+=tag;card.materialId=mid;card.source.id=sid;card.source.questionId=qid;card.source.title='放大数据性能样本';card.version=sentenceDisplayVersion({materialId:mid,chinese:card.chinese,english:card.english,contextZh:card.contextZh,meaningOrigin:card.meaningOrigin,usages:card.usages,notes:card.notes});
         insert('sentence_learning_units',{...u,id:card.id,material_id:mid,source_id:sid,question_id:qid,version:card.version,body_json:JSON.stringify(card)});
       }
+      const teaching=clone.prepare("SELECT * FROM sentence_teaching_editions WHERE material_id=? AND status='ready' ORDER BY created_at DESC,id DESC LIMIT 1").get(original.id) as Row|undefined;
+      if(teaching){const attachments=JSON.parse(String(teaching.teachings_json)).map((a:{sentenceId:string;textVersion:string})=>{const id=a.sentenceId+tag,unit=clone.prepare('SELECT version FROM sentence_learning_units WHERE id=?').get(id);return {...a,sentenceId:id,textVersion:unit?.version??a.textVersion};});insert('sentence_teaching_editions',{...teaching,id:String(teaching.id)+tag,material_id:mid,teachings_json:JSON.stringify(attachments)});}
     }
   }clone.exec('COMMIT');}catch(e){clone.exec('ROLLBACK');throw e;}finally{clone.close();}
 }
@@ -34,17 +36,18 @@ const {nodeDatabase}=await import('../src/lib/platform/node/database');
 const {createSentenceService}=await import('../src/lib/sentence-study/core-service');
 const {query:sql}=await import('../src/lib/platform/sql');
 const service=createSentenceService(nodeDatabase,{now:()=>new Date(),newId:randomUUID});
-const measurements:Record<string,number[]>={overview:[],create:[],reveal:[],rate:[],resume:[]};
+const measurements:Record<string,number[]>={overview:[],create:[],reveal:[],rate:[],advance:[],resume:[]};
 async function measure<T>(name:string,work:()=>Promise<T>){const at=performance.now(),value=await work();measurements[name].push(performance.now()-at);return value;}
 const initial=await service.overview();
 for(let i=0;i<20;i++){
   const data=await measure('overview',()=>service.overview()),source=data.sources.find(s=>s.newCount>0&&s.type==='question');if(!source)break;
-  let v=await measure('create',()=>service.create({scope:{type:'question',id:source.id},mode:'learn',clientRequestId:randomUUID()}));
-  const card=v.cards[v.index];v=await measure('reveal',()=>service.event(v.id,{type:'reveal',version:v.version,clientEventId:randomUUID(),sentenceId:card.id,unitVersion:card.version}));
-  v=await measure('rate',()=>service.event(v.id,{type:'rate',version:v.version,clientEventId:randomUUID(),sentenceId:card.id,unitVersion:card.version,rating:'remembered'}));
+  let v=await measure('create',()=>service.create({scope:{type:'question',id:source.id},mode:'learn',clientRequestId:randomUUID(),experienceVersion:'guided-reveal-v1'}));
+  const card=v.cards[v.index];v=await measure('reveal',()=>service.event(v.id,{type:'enter_teaching',version:v.version,clientEventId:randomUUID(),sentenceId:card.id,unitVersion:card.version}));
+  v=await measure('rate',()=>service.event(v.id,{type:'rate',experienceVersion:'guided-reveal-v1',version:v.version,clientEventId:randomUUID(),sentenceId:card.id,unitVersion:card.version,rating:'remembered'}));
+  v=await measure('advance',()=>service.event(v.id,{type:'advance',version:v.version,clientEventId:randomUUID(),sentenceId:card.id,unitVersion:card.version}));
   if(v.status!=='completed'){v=await service.event(v.id,{type:'pause',version:v.version,clientEventId:randomUUID()});v=await measure('resume',()=>service.event(v.id,{type:'resume',version:v.version,clientEventId:randomUUID()}));}
 }
 const [{materials}]=await nodeDatabase.read(tx=>tx.all<{materials:number}>(sql`SELECT count(*) materials FROM sentence_material_editions`));
 const results=Object.fromEntries(Object.entries(measurements).map(([name,values])=>{const sorted=[...values].sort((a,b)=>a-b);return [name,{n:values.length,p50:sorted[Math.floor(sorted.length*.5)]??null,p95:sorted[Math.min(sorted.length-1,Math.floor(sorted.length*.95))]??null,max:sorted.at(-1)??null}];}));
-const report={at:new Date().toISOString(),networkCalls:0,scale,syntheticScale:scale>1,isolatedDatabase:path.relative(process.cwd(),file),currentSourceMaterials:materials,eligibleSentences:initial.totalCount,results};
+const report={at:new Date().toISOString(),networkCalls:0,scale,syntheticScale:scale>1,isolatedDatabase:path.relative(process.cwd(),file),storedSentenceEditions:materials,currentSourceMaterials:initial.sources.filter(s=>s.totalCount>0).length,eligibleSentences:initial.totalCount,results};
 fs.writeFileSync(path.join(root,`latest-${scale}x.json`),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));

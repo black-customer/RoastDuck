@@ -1,6 +1,7 @@
 # 数据模型
 状态：现行；2026-09-07。数据库实现以db/schema.ts及连续编号迁移为准，旧结构保留兼容，不执行db:push替代生产迁移。
 ## 当前实体
+- v35：sentence_teaching_editions保存绑定句子文本/来源的独立作者与Reviewer、教学及可追溯修订；加入业务备份，不写第二套学习成绩。会话JSON增加guided-reveal-v1阶段/草稿/游标，评分与advance独立。新增sentence-teaching-revision-v1记录父版与预期活动快照；exact-targets-v2只保留新句确实存在的用法，旧编译记录保留重放。明确部分批准可隔离待确认句，不改false成true。
 - v34：sentence_highlights保存稳定句子ID、语言、文本版本/hash、UTF-16准确范围与quote/prefix/suffix锚点；新增请求唯一，取消为软删除。仅可靠唯一锚点映射可迁移，无法对应保留旧版；业务备份包含高亮，不含Key。ai_runs追加response_model/error_details_json，保留失败运行与安全诊断，不保存隐私报错正文。
 - 当前失败材料的runtimeRevision引用parentMaterialId/parentInputHash/策略版本；追加practice_materials版本，不覆盖原Attempt、旧分析或成绩。已发布材料不能通过该失败恢复路径重写。
 - 审核错误记忆复用Companion记录，保留原表达、建议、原因、源版本、审核run、提示状态和修正证据。准备/风格/转写不确定不计确认错误；同源幂等及删除generation保护迟到写入，不另建错题表。

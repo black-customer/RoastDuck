@@ -24,7 +24,7 @@ it('recovery submits another tab\'s valid original rating before any resume or a
 });
 it('storage failure stops the visible transition instead of claiming a completed rating',async()=>{
   const storage=store(),v={...base(),revealed:true},c=client(v),controller=new SentenceController(c,storage);await controller.load(v.id);storage.setItem=()=>{throw new Error('storage full');};
-  await controller.apply({type:'rate',rating:'forgot'});expect(controller.getSnapshot().view?.status).toBe('active');expect(controller.getSnapshot().error).toContain('storage full');expect(c.event).not.toHaveBeenCalled();
+  await controller.apply({type:'rate',rating:'forgot'});expect(controller.getSnapshot().view?.status).toBe('active');expect(controller.getSnapshot().error).toContain('存储空间不足');expect(c.event).not.toHaveBeenCalled();
 });
 it('a late response from an old session cannot overwrite a newly opened session',async()=>{
   const storage=store(),v=base(),c=client(v);let finish!:(v:SentenceSession)=>void;c.event=vi.fn(()=>new Promise<SentenceSession>(resolve=>{finish=resolve;}));const controller=new SentenceController(c,storage);await controller.load('one');await controller.apply({type:'reveal'});

@@ -29,7 +29,7 @@ beforeAll(async()=>{
 });
 afterEach(()=>{vi.restoreAllMocks();delete process.env.LIGHT_STUDY_ENABLED;});
 it("v24迁移连续，overview纯读取，材料范围不存在返回404",async()=>{
-  expect((await db.all<{v:number}>(sql`SELECT MAX(version) AS v FROM _schema_migrations`))[0].v).toBe(34);
+  expect((await db.all<{v:number}>(sql`SELECT MAX(version) AS v FROM _schema_migrations`))[0].v).toBe(35);
   expect(await service.lightOverview(all,time)).toMatchObject({newCount:1,dueCount:0,totalCount:1,defaultMode:"learn"});
   expect(await db.all(sql`SELECT * FROM light_study_sessions`)).toHaveLength(0);
   expect(await db.all(sql`SELECT * FROM light_study_progress`)).toHaveLength(0);

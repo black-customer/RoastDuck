@@ -7,6 +7,7 @@ export interface MaterialInput {
   selectionPolicyVersion?: 'evidence-exclusion-v1';
   sentenceStudyVersion?: 'sentence-material-v1';
   registerProfileVersion?:'young-us-v1';
+  teachingVersion?:'sentence-teaching-v1';
   /** Server-created successor for an explicitly retried failed contract; never overwrites its saved source. */
   runtimeRevision?:{parentMaterialId:string;parentInputHash:string;policyVersion:'young-us-v1'};
   /** Server-resolved edit lineage; an unchanged sentence may keep its scheduling identity. */

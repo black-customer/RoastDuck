@@ -5,6 +5,7 @@ import type {SpeakingAttemptAnalysis} from '@/lib/speaking-practice/schemas';
 import {hash} from '@/lib/four-step/shared';
 import {materialFingerprint} from '@/lib/light-study/core-catalogue';
 import type {SentenceCard} from './contracts';
+import {teachingTextHash} from './teaching-contracts';
 export const SENTENCE_MATERIAL_VERSION='sentence-material-v1';
 export const SENTENCE_VALIDATION_VERSION='sentence-validation-v1';
 export function sentenceDisplayVersion(card:Pick<SentenceCard,'materialId'|'chinese'|'english'|'contextZh'|'meaningOrigin'|'usages'|'notes'>){return hash(SENTENCE_MATERIAL_VERSION,JSON.stringify(card)).slice(0,32);}
@@ -32,7 +33,7 @@ export function projectSentenceMaterials(materialId:string,input:MaterialInput,a
     }
     const userChinese=units.some(u=>[...u.chinese,...u.english,...u.raw??[]].some(r=>/[\u4e00-\u9fff]/.test(r.text)));
     return {id:`sentence_${key.slice(0,28)}`,version:hash(SENTENCE_MATERIAL_VERSION,chinese,sentence.english).slice(0,32),materialId,sentenceId:sentence.id,ordinal,chinese,english:sentence.english,contextZh:ordinal>0?diagnosis.units.filter(u=>draft.sentences[ordinal-1].intentUnitIds.includes(u.id)).map(u=>u.intentZh).join(' '):'',meaningOrigin:userChinese?'user_chinese':'derived_from_english',usages,notes,source:{type:input.sourceType,id:input.sourceId,questionId:input.question?.id??null,title:input.question?.textZh||input.question?.textEn||'这段对话',href:input.question?`/questions/${encodeURIComponent(input.question.id)}/attempts/${encodeURIComponent(input.sourceId)}`:`/free-talk?conversation=${encodeURIComponent(input.sourceId)}`},progressVersion:0};
-  }).map(card=>({...card,version:sentenceDisplayVersion({materialId:card.materialId,chinese:card.chinese,english:card.english,contextZh:card.contextZh,meaningOrigin:card.meaningOrigin as SentenceCard['meaningOrigin'],usages:card.usages,notes:card.notes}),meaningOrigin:card.meaningOrigin as SentenceCard['meaningOrigin']}));
+  }).map((card,index)=>({...card,version:sentenceDisplayVersion({materialId:card.materialId,chinese:card.chinese,english:card.english,contextZh:card.contextZh,meaningOrigin:card.meaningOrigin as SentenceCard['meaningOrigin'],usages:card.usages,notes:card.notes}),meaningOrigin:card.meaningOrigin as SentenceCard['meaningOrigin'],...(draft.sentences[index].teaching?{teaching:draft.sentences[index].teaching,teachingRevision:teachingTextHash(card.chinese,card.english)}:{})}));
 }
 
 /** Only called after independent material validation, inside its publication transaction. */

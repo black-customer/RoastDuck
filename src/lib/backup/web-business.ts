@@ -4,7 +4,7 @@ import {encryptBackup,decryptBackup} from '@/lib/device-sync/backup';
 import {SYNC_ENTITIES} from '@/lib/device-sync/contracts';
 import {credentialValue} from '@/lib/app-services/shared';
 // Reuse encryption only. This module does not initialize a device, sync server, or sync log.
-export const WEB_BACKUP_TABLES=[...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs','material_validation_cache','sentence_learning_units','sentence_study_progress','sentence_study_sessions','sentence_study_events','sentence_material_editions','sentence_highlights'] as const;
+export const WEB_BACKUP_TABLES=[...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs','material_validation_cache','sentence_learning_units','sentence_study_progress','sentence_study_sessions','sentence_study_events','sentence_material_editions','sentence_highlights','sentence_teaching_editions'] as const;
 const rowSchema=z.record(z.string(),z.union([z.string(),z.number(),z.null()]));
 const archiveSchema=z.object({format:z.literal('roastduck-web-business-v1'),version:z.number().int().positive(),createdAt:z.string().datetime(),tables:z.record(z.string(),z.array(rowSchema).max(300000))}).strict();
 type Archive=z.infer<typeof archiveSchema>;
