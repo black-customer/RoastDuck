@@ -77,9 +77,8 @@ export function QuestionDetailView({ question, learningPack,initialSentenceInfo 
   }
 
   const legacyAction=learningPack?.primaryAction??question.primaryAction;
-  const primaryAction=sentenceInfo?.resumable.learn?{label:'继续句子学习',href:`/sentence-study?session=${encodeURIComponent(sentenceInfo.resumable.learn.id)}`}:
-    sentenceInfo?.newCount?{label:'开始句子学习',href:`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`}:
-    sentenceInfo?.dueCount?{label:'复习到期句子',href:`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=review`}:
+  const primaryAction=sentenceInfo?.resumable.learn?{label:'继续整题学习',href:`/sentence-study?session=${encodeURIComponent(sentenceInfo.resumable.learn.id)}&resume=1`}:
+    sentenceInfo?.totalCount?{label:sentenceInfo.newCount?'开始整题学习':'打开整题学习',href:`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`}:
     legacyAction.href?.startsWith('/light-study')||legacyAction.href?.startsWith('/training')?{label:'查看本题材料',href:`/questions/${encodeURIComponent(question.id)}#my-answers`}:legacyAction;
   const latestAttempt=speakingAttempts[0];
   const latestHref=currentPractice?.href??(latestAttempt?`/questions/${encodeURIComponent(question.id)}/attempts/${encodeURIComponent(latestAttempt.id)}`:null);
@@ -102,11 +101,12 @@ export function QuestionDetailView({ question, learningPack,initialSentenceInfo 
           <p className="question-detail-translation">{question.textZh||"此题暂缺中文题干，可以直接使用英文原题。"}</p>
           <div className={styles.primaryActions}>
             {primaryAction.href?<Link href={primaryAction.href} className="primary-button">{primaryAction.label}</Link>:<span className={styles.inactiveAction}>{primaryAction.label}</span>}
+            <Link href={`/answer-history/${encodeURIComponent(question.id)}`} className="secondary-button">回答与原声历史</Link>
             <SpeakButton text={question.textEn} label="播放题目"/>
           </div>
           {hasSecondaryActions&&<details className={styles.moreActions}><summary>更多练习与回顾</summary><div className={styles.secondaryActions}>
             {currentPractice&&!primaryAction.href?.includes('kind=independent')&&<Link href={`${questionHref}/practice?kind=independent&source=${encodeURIComponent(currentPractice.attemptId)}`} className="secondary-button">不看提示，重新回答</Link>}
-            {!!sentenceInfo?.newCount&&!primaryAction.href?.startsWith('/sentence-study')&&<Link href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`} className="secondary-button">学习本题句子</Link>}
+            {!!sentenceInfo?.totalCount&&!primaryAction.href?.startsWith('/sentence-study')&&<Link href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`} className="secondary-button">打开整题学习</Link>}
             {!!sentenceInfo?.dueCount&&<Link href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=review`} className="secondary-button">复习本题到期句子（{sentenceInfo.dueCount}）</Link>}
             {currentPractice&&<Link href="/extensions">拓展功能与旧记录</Link>}
           </div></details>}
@@ -114,9 +114,9 @@ export function QuestionDetailView({ question, learningPack,initialSentenceInfo 
 
         <div className={styles.detailSections}>
           <section id="my-answers" className="question-detail-section">
-            <div className="question-section-heading"><div><h2>{answerCount?"最近的回答":"从第一版回答开始"}</h2><p>{answerCount?`已保存 ${answerCount} 次回答，原回答与旧版本都保留。`:"中文、英文或混合都可以，先写下你想表达的意思。"}</p></div></div>
+            <div className="question-section-heading"><div><h2>{answerCount?"最近的文字回答":"保存这道题的回答"}</h2><p>{answerCount?`已保留 ${answerCount} 份文字回答与材料版本；完整回答和原声可从上方历史查看。`:"可以录音、上传音频，或用中文、英文、混合文字表达自己的意思。"}</p></div></div>
             {latestHref?<div className={styles.recentAnswer}>
-              {currentPractice&&<p>{currentPractice.status==="ready"?`最近一份材料整理了 ${currentPractice.rows.length} 个表达。`:"原回答已保存，可以查看材料的处理进度。"}</p>}
+              {currentPractice&&<p>{currentPractice.status==="ready"?"自然回答和材料已保留，可以回看原文或进入整题学习。":"原回答已保存，可以查看材料的处理进度。"}</p>}
               <Link href={latestHref} className="secondary-button">查看原回答与材料</Link>
             </div>:!answerCount?<Link href={primaryAction.href??`${questionHref}/practice`} className="question-open-link">开始回答</Link>:<p>{historyLoading?"正在读取最近的回答…":"展开下方记录，查看已保存的原回答。"}</p>}
             {historyError&&<div className={styles.historyError} role="alert"><p>{historyError}</p><button type="button" className="secondary-button" onClick={()=>setHistoryReload(value=>value+1)}>重新读取历史</button></div>}
@@ -128,8 +128,8 @@ export function QuestionDetailView({ question, learningPack,initialSentenceInfo 
           </section>}
 
           {answerCount>0&&<section id="learning-units" className="question-detail-section">
-            <div className="question-section-heading"><div><h2>本题的学习材料</h2><p>以完整意思逐句回想，用法和注意点放在句子里理解。</p></div>{sentenceInfo&&<span>{sentenceInfo.totalCount-sentenceInfo.newCount} / {sentenceInfo.totalCount} 句已学</span>}</div>
-            {currentPractice?<div className="question-inline-empty"><p>{sentenceInfo?.totalCount?`${sentenceInfo.newCount} 句待学，${sentenceInfo.dueCount} 句到期复习。`:currentPractice.status==='ready'?'正在核对本题可学句子；你仍可以查看自然回答与原始材料。':'这份材料还未准备好，请查看处理进度。'}</p><Link className="secondary-button" href={currentPractice.href}>查看自然回答与材料</Link></div>:<div className="question-inline-empty">已有回答材料尚未准备好，请先查看最近的回答。</div>}
+            <div className="question-section-heading"><div><h2>本题的学习材料</h2><p>整题按自然顺序阅读，需要时揭晓、看讲解或再练一句。</p></div>{sentenceInfo&&<span>{sentenceInfo.totalCount} 句当前材料</span>}</div>
+            {currentPractice?<div className="question-inline-empty"><p>{sentenceInfo?.totalCount?`完整上下文始终保留；${sentenceInfo.dueCount} 句到期复习。`:currentPractice.status==='ready'?'正在核对本题可学句子；你仍可以查看自然回答与原始材料。':'这份材料还未准备好，请查看处理进度。'}</p>{!!sentenceInfo?.totalCount&&<Link className="secondary-button" href={`/sentence-study?scope=question&id=${encodeURIComponent(question.id)}&mode=learn`}>打开整题学习</Link>}<Link href={currentPractice.href}>查看自然回答与材料</Link></div>:<div className="question-inline-empty">已有回答材料尚未准备好，请先查看最近的回答。</div>}
           </section>}
 
           {(speakingAttempts.length>0||!!learningPack?.answers.length)&&<details id="speaking-attempts" className={`question-detail-section ${styles.fold}`}><summary>全部回答记录</summary>

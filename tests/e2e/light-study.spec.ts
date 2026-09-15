@@ -181,12 +181,12 @@ test("V2五项新学最多再见三次，失败不强制循环，揭晓/移动�
 
 test("入口、无材料、无到期和错误范围明确；打开页面不创建训练",async({page,request})=>{
   await setup(page);const before=await readCounts();
-  await page.goto("/");await expect(page.getByRole("heading",{name:"我的学习记录"})).toBeVisible();
+  await page.goto("/");await expect(page.getByRole("heading",{name:"今天，想聊点什么？",exact:true})).toBeVisible();
   await page.goto("/questions/light-e2e-new");
-  await expect(page.getByRole('link',{name:/开始句子学习|继续句子学习/}).first()).toHaveAttribute('href',/sentence-study/);
+  await expect(page.getByRole('link',{name:/开始整题学习|继续整题学习|打开整题学习/}).first()).toHaveAttribute('href',/sentence-study/);
   const {attempts}=await(await request.get("/api/speaking-practice/questions/light-e2e-new/attempts")).json();
   await page.goto(`/questions/light-e2e-new/attempts/${attempts[0].id}`);
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toHaveAttribute('href',/scope=material/);
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toHaveAttribute('href',/scope=material/);
   await page.goto("/light-study?extension=1&scope=question&id=light-e2e-new");
   await page.getByRole("button",{name:/复习到期表达/}).click();
   await expect(page.getByText("暂时没有到期表达，稍后再来，或学一点新的。",{exact:true})).toBeVisible();

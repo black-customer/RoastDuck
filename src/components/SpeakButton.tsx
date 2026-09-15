@@ -3,7 +3,8 @@
 import { getTTS } from "@/lib/tts";
 import {useEffect,useRef,useState,useId} from 'react';
 import type {LightAudioState,PlaybackMode} from '@/lib/light-study/audio';
-import type {SpeechStyle} from '@/lib/speech/contracts';
+import type {SpeechStyle,SpeechRole} from '@/lib/speech/contracts';
+import {recordingActive,subscribeRecording} from '@/lib/speech/recording-coordinator';
 
 export function SpeakButton({
   text,
@@ -12,6 +13,7 @@ export function SpeakButton({
   lang,
   style,
   playbackMode,
+  role='learning',
   label = "播放示范",
 }: {
   text: string;
@@ -20,17 +22,20 @@ export function SpeakButton({
   lang?: string;
   style?: SpeechStyle;
   playbackMode?:PlaybackMode;
+  role?:SpeechRole;
   label?: string;
 }) {
   const [state,setState]=useState<LightAudioState|null>(null),active=useRef(true);
+  const [recording,setRecording]=useState(recordingActive);
   const ownerId=useId();
   useEffect(()=>{active.current=true;return()=>{active.current=false;getTTS().stop(ownerId);};},[ownerId,text]);
-  const play=(retryUnknown=false,mode=playbackMode)=>getTTS().speak(text,{rate,lang,style,ownerId,retryUnknown,playbackMode:mode,onState:state=>{if(active.current)setState(state);}});
+  useEffect(()=>subscribeRecording(setRecording),[]);
+  const play=(retryUnknown=false,mode=playbackMode??(role==='teacher'?'natural':undefined))=>getTTS().speak(text,{rate,lang,style,role,ownerId,retryUnknown,playbackMode:mode,onState:state=>{if(active.current)setState(state);}});
   const cls = size === "lg"
     ? "inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-[0_10px_24px_rgba(48,83,203,.24)] transition hover:bg-[var(--primary-strong)] active:scale-[.97]"
     : "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-strong)] transition hover:bg-[var(--primary-soft-strong)] active:scale-[.97]";
   return (
-    <span className="speech-control"><button type="button" aria-label={label} title={label} className={cls} disabled={!text.trim()} onClick={() => play()}>
+    <span className="speech-control"><button type="button" aria-label={label} title={recording?'请先停止录音，再播放声音':label} className={cls} disabled={!text.trim()||recording} onClick={() => play()}>
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={size === "lg" ? "h-6 w-6" : "h-5 w-5"}>
         <path d="M5 9.5v5h3.1l4.4 3.5V6L8.1 9.5H5Z" fill="currentColor" />
         <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.8a7.3 7.3 0 0 1 0 10.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

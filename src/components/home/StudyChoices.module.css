@@ -22,3 +22,4 @@
 .empty p { color:var(--muted-strong); margin:12px 0 24px; }
 .empty .back { display:flex; }
 @media(max-width:580px){.choices,.filters>div{grid-template-columns:1fr}.choice{min-height:130px}.page{margin:0}.question{padding:16px}}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 28px;border-radius:14px;background:var(--card);margin:24px 0}.resume h2{font-size:22px;line-height:1.5}.resume p{font-size:14px;color:var(--muted);margin-top:9px}@media(max-width:600px){.resume{align-items:stretch;flex-direction:column;padding:22px}.resume h2{font-size:20px}}

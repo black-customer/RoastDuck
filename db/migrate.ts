@@ -20,6 +20,7 @@ import { V32_DDL } from "./migrations/v32-expression-study";
 import { V33_DDL } from "./migrations/v33-sentence-study";
 import { V34_DDL } from "./migrations/v34-personal-focus";
 import { V35_DDL } from "./migrations/v35-guided-reveal";
+import { V36_DDL } from "./migrations/v36-context-and-original-audio";
 
 /**
  * 编号迁移。所有升级必须先登记版本，禁止继续依赖“CREATE IF NOT EXISTS 看起来成功”。
@@ -1139,6 +1140,7 @@ async function assertMigrationContinuity(client: Client): Promise<void> {
     [33, checksum(V33_DDL)],
     [34, checksum(V34_DDL)],
     [35, checksum(V35_DDL)],
+    [36, checksum(V36_DDL)],
   ]);
   for (const row of rows.rows) {
     const version = Number(row.version);
@@ -1579,6 +1581,12 @@ export async function ensureSchema(client: Client, dbUrl = "file:./data/app.db")
   if(!v35.rows.length){
     const backupPath=await backupLocalDatabase(client,dbUrl,35),tx=await client.transaction('write');
     try{for(const ddl of V35_DDL)await tx.execute(ddl);await tx.execute({sql:'INSERT INTO _schema_migrations(version,name,checksum,backup_path) VALUES(?,?,?,?)',args:[35,'guided_reveal_and_reviewed_sentence_teaching',checksum(V35_DDL),backupPath]});await tx.commit();}
+    catch(error){await tx.rollback();throw error;}
+  }
+  const v36=await client.execute({sql:'SELECT version FROM _schema_migrations WHERE version=?',args:[36]});
+  if(!v36.rows.length){
+    const backupPath=await backupLocalDatabase(client,dbUrl,36),tx=await client.transaction('write');
+    try{for(const ddl of V36_DDL)await tx.execute(ddl);await tx.execute({sql:'INSERT INTO _schema_migrations(version,name,checksum,backup_path) VALUES(?,?,?,?)',args:[36,'context_workspace_original_answer_audio_and_practice_evidence',checksum(V36_DDL),backupPath]});await tx.commit();}
     catch(error){await tx.rollback();throw error;}
   }
   await assertMigrationContinuity(client);

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceCommit": "ecc920704a82c3727146c8a3b666bdf06b7dd925",
-  "createdAt": "2026-09-11T12:11:47.973Z",
+  "sourceCommit": "bcfb053e9640787403a659a02ffc730e95d6aecb",
+  "createdAt": "2026-09-15T19:27:25.850Z",
   "policy": "clean-history; private data and unlicensed source/derivative materials excluded; no project license granted",
   "files": [
     {
@@ -38,11 +38,11 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "67ab39ab76177b7ba695db220f8582b7a23d85e57ba66385dbc3df7573dd5dbd"
+      "sha256": "9b1b7066ec48dc180ce6625acde086250d5fe8c788a98b5150d0246e2202e42d"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "a486029eb35c7cbe7b480e454cb049744389e636a4f82cdbb71efe4bab4f8743"
+      "sha256": "ea504be203e8ab7f2327bbc53691d10e6a51cd01b96a6a010c1b29c135a8515a"
     },
     {
       "path": "android/.gitignore",
@@ -354,7 +354,7 @@
     },
     {
       "path": "db/migrate.ts",
-      "sha256": "3ceeab11e4d6338967a2672e9bff12f53c86500232e3dbd5ee2676d0e8862831"
+      "sha256": "1eb575bd98400b7db3e4558e8ecb42116a00750643564fdaa0937e86c4de52be"
     },
     {
       "path": "db/migrations/v18-retired-learning.ts",
@@ -429,8 +429,24 @@
       "sha256": "956b2ff43369c809842fe402c125072ce83cc396b8c9742f5faf6b5448e626c9"
     },
     {
+      "path": "db/migrations/v36-context-and-original-audio.ts",
+      "sha256": "e0d9302ece24baf822d2ca9c54afb8bedbe9871ce1d554c7dad098170414b948"
+    },
+    {
       "path": "db/schema.ts",
-      "sha256": "6b1eec26869ead0ff68ac31453eba3d4e3a3cc2bd8c9582e56bc81001ecead5c"
+      "sha256": "707be5059af7b0d5727bc101ddb4c98c96b5f429f9b246bee2be2e952ec3a8da"
+    },
+    {
+      "path": "db/v36-audio.ts",
+      "sha256": "da5e0386ea2bc4599c32a980acc6ec02a577eaae9b32cf10fd2b62e5dee6550d"
+    },
+    {
+      "path": "db/v36-coaching.ts",
+      "sha256": "2a4976cce94a23f56c234c541c6dc204282ad8eef9ca6b5599777a46627b1354"
+    },
+    {
+      "path": "db/v36-context.ts",
+      "sha256": "f8e0c3ada2adb6856f07f7b2b11226023d422fc4b2c5362ff8662cd6e0d6988a"
     },
     {
       "path": "docs/AI_PROVIDER.md",
@@ -438,7 +454,7 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "sha256": "663f82a0289fc7bb28c97cf82e1e0273c9de5c2c626298b57ea50aed33f80f9f"
+      "sha256": "dca31e398a4d91f02c6fa732e0b5a50a004e5fdd60a0a196f81ce4d2d4246b77"
     },
     {
       "path": "docs/CONTENT_PIPELINE.md",
@@ -449,8 +465,12 @@
       "sha256": "ee071ef084d62e6f4fe1b1bf58b59322ad87efce88a1bc61e969d8d68205cc4b"
     },
     {
+      "path": "docs/CONTEXT_WORKSPACE.md",
+      "sha256": "d995f2ee0e971e1a96a80fda0f525fa0ba295f5293a78cc96284c5663883c6cf"
+    },
+    {
       "path": "docs/DATA_MODEL.md",
-      "sha256": "d074af7ccc164d970639fc51277706cd1a222f11e8637fe5a525ea117aaa4251"
+      "sha256": "2d06f833e44e74ba417b05d49780f8bb1cf6dcefa710555e2a91373c53337c97"
     },
     {
       "path": "docs/DECISIONS.md",
@@ -458,7 +478,7 @@
     },
     {
       "path": "docs/DESIGN.md",
-      "sha256": "90be1d3f90b49c83709dfa4a8c97a36c0ffadedf5bbd959970b54a22463cbe6f"
+      "sha256": "2e18bbebb76f375270b4ee42cf982a72c9414c44b17f858351746b43acf23d0b"
     },
     {
       "path": "docs/DESKTOP_LAUNCHER.md",
@@ -482,7 +502,7 @@
     },
     {
       "path": "docs/LEARNING_EXPERIENCE.md",
-      "sha256": "28af55800ae6b7103215b3228748c88cee2e7fe74c88e8913273cfe54a7fc906"
+      "sha256": "db87e4016bca57043c868a00145a384e3bc1b3701abf0e04bef833fd36914c2d"
     },
     {
       "path": "docs/LIGHT_STUDY_V2_ANDROID.md",
@@ -506,11 +526,11 @@
     },
     {
       "path": "docs/PRODUCT.md",
-      "sha256": "533aa030ea2de37a5c7ba5741aa28af57e1df88e5e86d4d08bc0081892651ce7"
+      "sha256": "044e1f2e66afa806f5408554e677eb114967aa808b82fd9e3525244d42a652d3"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "sha256": "09279dc329ab08b7593bba39e6ee0359203e0bd9be0e104c83aabcdfb56c1909"
+      "sha256": "f4890f0064219520f15e8dc0225de5e08afd057ae68ad76a5a0734251054a5ea"
     },
     {
       "path": "docs/PUBLIC_WEB_EXECUTION.md",
@@ -518,7 +538,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "c34d2a4119518f8c8c1c92fd7effe5ca367a56822c3a4ca8808bf40596a70cda"
+      "sha256": "93ea55d5351b199d4647c6971d7b4e4c30d885e92426ac1b05fd7e82483ac767"
     },
     {
       "path": "docs/REVIEW_REMEDIATION.md",
@@ -526,7 +546,7 @@
     },
     {
       "path": "docs/ROADMAP.md",
-      "sha256": "9fc4a27caf9d3676f70c852ff72c554316d85f1c1cb3b329881bed052f3af483"
+      "sha256": "49afa89b96aba5be6fae3be5e11b099fcd16ba4aeb4d097da1956f10c037d01f"
     },
     {
       "path": "docs/SENTENCE_STUDY.md",
@@ -538,15 +558,15 @@
     },
     {
       "path": "docs/SPEECH_SERVICE.md",
-      "sha256": "0bc84251e5ad38d07c318b951293ea77be8bbd3ef0ef4f96efb64d3c3b25eedf"
+      "sha256": "8b7a87c947e08f26e61c8b6f620b88d6a41f4873c7e14f9e3f1e8317fc881722"
     },
     {
       "path": "docs/TESTING.md",
-      "sha256": "e714ea186d42f1f24eee729562b81c8108f109604245f32a199a5f6969bec041"
+      "sha256": "45856de9c68c3b8703a8c0a05f0a9f504becb146ff0e7dfc9197ce5c03de3602"
     },
     {
       "path": "docs/THIRD_PARTY_NOTICES.md",
-      "sha256": "2a380c2145cad972d60c1a499aec0abfde628a0a1411b73f2aa25e96676ea395"
+      "sha256": "1d205ae847ba061fb0b61a66a28f3d37feeaecf3d0d3eb55af8ff4a600c56548"
     },
     {
       "path": "docs/VIBE_CODING_WORKFLOW.md",
@@ -765,6 +785,10 @@
       "sha256": "8d9076f0d36d43822a82c2e0da9f35cb5a4ddafe48600a680fa4fa35fd1aa491"
     },
     {
+      "path": "docs/research/2026-09-15-context-first-learning.md",
+      "sha256": "b0df4ceb0bbb40a5fa31377d8de5a20c5a5ba473a1daa8ff5b52b9df3e964bd8"
+    },
+    {
       "path": "docs/reviews/2026-09-06-evidence-selection.md",
       "sha256": "47bb5ec02b01d5eaaa59b57628c94c4f1999a3e21a6a855f3bc838c761e6510b"
     },
@@ -838,11 +862,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "04a8980b5a8ab6bc2d02333d660a2473f2e7396866b49af6a1db005700b7c2e4"
+      "sha256": "ffba9891e47b5a645f5fb8905e966ad9366f2f5eb9bff6007f370a00e5271833"
     },
     {
       "path": "package.json",
-      "sha256": "3f9f5165fe9934d124532117e899b1ce6b5b01f58b99e6e3b0cc50bb8e5cb3e5"
+      "sha256": "6e2a813e50720771363924664dbc3ba4ffac1f4046c129072226fc7d970b8bd2"
     },
     {
       "path": "pipeline/golden/four-step.json",
@@ -909,6 +933,10 @@
       "sha256": "1c13eab87bb2440204e3b3a94ca137e2d69c65ae82960bf32c8a42c2d610cfe7"
     },
     {
+      "path": "pipeline/prompts/companion_dialogue.chloe.v4.md",
+      "sha256": "5390bbce2e3fc5e4416235f8a2f0c6a686599acf2b2393dca0f2a79dac5377e5"
+    },
+    {
       "path": "pipeline/prompts/companion_memory.extractor.v1.md",
       "sha256": "fcd7873763120f845b07032c407bca23cc356f147c2733253aa13abd4b95c49b"
     },
@@ -919,6 +947,10 @@
     {
       "path": "pipeline/prompts/content_enrichment.md",
       "sha256": "a9a6d878e321000846b6b97b55a74b3d988968d98c868463933195e8b68088f1"
+    },
+    {
+      "path": "pipeline/prompts/context_related_question.chloe.v1.md",
+      "sha256": "29d381b2e6c7846a1c665b10893b203107f9ad144d5fee04ba2b344b7b289d9a"
     },
     {
       "path": "pipeline/prompts/correction_gap.generator.v1.md",
@@ -1031,6 +1063,10 @@
     {
       "path": "pipeline/prompts/sentence_coaching.chloe.v2.md",
       "sha256": "7646800f8b5dd50e32330e65398ff6c8308b4f4dd6ccea35b4ef1e8dd408a6bb"
+    },
+    {
+      "path": "pipeline/prompts/sentence_coaching.chloe.v3.md",
+      "sha256": "6ad835076fa89122bbae7cab7fa8ffc076c96dcf7e83c6cda9b2f7fc19ee6a24"
     },
     {
       "path": "pipeline/prompts/sentence_intention.generator.v1.md",
@@ -1526,7 +1562,7 @@
     },
     {
       "path": "scripts/publish-snapshot.mjs",
-      "sha256": "cb43d9186a2894119a818ced03728bdd4f09317e13efe2f89d5dbdb5626c98c4"
+      "sha256": "bb26d68f11dd6ea7735258f03e4978bd4b3e81e9c548088828f8c0f8dce368a3"
     },
     {
       "path": "scripts/sentence-teaching-inventory.ts",
@@ -1585,6 +1621,10 @@
       "sha256": "8b86f433a3b9cb015ac49183bf26a9f46c19c29653be774bfdb942e16b233cfd"
     },
     {
+      "path": "src/app/answer-history/[questionId]/page.tsx",
+      "sha256": "0852e9f7acce88630cfea8cca02752ad35f7110eaaaa99cb88ce1e52d3107448"
+    },
+    {
       "path": "src/app/answer-studio/[id]/page.tsx",
       "sha256": "a46c70d3acd11174984fa19b9cbf7473b3ad4d24da8619944680761bbd022925"
     },
@@ -1599,6 +1639,18 @@
     {
       "path": "src/app/api/ai/jobs/[id]/route.ts",
       "sha256": "37332c39eb493985088f37176b3fc64b3b301ef1329a13c2016630b628b25be2"
+    },
+    {
+      "path": "src/app/api/answer-audio/[id]/route.ts",
+      "sha256": "39bd298b90282590e8e1370afd5b2703d36abdc174f3ebc1deb83cd13bb2a6fa"
+    },
+    {
+      "path": "src/app/api/answer-audio/uploads/[id]/route.ts",
+      "sha256": "245b1400e98aa951c84b799824209f2bb3cc2658981d41873ef75af739a5ced9"
+    },
+    {
+      "path": "src/app/api/answer-audio/uploads/route.ts",
+      "sha256": "55082848043bcbd5eca631ecfd9369a5777cf123c1be034985f554aee981d4be"
     },
     {
       "path": "src/app/api/answer-drafts/[id]/route.ts",
@@ -1638,7 +1690,7 @@
     },
     {
       "path": "src/app/api/coaching/route.ts",
-      "sha256": "8f8a72b1371d15e471f1a23da4570fe5f980ed485afab769c29724d1d30c4804"
+      "sha256": "395f983f9c81913377fbdeb6095c2c53b0ca793836b976fe90eab890be5cca10"
     },
     {
       "path": "src/app/api/companion/memories/route.ts",
@@ -1653,12 +1705,24 @@
       "sha256": "33e56cf72495971439975b587dfa035cebb714f3732c61eae1ab3752727e8b05"
     },
     {
+      "path": "src/app/api/context-practice/route.ts",
+      "sha256": "69efc4906c4bad4b70bfb5dcac2b4ee07068a5354a333b8ade66c0ca794fe2a6"
+    },
+    {
       "path": "src/app/api/contexts/[exampleId]/route.ts",
       "sha256": "5779359c3663a94a3511ef7194b6d41671eff16c1da9746a66edc39b51d8e50e"
     },
     {
+      "path": "src/app/api/data-backup/downloads/[id]/route.ts",
+      "sha256": "fa448197040e77cc4aa42d469e1a4a4a43c14a7c1baadb06990abef8ed84d640"
+    },
+    {
       "path": "src/app/api/data-backup/route.ts",
-      "sha256": "40c80a71417d092278c3b5d54c2fc6ba277afadb7ae55c6c6734ee85dcaf288b"
+      "sha256": "e25428fc1c9e5492c912683d44eb132734a2c92ab96116572568918299bdfd0b"
+    },
+    {
+      "path": "src/app/api/data-backup/uploads/[id]/route.ts",
+      "sha256": "caceb42d77c673790c934cf1398d022f7a2436e6f81c73c44ebe496154c9094d"
     },
     {
       "path": "src/app/api/device-sync/route.ts",
@@ -1679,6 +1743,10 @@
     {
       "path": "src/app/api/free-talk/conversations/route.ts",
       "sha256": "050eac5517b24e332a641a9fa1b3abf30083c0e67a397bfee9072f9f1eccac68"
+    },
+    {
+      "path": "src/app/api/full-answer-attempts/route.ts",
+      "sha256": "f3c515930f953fb92e1808920eb2fbeaaa844e2eade11d7970ad4e72a8dc2010"
     },
     {
       "path": "src/app/api/health/route.ts",
@@ -1785,6 +1853,10 @@
       "sha256": "7fea484b2aef5945794be8b76d9f7df24bc957afc7c4904f998d15d8726b3b6f"
     },
     {
+      "path": "src/app/api/sentence-study/feedback/route.ts",
+      "sha256": "9ae58a05a893a9f82fe85c8aa2cdfb22856ab54895f136834b24eb6aee0cd087"
+    },
+    {
       "path": "src/app/api/sentence-study/highlights/[id]/route.ts",
       "sha256": "af6ac8b05850498e917723806e3ce4670f3ca2473fc513f5ff53ac448aa1fc4b"
     },
@@ -1799,6 +1871,10 @@
     {
       "path": "src/app/api/sentence-study/overview/route.ts",
       "sha256": "d466ce1723d989d44d277a3a2d3fe27fcc3e867d39e611e2edca11e001f99ccc"
+    },
+    {
+      "path": "src/app/api/sentence-study/preferences/route.ts",
+      "sha256": "01e13577f3d65c8d2ef19074df1094000fc3fdff84067bd6f25892504f7782b7"
     },
     {
       "path": "src/app/api/sentence-study/sessions/[id]/events/route.ts",
@@ -1873,6 +1949,10 @@
       "sha256": "0b43fb215e7d7c01034e1d5823c149e1179fd1ab4269befcf16161f5e0ec8a99"
     },
     {
+      "path": "src/app/api/speech/preferences/route.ts",
+      "sha256": "633186a6df131584624a412a0eb3c22098e9bc2bb93093ca5c6fdc4ef8b9e601"
+    },
+    {
       "path": "src/app/api/speech/synthesis/route.ts",
       "sha256": "d8fa684af5e4ab6b0cd09e644a9cd06903a97fb3e0e392a47422ee442d60ee20"
     },
@@ -1918,7 +1998,7 @@
     },
     {
       "path": "src/app/expressions/page.tsx",
-      "sha256": "06333500171f57aeb827a9befcd8e7d7e2bc434511e3a256b6b42fe82cec66e8"
+      "sha256": "015f0d5fe890fea492ac99669faa539ded237a692d6bc6e981715c1a6eea08e5"
     },
     {
       "path": "src/app/extensions/page.tsx",
@@ -1994,7 +2074,7 @@
     },
     {
       "path": "src/app/search/page.tsx",
-      "sha256": "8fcd6da540503b1897b654be5d5a94ed0215d67221d8cbe39c2472572e1c856a"
+      "sha256": "98fdcf196107abe50597e6906271da2acaa3f7fff1be5826f9991fae88be30eb"
     },
     {
       "path": "src/app/sentence-study/loading.tsx",
@@ -2002,7 +2082,7 @@
     },
     {
       "path": "src/app/sentence-study/page.tsx",
-      "sha256": "7980d3dbbb4d8fabb3d61aa250c2795336d1556a0f3ee450ca3f52c0f81ec4f6"
+      "sha256": "0ea86defde8b78789b941b515d39e4d54005e1cbdc9a7a155418eee7e103b79b"
     },
     {
       "path": "src/app/settings/page.tsx",
@@ -2061,8 +2141,12 @@
       "sha256": "daf4b3aab7ac9899ffa5ec17585dfd9b5483eb5bf650b447412ce88fa928ca31"
     },
     {
+      "path": "src/components/DataBackupSettings.module.css",
+      "sha256": "93b4704cf331fd03260872da6a566d2bbac53158abf23988d45c3e3aaf59bb89"
+    },
+    {
       "path": "src/components/DataBackupSettings.tsx",
-      "sha256": "509be7d3efb0e8ce864627799072ba4d99e04724c1a03d6a0ee2fe5a653b1f15"
+      "sha256": "c8901784aa75df752bf189c73dd45612ae98a1a43b406c57aaa5aeaf74295658"
     },
     {
       "path": "src/components/DeviceSyncSettings.tsx",
@@ -2082,11 +2166,11 @@
     },
     {
       "path": "src/components/FreeTalkChat.module.css",
-      "sha256": "61727518da1a10ca3cca9134c1c2112e9dc0b377f1abeedbf9493e282ff36244"
+      "sha256": "54e5a1ece32ba71d1ea686ca41b7e629b24c0fba3d1e78dbd98acfede240fa3a"
     },
     {
       "path": "src/components/FreeTalkChat.tsx",
-      "sha256": "41ce1c6f7743b522fb41ac9ad8a259c4de0cb0e5026d7458839212b4ffe73666"
+      "sha256": "ff67823ff338a363b048baa95e68bb357e696f3c0d18c5b4705ad4243e250768"
     },
     {
       "path": "src/components/GapCompanionPanel.module.css",
@@ -2126,7 +2210,7 @@
     },
     {
       "path": "src/components/MaterialsSummary.tsx",
-      "sha256": "67b1d825b44044e3dfb1f4b2c5555681e684aefb1744e93880808dd7ad6d4a34"
+      "sha256": "3133257d17f22f1c24d7e4b8e9c3beabfa509914271e6cbae6274e3a5e938cab"
     },
     {
       "path": "src/components/MemoryCenter.module.css",
@@ -2146,7 +2230,7 @@
     },
     {
       "path": "src/components/QuestionDetailView.tsx",
-      "sha256": "ef54c555843999d4426597509db8d60fb5b4058a840e548a7d8dda64890ad2d0"
+      "sha256": "64311175e1f5840258bb38322a6f64ec17c79cc1d0b89510305946cfa554c031"
     },
     {
       "path": "src/components/QuestionLibrary.tsx",
@@ -2170,7 +2254,7 @@
     },
     {
       "path": "src/components/SpeakButton.tsx",
-      "sha256": "0585e9455f59704410d4c6f6f6ec02c3cdd58d634c631092e5e9e723ea897488"
+      "sha256": "3b0ff50339073369cc59595e82e1021040145688ba4f209822bb557b0678b647"
     },
     {
       "path": "src/components/SpeakingArena.tsx",
@@ -2178,11 +2262,11 @@
     },
     {
       "path": "src/components/SpeakingAttemptResult.tsx",
-      "sha256": "d2597600520ea4fdd616555a920dfc403732f4725939662f6fb140c689224d2e"
+      "sha256": "60a9390fd080fc5c82deb8d69c797474460f0f522a212a63b5aae25e88f2f0c7"
     },
     {
       "path": "src/components/SpeakingPracticeStudio.tsx",
-      "sha256": "f3443fcbea2006b8f781f0072b99b12cd5c4700719dd29e087cb48bda3b0b2f5"
+      "sha256": "f30141717959abcf4ccc8a0cfb8097e01220fceb37fe9a8036f280189d7bfdd8"
     },
     {
       "path": "src/components/SpeechPreferences.module.css",
@@ -2190,11 +2274,11 @@
     },
     {
       "path": "src/components/SpeechPreferences.tsx",
-      "sha256": "2cb106956186de68db4a48609c97ffd19f3898ab971e29832b24ee1a33f5d456"
+      "sha256": "98228b54d2f8becbc31374516205a1b45c5b12eeeb6b59084929e148ca87460e"
     },
     {
       "path": "src/components/SpeechSettings.tsx",
-      "sha256": "f221324b43e7d6ea139b624b9729526408662f254f40d9402e5da3afe8a0f0d3"
+      "sha256": "bca1e366ca06887f7495fbdb009a099cbd101af6b5479318dd08a54a0cb8108f"
     },
     {
       "path": "src/components/TrainingPage.tsx",
@@ -2205,12 +2289,36 @@
       "sha256": "5f76cccb01749cadaa4c7ce43f0ebd9b02d1122585ccb5efe6b02648b7b43f20"
     },
     {
+      "path": "src/components/answer-audio/AnswerAudio.module.css",
+      "sha256": "d05d641412ac55e3016ff844b929b27d01008c71341fde661bf6befa3a9d4967"
+    },
+    {
+      "path": "src/components/answer-audio/AnswerHistory.tsx",
+      "sha256": "2928a1378c32dbc848298fe10d590169e1e9fcebc59f2eafcb78e53297727974"
+    },
+    {
+      "path": "src/components/answer-audio/FullAnswerAudio.tsx",
+      "sha256": "fd06c4cd454cd0e8ccff94d64b99bf3d1657561248b53cc60a6efef20cea4660"
+    },
+    {
+      "path": "src/components/answer-audio/PendingAudioDrafts.tsx",
+      "sha256": "793c2c5f54c62f6e3a7a7698b387d28b4ad6d6d6174bcec82d7d6b19597ef8f8"
+    },
+    {
       "path": "src/components/coaching/CoachingPanel.module.css",
       "sha256": "beff11b0a5bdddce2cc429ef6583b104da7ae8ff9b5661da7d2e207046b8f9eb"
     },
     {
       "path": "src/components/coaching/CoachingPanel.tsx",
-      "sha256": "46815e63deeeb8732a26e8303f129b97497090da3e5867a30a4bceb61f44bf9e"
+      "sha256": "8baa457d9fc4a1f83676533217b07225dccabe7d6d70f69247232ac26325f89b"
+    },
+    {
+      "path": "src/components/coaching/RelatedPracticePanel.module.css",
+      "sha256": "333a01c493a1ba9c222c2c23b8a3eb5d3684cb4c396e3267d00d3310372f1690"
+    },
+    {
+      "path": "src/components/coaching/RelatedPracticePanel.tsx",
+      "sha256": "9fed52f7decf4fd7ac88f8fd3767e311a162993d91493565c9c4672f2d61f45f"
     },
     {
       "path": "src/components/expressions/ExpressionCollection.module.css",
@@ -2225,12 +2333,20 @@
       "sha256": "bbc0a23e94f44200b633f185fc1289cbfc8a79565336631e5b5d068df159b72e"
     },
     {
+      "path": "src/components/expressions/SentenceLibrary.module.css",
+      "sha256": "83a6a9a55d2a1c42e55359b277dcfad5f0c70ea4b6a4e2756ba0b85c2c8c8b19"
+    },
+    {
+      "path": "src/components/expressions/SentenceLibrary.tsx",
+      "sha256": "fd96652b24f5d55992b34a7890dbe31396a0d1c15f00c10196ff71e451efa842"
+    },
+    {
       "path": "src/components/home/HomeDashboard.module.css",
       "sha256": "20b96430d14e7755fae0d57ee0695c8a804e2b03175ceeb70009dae014a8951b"
     },
     {
       "path": "src/components/home/HomeDashboard.tsx",
-      "sha256": "92bf6ec1355326c10aacc7015077330033647f805c28f41f3a4a1bad3c528b73"
+      "sha256": "bff5908221277da4c396e3bce278120d6859c888a78d7de11e9ca3d36696528c"
     },
     {
       "path": "src/components/home/HomeExpressionCollections.tsx",
@@ -2241,16 +2357,20 @@
       "sha256": "7f87fe219417f9dd084a6d31dad6bd0a3d8486f9509e21f80a188e16e3219d78"
     },
     {
+      "path": "src/components/home/HomeOverview.module.css",
+      "sha256": "99b7afd2fc56bd2e97644ce7f72aaa02427d771d68bff2778fa94cef85448ef1"
+    },
+    {
       "path": "src/components/home/StartLightButton.tsx",
       "sha256": "eb43ad402f2a02fb482b09bf137f1caa18021bbcedcf7da67700645803652ddc"
     },
     {
       "path": "src/components/home/StudyChoices.module.css",
-      "sha256": "261419fc1699b1791f35a11269ac03d797837981451bb2e976a21844c22072dd"
+      "sha256": "4a312159e9b3cabd5144e9eeddc8f162246b8a6cd121d5869ea23d776eee4c93"
     },
     {
       "path": "src/components/home/StudyChoices.tsx",
-      "sha256": "da4c84037a7f925f8a68f4628d2f490fd58d34ede6fbcf4d3cfa7e7e9cefe6c0"
+      "sha256": "a4860ae4fec1b49dd521123a3b9522a291175ce700a9547c1c4af0e96ca86a8c"
     },
     {
       "path": "src/components/light-study/LightStudy.module.css",
@@ -2265,12 +2385,20 @@
       "sha256": "ee3e2c5048f35b5e65f586020473e6ae15988f99c18728c1d8a4f80c968383b0"
     },
     {
+      "path": "src/components/sentence-study/ContextWorkspace.module.css",
+      "sha256": "bd83bf6c929c82325b2f38eeb266886c89586e1bbb475e11b57cd5111e6db089"
+    },
+    {
+      "path": "src/components/sentence-study/ContextWorkspace.tsx",
+      "sha256": "bf50f0e34880c1199879a70bd4967fcd2ab3fb947967f9b2f57ab343d4454bf5"
+    },
+    {
       "path": "src/components/sentence-study/GuidedReveal.module.css",
-      "sha256": "f1f15be0d5a503b88dbfb2a694917689e2d838c73f0d62da91926bd1f621b883"
+      "sha256": "2704206664d1ab41a8a381241f499cbeb2327dd2c5cf5f7d098713c629f074ad"
     },
     {
       "path": "src/components/sentence-study/GuidedReveal.tsx",
-      "sha256": "4bbc3426044f8b260a37c2b2e6f6a369205978a90d1c038fd5a1c91027cf2135"
+      "sha256": "698f840b26e6177fb9a9a3e59396ed036844d06d3bb9583607709787d7af34bf"
     },
     {
       "path": "src/components/sentence-study/HighlightText.module.css",
@@ -2286,11 +2414,11 @@
     },
     {
       "path": "src/components/sentence-study/SentenceMaterials.module.css",
-      "sha256": "e5ee7283f97c40131137f6bb9da1cd208e46473019a37766a337c059f94ef5d0"
+      "sha256": "479ba8846b0eb2b66280dca459ee3f698512e6d0857372021ed8165dd24d6d0f"
     },
     {
       "path": "src/components/sentence-study/SentenceMaterials.tsx",
-      "sha256": "d8550e1eaf293a970c6bc95dfe74e2b67a8a978096c0bc024869f9988f1c3de4"
+      "sha256": "6d539d5f030fb3750e7b8930219a209bbfd31f2f78634940cf2717a63973bacd"
     },
     {
       "path": "src/components/sentence-study/SentenceStudy.module.css",
@@ -2298,7 +2426,7 @@
     },
     {
       "path": "src/components/sentence-study/SentenceStudyPanel.tsx",
-      "sha256": "52cb420a47035eb962dff82fc7057cf4df7e604adbf0b1d5c0a45a71f9239fb2"
+      "sha256": "b56950d924535b668456d0c698aff0b0cc66aab300059475b452e8f41bc4d2bb"
     },
     {
       "path": "src/components/sentence-study/SentenceTeaching.module.css",
@@ -2310,15 +2438,15 @@
     },
     {
       "path": "src/components/sentence-study/StartSentenceButton.tsx",
-      "sha256": "5dfbe8b14a8bd5a37a740e89b68a1265dc3b440131335114669eb45397932640"
+      "sha256": "a8e07ed30d26c4413eba873e7e52096069584a7f50d86d7b6eff7d2a51ceee64"
     },
     {
       "path": "src/components/ui/AppShell.module.css",
-      "sha256": "b8ea4b580c347861b7f3d83f2c910ac9b5b89d283e1bddda50604ea343296888"
+      "sha256": "8e4b4955fb0578b773922ac861e4dc93765667dbc27be58b5dacebeae22c6414"
     },
     {
       "path": "src/components/ui/AppShell.tsx",
-      "sha256": "80773bbf41d7096ee97c090f2ca6d0a11f17e4796ac1cc5add9ccbf4e250240c"
+      "sha256": "37714eea34e7c2a498d6deaaef805d1dba814978a709158c2839d4921d17699c"
     },
     {
       "path": "src/components/ui/Icon.tsx",
@@ -2381,6 +2509,34 @@
       "sha256": "810b8cdbfa0597836be9b097ec9ec7b92daa0a7ecd1c0d334f7c87790fc7c0be"
     },
     {
+      "path": "src/lib/answer-audio/client-drafts.ts",
+      "sha256": "fd32fb39c32028397b2ab4acdd72813a886a3a9d93791048e7a33e0c083ade85"
+    },
+    {
+      "path": "src/lib/answer-audio/contracts.ts",
+      "sha256": "ecf517eab160850456e6dbd8a7da6958ffdbdd878bda197869027535d33b7c6d"
+    },
+    {
+      "path": "src/lib/answer-audio/http.ts",
+      "sha256": "e0541842278354d2304aa8117715578217a7f89b6b2967b8fadd7c5b08991f10"
+    },
+    {
+      "path": "src/lib/answer-audio/node-service.ts",
+      "sha256": "b7c1c9ced8b95e0318a01b767dfd25cfb69e8310a442e96e4ad262b38452380b"
+    },
+    {
+      "path": "src/lib/answer-audio/service.ts",
+      "sha256": "a809068102167da05089f6dfd3422ff4c69d8bd6e3236d7f92f48e9f53c8889e"
+    },
+    {
+      "path": "src/lib/answer-audio/source-link-client.ts",
+      "sha256": "279c581e54e00d2331257accdd4ecb86788d104a78017129f0d66bc6f90e0ef1"
+    },
+    {
+      "path": "src/lib/answer-audio/storage.ts",
+      "sha256": "c09d7815d4517b37da40dcf90d3237fe37b77c9772b3a109ecc5fdf401654244"
+    },
+    {
       "path": "src/lib/answers/ai-schemas.ts",
       "sha256": "5851f50c76a0be1a30fde8ccec409c362a58b67b80ae30b67ead9d6daa5fe6af"
     },
@@ -2414,7 +2570,7 @@
     },
     {
       "path": "src/lib/app-services/chat.ts",
-      "sha256": "3f3af454fbbe67214e15dcc060a6a2c6b6d713664779f8bc94d1ea98a1e506d6"
+      "sha256": "5e3da617ef63cff842c2815a572868aee107cb2db57f3a7b386c8a440fd8e3a2"
     },
     {
       "path": "src/lib/app-services/dialogue-contracts.ts",
@@ -2446,15 +2602,27 @@
     },
     {
       "path": "src/lib/app-services/web.ts",
-      "sha256": "d36f755e4af73f061bb3019f06c1181bdccf5fe4a1f6ec433f2d3ce848ca5a77"
+      "sha256": "1a879b2c4075a1f82239d235807648dfbeadc1fe18e9f797fab38dd6e7ebc801"
+    },
+    {
+      "path": "src/lib/backup/http.ts",
+      "sha256": "0879db29ea1c2954f2a2d4e364cc61f557dee7e030a0271a603b286d2b2aec6b"
+    },
+    {
+      "path": "src/lib/backup/stream-archive.ts",
+      "sha256": "09a43a311c36287253503f0ec071e2bf4b24cbbcd7c486e694bd60954debd57e"
     },
     {
       "path": "src/lib/backup/web-business.ts",
-      "sha256": "d94189ff6c902bc3b4c5e8e1041256b2204c62cdae624f30482d9473f7b5f47a"
+      "sha256": "862a4cb75e499d6d4443ae74071a374a601dc57a82e82b3e1a1810f09aac6343"
+    },
+    {
+      "path": "src/lib/backup/work-store.ts",
+      "sha256": "4564e6da1ec839471535acabffdd69bf3c35977ae6577a648d50b96018bb5b58"
     },
     {
       "path": "src/lib/coaching/contracts.ts",
-      "sha256": "e0b0c1b1693861b4605359a54d1d57a026026d34eb2b68d3d5db658493614509"
+      "sha256": "a881159bd107c227daf961eba6764308d4fb5728f9d43b51878e9b4d888188f6"
     },
     {
       "path": "src/lib/coaching/learning-memory.ts",
@@ -2462,11 +2630,15 @@
     },
     {
       "path": "src/lib/coaching/mock.ts",
-      "sha256": "c40992f20c7e9c31cd660a2f9df5312243e0aae435e11efb561fbbfa7377657c"
+      "sha256": "faebe046ae6fe703039078c7392d8b77ac942a8453c2ebc4a4e1e039c9ae4f20"
+    },
+    {
+      "path": "src/lib/coaching/practice-evidence.ts",
+      "sha256": "9335ad1555645c6da2ee5444e8780659059ecdca53e20401de77a06d5b8c57e7"
     },
     {
       "path": "src/lib/coaching/service.ts",
-      "sha256": "2a43f3620c17fd090fe19eedf4dcd69732f74c0aefd672a3e1665469aeff7b6b"
+      "sha256": "223f07ced90268dd4a3f007172ef694a6f8b2ef11e34b1020c39414a5813896a"
     },
     {
       "path": "src/lib/companion/schemas.ts",
@@ -2479,6 +2651,18 @@
     {
       "path": "src/lib/content/amendments.ts",
       "sha256": "a201bbefed3fd249a0c897d35418c2a3c83d14378819aa27abc795726f3eb4d6"
+    },
+    {
+      "path": "src/lib/context-practice/contracts.ts",
+      "sha256": "c9f58f4084edc39927441b70bcfe9045b658716c4d3c18bd66a0669d440f7fd3"
+    },
+    {
+      "path": "src/lib/context-practice/mock.ts",
+      "sha256": "3c38b8161a3866422ce741815eceb77209c6e8d9129b10633bff904d5813ccbd"
+    },
+    {
+      "path": "src/lib/context-practice/service.ts",
+      "sha256": "2102849bbde9b51275e9c7697f4f54c967f1a5b4be4333a600dc17faef72223b"
     },
     {
       "path": "src/lib/device-sync/backup.ts",
@@ -2653,6 +2837,14 @@
       "sha256": "abe892cc9f3491715714b4f6f0f15e550203eb7bcf899f5ffc2421a4fa9e6fcb"
     },
     {
+      "path": "src/lib/full-answer-attempts/history.ts",
+      "sha256": "767312b14c97df8b6beb79c90e93daa4e00834cfa0a7600c6f65dc3edecd8502"
+    },
+    {
+      "path": "src/lib/full-answer-attempts/service.ts",
+      "sha256": "ab2a806dbbedae0f154ddca1e9233ce62cfd7a6428f4310df1c846c9c6bd4cfb"
+    },
+    {
       "path": "src/lib/home/activity.ts",
       "sha256": "1c8d93d080ffab76ee938b5e77b75ae956d79c571a25b5ad4c43008d734f901d"
     },
@@ -2746,7 +2938,7 @@
     },
     {
       "path": "src/lib/light-study/audio.ts",
-      "sha256": "10b588c85aac1b2a4735e590331098f980275fd6baa05938f314bf1c4a6e2a12"
+      "sha256": "5e232aa07ff789e0671b8596caca2f80ce23a8835c4e0879de0d6d752d0a264f"
     },
     {
       "path": "src/lib/light-study/catalogue.ts",
@@ -2894,15 +3086,15 @@
     },
     {
       "path": "src/lib/sentence-study/catalogue.ts",
-      "sha256": "332c394f293b74bac9f907f1b07bdc02bf9513fb4cd15e84b3030e3b53e90570"
+      "sha256": "ce342688361cbac5b381307d41107c2ce3d361d14d8b1a50cc83575026c742a8"
     },
     {
       "path": "src/lib/sentence-study/client.ts",
-      "sha256": "5a775bdea942a676d5e55f6a9cff356c7cb7384b8744859f8a5018e0a6eb3ee7"
+      "sha256": "07ddd2f883dc8e32e4d2504e4fada0003eef010d217c1a10076e47b59bff5d52"
     },
     {
       "path": "src/lib/sentence-study/contracts.ts",
-      "sha256": "d96be92104cc03d4581904999c3855bb83dbe015ad88e38dc8e6a26c26daa5ea"
+      "sha256": "603a49fb981c47eb440c9a66ec62f339caa066c3d578eadea5e04896eda50ae4"
     },
     {
       "path": "src/lib/sentence-study/controller.ts",
@@ -2910,7 +3102,7 @@
     },
     {
       "path": "src/lib/sentence-study/core-service.ts",
-      "sha256": "ed3071a6f6d3c1f4d2a59c5e0e700e5df03eb6e35cd10613baccb5f2bc9bb158"
+      "sha256": "0cc62e3abdcbd738fe80621b239b2b5e14da1b549c311677cc2923064dd8092d"
     },
     {
       "path": "src/lib/sentence-study/editions.ts",
@@ -2934,7 +3126,7 @@
     },
     {
       "path": "src/lib/sentence-study/home.ts",
-      "sha256": "68dbc803a4ce73a3ad09af32600125b1ea7e651d1725f128314285da6f2f6670"
+      "sha256": "8987818753996863ebfdc9cf6b70faff8dbd25b9cd1fda19ebf9220c1dea2956"
     },
     {
       "path": "src/lib/sentence-study/http.ts",
@@ -2945,8 +3137,20 @@
       "sha256": "579279c7ed3bb41de5b4107cdada3f87f6ff2841db50a4cf62628340ec55ee30"
     },
     {
+      "path": "src/lib/sentence-study/preferences-web.ts",
+      "sha256": "973e02a66a1a56d05469908592db2f189947ee3f522da51c3904a5e95739c21c"
+    },
+    {
+      "path": "src/lib/sentence-study/preferences.ts",
+      "sha256": "272bea175c8fd923cddf38568e4cd79afec7a3833bdac751e13eb8db9c16b61c"
+    },
+    {
+      "path": "src/lib/sentence-study/presentation.ts",
+      "sha256": "7cce26336d64ac3dfdbaf3bd9ab63f61b2faa171406981b5c1d89683fddd40a9"
+    },
+    {
       "path": "src/lib/sentence-study/service.ts",
-      "sha256": "2f2993596eebc22ded4f26fbe4ae665814eb1014cdabd59ef9869b71aa81516d"
+      "sha256": "7dd677f7638886b5046780af2e5d130dbf7fb89902885ff1b2af0a59a72c818b"
     },
     {
       "path": "src/lib/sentence-study/teaching-contracts.ts",
@@ -3002,7 +3206,7 @@
     },
     {
       "path": "src/lib/speech/contracts.ts",
-      "sha256": "728d3c3120fbcf8360b1bd63c0ab70d7c32d201a166bdc14019e3dc79fb9f0ba"
+      "sha256": "bacaea9e13a59621ee746dab1fdc372cbd85b46321ee278f30383cb868a9c97d"
     },
     {
       "path": "src/lib/speech/mimo-provider.ts",
@@ -3013,8 +3217,16 @@
       "sha256": "0c8cb4a57a60a239aa3fe7adb3a08e1ce9e7046f461079346f190c08bc4f8a03"
     },
     {
+      "path": "src/lib/speech/preferences-service.ts",
+      "sha256": "e11014d636f5aadc584bad566bdbcdfbec87a2055a2c866e6f9cb3cd4dec8e52"
+    },
+    {
       "path": "src/lib/speech/preferences.ts",
-      "sha256": "d9febbdb2eb49a893921137d108384159115bda3c0eebe5596483e8ff1a29c54"
+      "sha256": "5dc9fc379d26dd7ab0a676ca99c7c99d60756b01df7032c6b99f19d439a80fda"
+    },
+    {
+      "path": "src/lib/speech/recording-coordinator.ts",
+      "sha256": "5970f22304628009e8bb64bdd80d9e2d743ccdf6aacccbc6d289daec56d7cf2f"
     },
     {
       "path": "src/lib/speech/request-service.ts",
@@ -3026,11 +3238,11 @@
     },
     {
       "path": "src/lib/speech/wire.ts",
-      "sha256": "6d565a16bd1a76beb58021a823fb1667581877f91d0d6ce7690afacc24ae1211"
+      "sha256": "dd70a5043f62fe488dff88eef86474c5ec38a133b8e3a0503d85437e9c5e1295"
     },
     {
       "path": "src/lib/tts/index.ts",
-      "sha256": "fd93ba1115e72dba7957b5427f1c196c404715fecf62955f0f55045f96578913"
+      "sha256": "9fe7fa911674fee32b2e2e7ae29bf3b6261f084ba58ba6050fde75efe32005e2"
     },
     {
       "path": "src/lib/version.ts",
@@ -3065,6 +3277,10 @@
       "sha256": "66e337753c948b72592e134a443e8639ac80aa8dc9e175300b43982b4d9fdf8f"
     },
     {
+      "path": "tests/answer-audio.test.ts",
+      "sha256": "9369dca3f2700de87b1f9bc5ca75ecd33d7b4facde1add6ea1da16bbea21f3f6"
+    },
+    {
       "path": "tests/answer-comparison.test.ts",
       "sha256": "e452903c3b001c4648d99801145441eeb5a4c64c9f0fdbfa2945f4df008174c9"
     },
@@ -3095,6 +3311,14 @@
     {
       "path": "tests/companion-service.test.ts",
       "sha256": "a2de86027ac59d0ce6e56ba0d8d581d466caa2f8b15fc2c3248b5195e82f2d28"
+    },
+    {
+      "path": "tests/context-practice.test.ts",
+      "sha256": "2fda7556303010be36b9a4a24d1ad149e6c4c081cb8e90947934f8b02986caf4"
+    },
+    {
+      "path": "tests/context-workspace.test.ts",
+      "sha256": "90e7530d6d2cd0f2ae2a3e595ac125e2bb52de1e39b6aa432f64990e323d1ed8"
     },
     {
       "path": "tests/current-material-revision.test.ts",
@@ -3137,20 +3361,32 @@
       "sha256": "057939170e38027e2ad90d18da62917790f341d82b9be5ad5c6cdd765addf841"
     },
     {
+      "path": "tests/e2e/answer-audio.spec.ts",
+      "sha256": "14ed6f0ab21cfee06f61066d04722fd9a644b22866439ac3723fba2343ea1ed8"
+    },
+    {
+      "path": "tests/e2e/context-workspace.spec.ts",
+      "sha256": "f7050b886227df4023ce7052f6f640de375c8ed95695871ccb2b4670825dfe82"
+    },
+    {
       "path": "tests/e2e/expressions.spec.ts",
-      "sha256": "86bf28b35df7275af9a8cb165740183770dd9b975b27c84cd4ac9bd866cad4ff"
+      "sha256": "923fda9e41c5b73d29479a835fb404447038db68bc51a4eddd0e3f714898c8cb"
     },
     {
       "path": "tests/e2e/four-step.spec.ts",
-      "sha256": "808fbbbb10ca3f531e290a669d86142ae8ecaabbe5372132d718e3eaffaf6342"
+      "sha256": "e5b23cf38a7b1f14ce667a83e6038be5f1a0d1c8cb1e5e816eb755c2ac0070c2"
+    },
+    {
+      "path": "tests/e2e/full-answer-history.spec.ts",
+      "sha256": "6e33d28542de303355fd94795190015f972392525d54a16d0f9824bf920957b8"
     },
     {
       "path": "tests/e2e/guided-reveal.spec.ts",
-      "sha256": "5ed2e308bf10759e03c91a2b056c725d8d07164ca64c9a9eb910924e0b25e1b2"
+      "sha256": "2b2e1945670171c7d63f8cf506cf9cc2b34008a07e3e43ec1f53fa6f4cdcaac0"
     },
     {
       "path": "tests/e2e/home.spec.ts",
-      "sha256": "f786054b667f88e5acdac97a1a4d845df3a197ea928183f6b68c03a983ce44bb"
+      "sha256": "a3844da36c92bead2b267ecb31000cf91720d58b3482de02f08a1867d96093a9"
     },
     {
       "path": "tests/e2e/learning.spec.ts",
@@ -3158,11 +3394,11 @@
     },
     {
       "path": "tests/e2e/light-study.spec.ts",
-      "sha256": "64fa41a36e53d55bbc0b1b49c1f0d16ac8b99c94aa9a0252631b74e503146ff4"
+      "sha256": "b3a841369a0c1a0b89c18b8045bb723ab44f7773bad7483f23a3efa7ee03971c"
     },
     {
       "path": "tests/e2e/personal-focus.spec.ts",
-      "sha256": "673d7df055e4f89abebbc2dd4d3b9cae35a5de4dd4683d075c746f9740586f83"
+      "sha256": "b66ec572455b05045af7356f9bb78e7cde0b360b17021b2d1528158225222279"
     },
     {
       "path": "tests/e2e/seed.ts",
@@ -3170,19 +3406,23 @@
     },
     {
       "path": "tests/e2e/sentence-highlights.spec.ts",
-      "sha256": "1e903b26d76bcfd8437fc3e582064d4d6b96e37704c5a8341956e453d9e1c7c4"
+      "sha256": "41b0fa3d2f4cc073d57299244236002b81e7542357866f0211984fb4c64b8cc3"
+    },
+    {
+      "path": "tests/e2e/sentence-library.spec.ts",
+      "sha256": "1df78b5d92fd493e3f157f0348ec7ec9337bbbc1cedce5f7f2dc60518ec252bb"
     },
     {
       "path": "tests/e2e/sentence-study.spec.ts",
-      "sha256": "6b72c0d0940b3ac586b46c4ca65c872da144a69928c3e48a0e0599f3759da707"
+      "sha256": "e8771174bb8f50c884dbc50ebfb07a7031328af25c214e0d21f7d1d97b719cd4"
     },
     {
       "path": "tests/e2e/web-shell.spec.ts",
-      "sha256": "dde3caed4690bcfd354443182efa3d84ea85c7506dee4d601cbb617f810182f0"
+      "sha256": "2da43c429ba2d07430534d254195699cd1d7a6d2bf31a79bffebfe6ec8f91b2d"
     },
     {
       "path": "tests/e2e/web-usability.spec.ts",
-      "sha256": "04216ec060379f842c5fc4f36e13df69da8ffd8e3d7b5df0d56040dc036d8c2a"
+      "sha256": "e444708607ba162d1ad39028f3734b2493b2ac3598dbb543a9e8022ff6d9379a"
     },
     {
       "path": "tests/expression-views.test.ts",
@@ -3201,12 +3441,16 @@
       "sha256": "6cd0882bb3ae3314ef86baecefc8718b7e23716ad86ffe7f23f8be77a42f5f57"
     },
     {
+      "path": "tests/full-answer-history.test.ts",
+      "sha256": "af7646dec512c09ba6e00b0a7a6e8b98f94d75e90a66ef74116c2b9a9d52a6a7"
+    },
+    {
       "path": "tests/guided-reveal.test.ts",
       "sha256": "beb0d7072defc66488b0db1327a69ab4c612f4d74a5848d704791545a318215e"
     },
     {
       "path": "tests/helpers/legacy-schema.ts",
-      "sha256": "ddbcc76487dd0e710bc7b6af075a254768a969b775ecb03d8e2b5a85d7110edb"
+      "sha256": "dd540fcc0cb6be1d77cc8df2452aa63f4fdc85ed6ce397f69c782a922802862e"
     },
     {
       "path": "tests/helpers/light-current-material.ts",
@@ -3222,7 +3466,7 @@
     },
     {
       "path": "tests/helpers/portable-db.ts",
-      "sha256": "33272b8894030546979eec0ddc4638a8bf557d6b88bef5dac36e7bb6227e0c72"
+      "sha256": "7323a31bfd63ebacda849a0026f2147d1f33b32f12d96f43879283ad782f670a"
     },
     {
       "path": "tests/helpers/recall-material.ts",
@@ -3314,7 +3558,7 @@
     },
     {
       "path": "tests/integration/light-study.integration.test.ts",
-      "sha256": "9d24114b0b21f9aedd5755e2811e4a2e2dc4d03df1a16a6da17ffdf11c12e52c"
+      "sha256": "f06163256bc3bacc4baf3a0afb691ff1d2bdaea0dc4351a6614e8fb5072eff30"
     },
     {
       "path": "tests/integration/material-selection.integration.test.ts",
@@ -3362,23 +3606,27 @@
     },
     {
       "path": "tests/integration/v15-companion-migration.integration.test.ts",
-      "sha256": "7e994e2f3ba4882ebbffb2a2354086b61bc99ed1e655b14bd3f53d4735243230"
+      "sha256": "db67f64ac03e3611f62a93c50d4f070d4afe03239706ac9075f443d785caa14f"
     },
     {
       "path": "tests/integration/v18-retired-learning.integration.test.ts",
-      "sha256": "ef706b37eb5696c710e499ae4cb9c2861ade005c6a316a26d821e624d4994a64"
+      "sha256": "3dc453fb5bdae22052f429b1df8c581d22455f125bd0f3ec20657c4d1360b9df"
     },
     {
       "path": "tests/integration/v20-material-migration.integration.test.ts",
-      "sha256": "a9e3d9f1223b182991ffc3c7dd2aa294d75fcbb48c98ab3722628e72d081a0b6"
+      "sha256": "7f91d183cf04af962d78695cec1a8f716c2c6a8145b8da9bd1924d6ba2c94659"
     },
     {
       "path": "tests/integration/v25-light-migration.integration.test.ts",
-      "sha256": "61dbe33e42d71b3393c385549dd72e787d1296498b87898caa2ed068d2ac83ad"
+      "sha256": "55a8c526cd40305abab9260c79381b17996d542e246f23da776cab439d0888a8"
     },
     {
       "path": "tests/integration/v3-pilot-publication.integration.test.ts",
       "sha256": "5c0f6e81743ea43e5fb475dd2a07bc8f32af21d9d8f7354b0e87c1f0567177aa"
+    },
+    {
+      "path": "tests/integration/v36-context-audio-migration.integration.test.ts",
+      "sha256": "185f3a1669d959caf9579ca24a035b04d17ab877f94d47a22ce1e88e8ecbbff5"
     },
     {
       "path": "tests/light-study-audio.test.ts",
@@ -3438,7 +3686,7 @@
     },
     {
       "path": "tests/materials-summary.test.ts",
-      "sha256": "fe4515c0b540acd6473cd972e15f7efa699baa53872899c3fb3a2ae6d5df6352"
+      "sha256": "dda12ca08b4f8d972cddf73a96a939e457d036f0df0f14ecfc3b2c62be34cbc1"
     },
     {
       "path": "tests/mixed-answer-material.test.ts",
@@ -3581,8 +3829,16 @@
       "sha256": "77371decb10d057d3a893c84ec519e02620d6d41ca3cb6ce854718a8faa58284"
     },
     {
+      "path": "tests/sentence-library-views.test.ts",
+      "sha256": "a4e42e2149507772913404529641bf8e9fb0c1611804e316fa70cdcef51bea7c"
+    },
+    {
       "path": "tests/sentence-outbox.test.ts",
       "sha256": "1b8961fb1d58cdc253261bdfcd814d7d38d1da519d9d8ce62e1b60453979f8c6"
+    },
+    {
+      "path": "tests/sentence-presentation.test.ts",
+      "sha256": "e183bc6a7049f73384831770fa6a319ebe070cd4b58e7efc6bb287072586a6a2"
     },
     {
       "path": "tests/sentence-study.test.ts",
@@ -3625,8 +3881,12 @@
       "sha256": "175eb488bf723996b05f35f86623b447f7ae2ac5b5272b923456d81fa9564ad3"
     },
     {
+      "path": "tests/speech-roles.test.ts",
+      "sha256": "c9e9469ac1dace503b7a4462ec105b75edb690a13fad3a65d46923c87904cb1c"
+    },
+    {
       "path": "tests/speech-style.test.ts",
-      "sha256": "21ab3a301ce98588066e978c1461409e02b8f684070dd5dde2836291dcf01dbe"
+      "sha256": "ebd29767503195aa87fa5cc72d380f3f2e034836fb748fa94d781ad4db211987"
     },
     {
       "path": "tests/spoken-register.test.ts",
@@ -3638,7 +3898,7 @@
     },
     {
       "path": "tests/tts-player.test.ts",
-      "sha256": "a9fcf3677a53a405d7c5c9cd76c99f4d75b8e001226d69925f9800f50cc14e54"
+      "sha256": "838cee961dc42ff76dc6af19883d7623f1d52ca48a5c7f02773693027f175a68"
     },
     {
       "path": "tests/v3-pilot-material.test.ts",
@@ -3646,15 +3906,23 @@
     },
     {
       "path": "tests/voice-container.test.ts",
-      "sha256": "eac7a14c6da2d12bc4f29b22448ac12b16e0371e23fd017ed25bfd67e5a2acb7"
+      "sha256": "dd267fac9f419ad3beb9fca4f9b10e7f3003e2ffd131b580e40bc91aa2327880"
     },
     {
       "path": "tests/voice-preferences.test.ts",
       "sha256": "649a56ea705392fea831e698c0221fb534db7e8db9256cf55efd7e650941c9d3"
     },
     {
+      "path": "tests/web-backup-http.test.ts",
+      "sha256": "d294fa5e7631a970cdef5d27fa3acc186f6cae77f58b5f2c6019e56b6156c8c4"
+    },
+    {
       "path": "tests/web-business-backup.test.ts",
       "sha256": "000d22143f4984a967c811cea40b0c38564be17a6e9750c1b50810738230f884"
+    },
+    {
+      "path": "tests/web-media-backup.test.ts",
+      "sha256": "2580dcef0a0acaf91e33ee2ab1434e495ea70eeea93d153653c82414c9bf78c4"
     },
     {
       "path": "tsconfig.json",
@@ -3670,7 +3938,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "282b8c7aa1d68035ce88616878d5c9c9d98044bbf9a2997aca0e3e9d31bdc996"
+      "sha256": "67415147ce9b0e469ad1ac72da9c822da53f2f57d2be98b5488c24026fb5cd0c"
     }
   ],
   "excludedCounts": {

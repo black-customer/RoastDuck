@@ -13,7 +13,7 @@ test('单框混合草稿刷新恢复、提交丢响应原地恢复，不创建�
   await page.getByRole('button',{name:'保存并分析我的表达',exact:true}).click();await expect(page.locator('main').getByRole('alert')).toBeVisible();
   await page.getByRole('button',{name:'保存并分析我的表达',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/attempts/${attemptId}$`));
   const history=(await(await request.get(`/api/speaking-practice/questions/${question}/attempts`)).json()).attempts;expect(history.filter((a:{id:string})=>a.id===attemptId)).toHaveLength(1);
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeVisible();
   await page.getByRole('link',{name:'不看提示，重新回答',exact:true}).click();
   await expect(page.getByLabel('我真正想表达的中文意思（可选）',{exact:true})).toHaveCount(0);await expect(page.getByLabel('我的英文尝试',{exact:true})).toHaveValue('');
   await page.getByLabel('我的英文尝试',{exact:true}).fill('I saw a manhole cover outside.');await page.getByRole('button',{name:'封存英文，再继续'}).click();
@@ -25,9 +25,9 @@ test('服务器不可用时先展示本机救援文字，不用空白覆盖',asy
   await page.goto(`/questions/${question}/practice`);await expect(page.getByLabel('我的回答与想法',{exact:true})).toHaveValue('Keep my unsaved answer.\n\n保留我的原意。');await expect(page.locator('main').getByRole('alert')).toContainText('模拟离线');
   expect(await page.evaluate(({question})=>JSON.parse(localStorage.getItem(`roastduck_answer_draft:${question}:practice:`)!).values.chinese,{question})).toBe('保留我的原意。');
 });
-test('当前材料可查找收藏、隐藏及恢复，隐藏不更新学习进度',async({page,request})=>{
+test('旧表达拓展可查找收藏、隐藏及恢复，隐藏不更新旧学习进度',async({page,request})=>{
   const {items}=await(await request.get('/api/expressions?scope=question&id=light-e2e-weak&includeHidden=1')).json(),item=items[0];
-  await page.goto('/review-content');await page.getByPlaceholder('搜索中文或英文表达').fill(item.english);const card=page.getByTestId('expression-row').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
+  await page.goto('/review-content?extension=1');await page.getByPlaceholder('搜索中文或英文表达').fill(item.english);const card=page.getByTestId('expression-row').filter({has:page.getByRole('heading',{name:item.english,exact:true})});
   await card.getByText('说明、来源与管理',{exact:true}).click();
   await card.getByRole('button',{name:'收藏',exact:true}).click();await expect(card.getByRole('button',{name:'已收藏',exact:true})).toBeVisible();
   await card.getByRole('button',{name:'暂不学',exact:true}).click();await expect(card).toHaveCount(0);await page.locator('summary').filter({hasText:/^筛选表达/}).click();await page.getByLabel('表达范围').selectOption('hidden');await expect(card).toBeVisible();await card.getByText('说明、来源与管理',{exact:true}).click();await card.getByRole('button',{name:'恢复学习',exact:true}).click();await page.getByLabel('表达范围').selectOption('all');await expect(card).toBeVisible();

@@ -12,9 +12,9 @@ test('个人中英文高亮可保存、刷新、失败重试和键盘取消，�
   await page.addInitScript(()=>localStorage.setItem('roastduck_sentence_reexpress_v1','0'));
   await page.route('**/api/speech/synthesis',route=>route.fulfill({status:503,contentType:'application/json',body:'{"error":"Mock audio unavailable"}'}));
   const overview=(await(await request.get('/api/sentence-study/overview?scope=question&id=sentence-e2e-performance')).json()).overview;
-  const created=await request.post('/api/sentence-study/sessions',{data:{scope:{type:'material',id:overview.sources[0].materialId},mode:'learn',clientRequestId:'e2e-highlight-only'}});expect(created.ok()).toBe(true);
+  const created=await request.post('/api/sentence-study/sessions',{data:{scope:{type:'material',id:overview.sources[0].materialId},mode:'learn',clientRequestId:'e2e-highlight-only',experienceVersion:'guided-reveal-v1'}});expect(created.ok()).toBe(true);
   const session=(await created.json()).session,card=session.cards[0];
-  await page.goto(`/sentence-study?session=${session.id}`);
+  await page.goto(`/sentence-study?extension=guided&session=${session.id}`);
   const chinese=page.locator('article h1[lang="zh"]'),english=page.locator('article p[lang="en"]').first();
   await expect(chinese).toContainText('我想阅读第1章。');
   await selectText(chinese,'阅读');await page.getByRole('button',{name:'高亮',exact:true}).click();

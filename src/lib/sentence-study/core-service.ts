@@ -2,26 +2,47 @@ import type {DatabasePort,SqlReader,SqlWriter} from '@/lib/platform/database';
 import {query as sql} from '@/lib/platform/sql';
 import {hash} from '@/lib/four-step/shared';
 import {gradeLightCard} from '@/lib/light-study/scheduler';
-import {readSentenceCatalogue,sentenceGroup,type SentenceProgress} from './catalogue';
-import {SentenceStudyError,sentenceScopeSchema,sentenceCreateSchema,sentenceEventSchema,projectSentenceEvent,emptySentencePractice,type SentenceSession,type SentenceOverview,type SentenceScope,type SentenceRating} from './contracts';
+import {readSentenceCatalogue,sentenceGroup,sentenceIsNew,sentenceIsTarget,sentenceDueAt,type SentenceProgress} from './catalogue';
+import {SentenceStudyError,sentenceScopeSchema,sentenceCreateSchema,sentenceEventSchema,projectSentenceEvent,emptySentencePractice,focusSentence,sentencePracticeKey,type SentenceSession,type SentenceOverview,type SentenceScope,type SentenceRating} from './contracts';
 interface SessionRow {id:string;version:number;view_json:string;request_hash:string;status:string}
 interface EventRow {client_event_id:string;payload_hash:string;kind:string;sentence_id:string|null;rating:SentenceRating|null;before_progress_json:string|null;after_progress_version:number|null;created_at:string}
 const keyOf=(scope:SentenceScope)=>JSON.stringify(scope);
 async function readSession(db:SqlReader,id:string){const [r]=await db.all<SessionRow>(sql`SELECT * FROM sentence_study_sessions WHERE id=${id}`);if(!r)throw new SentenceStudyError('学习记录不存在',404,'session_missing');return JSON.parse(r.view_json) as SentenceSession;}
 async function putProgress(tx:SqlWriter,id:string,before:SentenceProgress|undefined,rating:SentenceRating,at:string,version:number){
   const card=gradeLightCard(before?.fsrs_json??null,rating,new Date(at)),due=card.due.toISOString();
-  await tx.run(sql`INSERT INTO sentence_study_progress(sentence_id,first_seen_at,last_seen_at,due_at,fsrs_json,review_count,version,last_rating) VALUES(${id},${before?.first_seen_at??at},${at},${due},${JSON.stringify(card)},${before?(before.review_count+1):0},${version},${rating}) ON CONFLICT(sentence_id) DO UPDATE SET last_seen_at=excluded.last_seen_at,due_at=excluded.due_at,fsrs_json=excluded.fsrs_json,review_count=excluded.review_count,version=excluded.version,last_rating=excluded.last_rating`);
+  const [exposure]=await tx.all<{first_at:string|null}>(sql`SELECT MIN(first_exposed_at) first_at FROM sentence_exposures WHERE sentence_id=${id}`);
+  await tx.run(sql`INSERT INTO sentence_study_progress(sentence_id,first_seen_at,last_seen_at,due_at,fsrs_json,review_count,version,last_rating) VALUES(${id},${before?.first_seen_at??exposure?.first_at??at},${at},${due},${JSON.stringify(card)},${before?(before.review_count+1):0},${version},${rating}) ON CONFLICT(sentence_id) DO UPDATE SET last_seen_at=excluded.last_seen_at,due_at=excluded.due_at,fsrs_json=excluded.fsrs_json,review_count=excluded.review_count,version=excluded.version,last_rating=excluded.last_rating`);
   return due;
 }
 export function createSentenceService(database:DatabasePort,platform:{now:()=>Date;newId:()=>string;random?:()=>number}){
   async function availableView(db:SqlReader,stored:SentenceSession,heal=false){
     const view=structuredClone(stored),catalogue=await readSentenceCatalogue(db,view.scope,platform.now()),live=new Map(catalogue.cards.map(c=>[c.id,c]));
+    if(view.experienceVersion==='context-workspace-v1'){
+      let invalid=false,conflict=false;
+      view.cards=view.cards.map(card=>{
+        const current=live.get(card.id);
+        if(!current||current.version!==card.version||current.materialId!==card.materialId||current.unavailable){invalid=true;return {...card,english:'',chinese:'这句材料已更新或待确认。',contextZh:'',teaching:undefined,usages:[],notes:[],userHighlights:[],unavailable:current?.unavailable??'材料已更新或撤销'};}
+        if(current.progressVersion!==card.progressVersion&&(view.targetIds??[]).includes(card.id)&&!view.assessments.some(a=>a.sentenceId===card.id)){
+          conflict=true;if(heal)view.targetIds=view.targetIds?.filter(id=>id!==card.id);
+        }
+        if(!sentenceIsTarget(current))view.targetIds=view.targetIds?.filter(id=>id!==card.id);
+        return {...current,progressVersion:heal?current.progressVersion:card.progressVersion};
+      });
+      view.targetIds=view.targetIds?.filter(id=>view.cards.some(c=>c.id===id&&!c.unavailable));
+      if(conflict&&!heal){view.status='paused';view.notice='其他窗口已更新评分，请恢复最新位置。';}
+      if(heal&&conflict)view.notice='已恢复最新进度；其他窗口的评分已保留，本次只作上下文练习。';
+      if(invalid){view.notice='部分材料已更新或待确认，原记录保留。';if(!view.cards.some(c=>!c.unavailable))view.status='completed';}
+      const focus=view.cards.find(c=>c.id===view.focusId&&!c.unavailable)??view.cards.find(c=>!c.unavailable);
+      if(focus)focusSentence(view,focus.id);
+      const dues=view.cards.filter(c=>!c.unavailable&&sentenceIsTarget(c)).map(c=>sentenceDueAt(c,catalogue.progress)).filter((d):d is string=>!!d).sort();view.nextDueAt=dues[0]??null;
+      return view;
+    }
     let changed=false;
-    const past=view.cards.slice(0,view.index).map(c=>{const current=live.get(c.id);if(current&&current.version===c.version)return {...c,teaching:current.teaching,teachingRevision:current.teachingRevision,userHighlights:current.userHighlights};return {...c,english:'',teaching:undefined,userHighlights:[],chinese:'这句材料已更新，原学习记录保留。',contextZh:'',usages:[],notes:[],unavailable:'材料已更新或撤销'};});
+    const past=view.cards.slice(0,view.index).map(c=>{const current=live.get(c.id);if(current&&!current.unavailable&&current.version===c.version)return {...c,teaching:current.teaching,teachingRevision:current.teachingRevision,userHighlights:current.userHighlights};return {...c,english:'',teaching:undefined,userHighlights:[],chinese:'这句材料已更新，原学习记录保留。',contextZh:'',usages:[],notes:[],unavailable:'材料已更新或撤销'};});
     const rest=view.cards.slice(view.index).flatMap(c=>{
-      const current=live.get(c.id);const valid=current&&current.version===c.version&&current.progressVersion===c.progressVersion;
+      const current=live.get(c.id);const valid=current&&!current.unavailable&&current.version===c.version&&current.progressVersion===c.progressVersion;
       if(valid)return [{...c,teaching:current.teaching,teachingRevision:current.teachingRevision,userHighlights:current.userHighlights}];changed=true;
-      if(heal)return current&&current.progressVersion===c.progressVersion?[current]:[];
+      if(heal)return current&&!current.unavailable&&current.progressVersion===c.progressVersion?[current]:[];
       return [{...c,english:'',teaching:undefined,userHighlights:[],chinese:'材料或学习记录已更新，请恢复当前位置。',contextZh:'',usages:[],notes:[],unavailable:'需要恢复'}];
     });
     view.cards=[...past,...rest];
@@ -34,7 +55,7 @@ export function createSentenceService(database:DatabasePort,platform:{now:()=>Da
     const now=platform.now(),catalogue=await readSentenceCatalogue(db,scope,now,false),{cards,progress}=catalogue;
     const sessions=await db.all<{view_json:string}>(sql`SELECT view_json FROM sentence_study_sessions WHERE status IN ('active','paused') ORDER BY julianday(updated_at) DESC,id`);
     const resumable:SentenceOverview['resumable']={};
-    for(const row of sessions){const v=JSON.parse(row.view_json) as SentenceSession;if(scope.type!=='all'&&keyOf(scope)!==keyOf(v.scope))continue;if(!resumable[v.mode]&&v.cards.slice(v.index).some(c=>cards.some(l=>l.id===c.id&&l.version===c.version&&l.progressVersion===c.progressVersion)))resumable[v.mode]={id:v.id,index:v.index,total:v.cards.length,title:v.cards[0]?.source.title??'句子学习'};}
+    for(const row of sessions){const v=JSON.parse(row.view_json) as SentenceSession;if(scope.type!=='all'&&keyOf(scope)!==keyOf(v.scope))continue;const pending=v.experienceVersion==='context-workspace-v1'?v.cards:v.cards.slice(v.index);if(!resumable[v.mode]&&pending.some(c=>cards.some(l=>!l.unavailable&&l.id===c.id&&l.version===c.version&&(v.experienceVersion==='context-workspace-v1'||l.progressVersion===c.progressVersion))))resumable[v.mode]={id:v.id,index:v.index,total:v.cards.length,title:v.cards[0]?.source.title??'句子学习'};}
     const sourceOptions=[...catalogue.sources];
     if(scope.type==='all'||scope.type==='collection'&&scope.id==='ielts'){
       const questions=await db.all<{id:string;text:string;text_zh:string;part:number;topic_id:string|null;topic:string}>(sql`SELECT q.id,q.text,q.text_zh,q.part,q.topic_id,COALESCE(t.name_zh,t.name_en,'未标注') topic FROM questions q LEFT JOIN topics t ON t.id=q.topic_id ORDER BY q.part,q.id`);
@@ -44,8 +65,8 @@ export function createSentenceService(database:DatabasePort,platform:{now:()=>Da
         if(!sourceOptions.some(s=>s.type==='question'&&s.id===q.id))sourceOptions.push({id:q.id,type:'question',title:q.text_zh||q.text,textEn:q.text,part:q.part,topicId:q.topic_id,topic:q.topic,seasons,materialId:null,totalCount:0,newCount:0,dueCount:0,materialStatus:catalogue.materialStates.find(m=>m.questionId===q.id)?.status??null,href:`/questions/${q.id}/practice`});
       }
     }
-    const [{count}]=await db.all<{count:number}>(sql`SELECT COUNT(*) count FROM sentence_study_progress`);
-    return {scope,totalCount:cards.length,newCount:cards.filter(c=>!progress.has(c.id)).length,dueCount:cards.filter(c=>Date.parse(progress.get(c.id)?.due_at??'')<=now.getTime()).length,studiedCount:Number(count),unavailableCount:catalogue.unavailableCount,resumable,sources:sourceOptions};
+    const [{count}]=await db.all<{count:number}>(sql`SELECT COUNT(*) count FROM (SELECT sentence_id FROM sentence_study_progress UNION SELECT sentence_id FROM sentence_exposures)`);
+    return {scope,totalCount:cards.filter(c=>!c.unavailable).length,newCount:cards.filter(c=>sentenceIsNew(c,progress)).length,dueCount:cards.filter(c=>sentenceIsTarget(c)&&Date.parse(sentenceDueAt(c,progress)??'')<=now.getTime()).length,studiedCount:Number(count),unavailableCount:catalogue.unavailableCount,resumable,sources:sourceOptions};
   });}
   async function get(id:string){return database.read(async db=>availableView(db,await readSession(db,id)));}
   async function create(raw:unknown){const input=sentenceCreateSchema.parse(raw),requestHash=hash(JSON.stringify(input)),now=platform.now();
@@ -54,17 +75,24 @@ export function createSentenceService(database:DatabasePort,platform:{now:()=>Da
       if(existing){if(existing.request_hash!==requestHash)throw new SentenceStudyError('请求编号已用于另一范围',409,'request_conflict');return existing.id;}
       if(input.resumeSessionId){const prior=await readSession(tx,input.resumeSessionId);if(prior.mode!==input.mode)throw new SentenceStudyError('恢复模式不一致');if(input.scope.type!=='all'&&keyOf(input.scope)!==keyOf(prior.scope))throw new SentenceStudyError('恢复范围不一致');return prior.id;}
       const catalogue=await readSentenceCatalogue(tx,input.scope,now);
-      let cards=catalogue.cards.filter(c=>input.mode==='learn'?!catalogue.progress.has(c.id):Date.parse(catalogue.progress.get(c.id)?.due_at??'')<=now.getTime());
+      const context=input.experienceVersion==='context-workspace-v1';
+      let cards=catalogue.cards.filter(c=>sentenceIsTarget(c)&&(input.mode==='learn'?context?sentenceIsNew(c,catalogue.progress):!catalogue.progress.has(c.id):Date.parse(context?sentenceDueAt(c,catalogue.progress)??'':catalogue.progress.get(c.id)?.due_at??'')<=now.getTime()));
       if(input.scope.type==='all'||input.scope.type==='collection'){
         const groups=[...new Set(cards.filter(c=>input.mode==='review'||input.scope.type==='collection'&&input.scope.id==='free_talk'||!!c.source.questionId).map(sentenceGroup))];
-        if(input.mode==='review')groups.sort((a,b)=>Math.min(...cards.filter(c=>sentenceGroup(c)===a).map(c=>Date.parse(catalogue.progress.get(c.id)!.due_at)))-Math.min(...cards.filter(c=>sentenceGroup(c)===b).map(c=>Date.parse(catalogue.progress.get(c.id)!.due_at))));
+        if(input.mode==='review')groups.sort((a,b)=>Math.min(...cards.filter(c=>sentenceGroup(c)===a).map(c=>Date.parse(sentenceDueAt(c,catalogue.progress)!)))-Math.min(...cards.filter(c=>sentenceGroup(c)===b).map(c=>Date.parse(sentenceDueAt(c,catalogue.progress)!))));
         const chosen=groups[input.mode==='learn'?Math.min(groups.length-1,Math.floor((platform.random?.()??Math.random())*groups.length)):0];cards=cards.filter(c=>sentenceGroup(c)===chosen);
+      }
+      const targetIds=cards.map(c=>c.id);
+      if(context){
+        const selected=cards[0]??(input.scope.type!=='all'&&input.scope.type!=='collection'?catalogue.cards.find(c=>!c.unavailable):undefined);
+        if(selected)cards=catalogue.cards.filter(c=>c.materialId===selected.materialId);
       }
       if(!cards.length)throw new SentenceStudyError(input.mode==='review'?'这个范围暂时没有到期句子':'这个范围暂时没有新句子，请选择题目准备材料',409,'no_sentences');
       cards.sort((a,b)=>a.ordinal-b.ordinal);
       const first=cards[0],scope:SentenceScope=first.source.questionId?{type:'question',id:first.source.questionId}:{type:'conversation',id:first.source.id};
       const actualScope=input.scope.type==='material'?input.scope:scope;
       const v:SentenceSession={id:`ss_${platform.newId()}`,scope:actualScope,mode:input.mode,status:'active',version:0,cards,index:0,revealed:false,assessments:[],lastRatingEventId:null,nextDueAt:null,notice:null,...(input.experienceVersion?{experienceVersion:input.experienceVersion,stage:'recall' as const,practice:emptySentencePractice()}:{})};
+      if(context){v.targetIds=targetIds.filter(id=>cards.some(c=>c.id===id));v.practiceByUnit={};focusSentence(v,cards.find(c=>!c.unavailable)!.id);}
       await tx.run(sql`INSERT INTO sentence_study_sessions(id,scope_json,scope_key,mode,status,view_json,request_id,request_hash,created_at,updated_at) VALUES(${v.id},${JSON.stringify(v.scope)},${keyOf(v.scope)},${v.mode},'active',${JSON.stringify(v)},${input.clientRequestId},${requestHash},${now.toISOString()},${now.toISOString()})`);
       return v.id;
     });return get(id);
@@ -74,31 +102,61 @@ export function createSentenceService(database:DatabasePort,platform:{now:()=>Da
     const [receipt]=await tx.all<EventRow>(sql`SELECT * FROM sentence_study_events WHERE session_id=${id} AND client_event_id=${input.clientEventId}`);
     if(receipt){if(receipt.payload_hash!==payloadHash)throw new SentenceStudyError('同一操作编号对应了不同内容',409,'event_conflict');return availableView(tx,v);}
     if(v.version!==input.version)throw new SentenceStudyError('另一窗口已更新，请恢复最新位置',409,'version_conflict');
+    if(input.experienceVersion==='context-workspace-v1'&&v.experienceVersion!=='context-workspace-v1'&&input.type!=='upgrade_experience')throw new SentenceStudyError('请先恢复并升级本次学习，旧事件仍保留。',409,'client_update_required');
     if(v.experienceVersion&&(input.type==='rate'||input.type==='reveal')&&input.experienceVersion!==v.experienceVersion)throw new SentenceStudyError('学习界面已更新，请刷新页面后继续；原记录仍保留。',409,'client_update_required');
+    if(v.experienceVersion==='context-workspace-v1'&&('sentenceId'in input||input.type==='revise_rating')&&input.experienceVersion!=='context-workspace-v1')throw new SentenceStudyError('学习协议已更新，旧操作保留，请先恢复。',409,'client_update_required');
     if(input.type==='resume')v=await availableView(tx,v,true);
     // Validate the transition before touching scheduling state.
     const next=projectSentenceEvent(v,input,stamp);
+    if(input.type==='upgrade_experience'&&input.experienceVersion==='context-workspace-v1'&&v.experienceVersion!=='context-workspace-v1'){
+      const catalogue=await readSentenceCatalogue(tx,v.scope,platform.now()),materialId=v.cards[v.index]?.materialId??v.cards[0]?.materialId;
+      const full=catalogue.cards.filter(c=>c.materialId===materialId);
+      if(full.length){
+        const originalFocus=next.focusId;next.cards=full;
+        next.targetIds=next.targetIds?.filter(id=>full.some(c=>c.id===id&&sentenceIsTarget(c)&&v.cards.find(old=>old.id===id)?.progressVersion===c.progressVersion));
+        focusSentence(next,full.find(c=>c.id===originalFocus&&!c.unavailable)?.id??full.find(c=>!c.unavailable)?.id??full[0].id);
+      }
+    }
     let before:SentenceProgress|undefined,afterVersion:number|null=null,sentenceId:string|null=null,due:string|null=v.nextDueAt;
     if('sentenceId'in input){
-      const card=v.cards[v.index],current=await readSentenceCatalogue(tx,v.scope,platform.now()),unit=current.cards.find(c=>c.id===input.sentenceId);
-      if(!card||!unit||card.version!==unit.version||card.id!==input.sentenceId)throw new SentenceStudyError('句子已更新，原进度保留',409,'material_changed');
+      const card=v.experienceVersion==='context-workspace-v1'?v.cards.find(c=>c.id===input.sentenceId):v.cards[v.index],current=await readSentenceCatalogue(tx,v.scope,platform.now()),unit=current.cards.find(c=>c.id===input.sentenceId);
+      if(!card||!unit||unit.unavailable||card.version!==unit.version||card.id!==input.sentenceId||card.materialId!==unit.materialId)throw new SentenceStudyError('句子已更新，原进度保留',409,'material_changed');
       sentenceId=card.id;
-      if(input.type==='rate'){
+      const isContext=v.experienceVersion==='context-workspace-v1',scheduled=input.type==='rate'&&(!isContext||((v.targetIds??[]).includes(card.id)&&!v.assessments.some(a=>a.sentenceId===card.id)&&sentenceIsTarget(unit)));
+      if(isContext&&!sentenceIsTarget(unit))next.targetIds=next.targetIds?.filter(target=>target!==card.id);
+      if(input.type==='rate'&&isContext&&!scheduled){
+        next.assessments=next.assessments.filter(a=>a.eventId!==input.clientEventId);next.lastRatingEventId=v.lastRatingEventId;
+      }
+      if(scheduled&&input.type==='rate'){
         [before]=await tx.all<SentenceProgress>(sql`SELECT * FROM sentence_study_progress WHERE sentence_id=${card.id}`);
         if((before?.version??0)!==card.progressVersion)throw new SentenceStudyError('这句话已在另一个会话更新，请恢复位置',409,'progress_conflict');
         afterVersion=(before?.version??0)+1;due=await putProgress(tx,card.id,before,input.rating,stamp,afterVersion);
+      }
+      if(isContext){
+        const priorPractice=v.practiceByUnit?.[sentencePracticeKey(card)]??emptySentencePractice();
+        const source=input.type==='exposure'?input.source:input.type==='enter_teaching'?'teaching':['reveal','reveal_retry'].includes(input.type)?'reveal':input.type==='checkpoint'&&(input.revealCount>priorPractice.revealCount||input.maxRevealCount>priorPractice.maxRevealCount)?'reveal':null;
+        if(source){
+          const firstDue=new Date(Date.parse(stamp)+24*60*60*1000).toISOString();
+          await tx.run(sql`INSERT INTO sentence_exposures(sentence_id,unit_version,first_exposed_at,last_exposed_at,first_review_due_at) VALUES(${card.id},${card.version},${stamp},${stamp},${firstDue}) ON CONFLICT(sentence_id,unit_version) DO UPDATE SET last_exposed_at=excluded.last_exposed_at`);
+          await tx.run(sql`INSERT INTO sentence_exposure_events(session_id,client_event_id,sentence_id,unit_version,source,created_at) VALUES(${id},${input.clientEventId},${card.id},${card.version},${source},${stamp})`);
+        }
+        if(input.type!=='focus')await tx.run(sql`INSERT INTO sentence_practice_evidence(session_id,client_event_id,sentence_id,unit_version,kind,payload_json,scheduled,created_at) VALUES(${id},${input.clientEventId},${card.id},${card.version},${input.type},${JSON.stringify(input)},${scheduled?1:0},${stamp})`);
       }
     }else if(input.type==='revise_rating'){
       const [original]=await tx.all<EventRow>(sql`SELECT * FROM sentence_study_events WHERE session_id=${id} AND client_event_id=${input.targetEventId} AND kind='rate'`);
       if(!original?.sentence_id||v.lastRatingEventId!==input.targetEventId)throw new SentenceStudyError('只能修改最近一次评分',409,'rating_changed');
       sentenceId=original.sentence_id;[before]=await tx.all<SentenceProgress>(sql`SELECT * FROM sentence_study_progress WHERE sentence_id=${sentenceId}`);
+      if(v.experienceVersion==='context-workspace-v1'){
+        const card=v.cards.find(c=>c.id===sentenceId),catalogue=await readSentenceCatalogue(tx,v.scope,platform.now()),current=catalogue.cards.find(c=>c.id===sentenceId);
+        if(!card||!current||current.unavailable||card.version!==current.version)throw new SentenceStudyError('原评分的句子版本已变化，不能覆盖',409,'material_changed');
+      }
       if(!before||before.version!==original.after_progress_version)throw new SentenceStudyError('这句话已经有更新的学习记录，不能覆盖',409,'progress_conflict');
       const originalBefore=original.before_progress_json?JSON.parse(original.before_progress_json) as SentenceProgress:undefined;
       afterVersion=before.version+1;due=await putProgress(tx,sentenceId,originalBefore,input.rating,original.created_at,afterVersion);
       await tx.run(sql`UPDATE sentence_study_events SET after_progress_version=${afterVersion} WHERE session_id=${id} AND client_event_id=${original.client_event_id}`);
     }
     next.nextDueAt=due;
-    if(input.type==='rate')next.cards[next.experienceVersion?next.index:next.index-1].progressVersion=afterVersion!;
+    if(input.type==='rate'&&afterVersion!==null){const rated=next.cards.find(c=>c.id===sentenceId);if(rated)rated.progressVersion=afterVersion;}
     if(input.type==='revise_rating'&&sentenceId){const card=next.cards.find(c=>c.id===sentenceId);if(card)card.progressVersion=afterVersion!;}
     const nextDues=await tx.all<{due_at:string}>(sql`SELECT p.due_at FROM sentence_study_progress p WHERE p.sentence_id IN (${{sql:next.assessments.map(()=>'?').join(',')||'NULL',args:next.assessments.map(a=>a.sentenceId)}}) ORDER BY p.due_at`);
     next.nextDueAt=nextDues[0]?.due_at??null;

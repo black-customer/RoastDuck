@@ -4,11 +4,14 @@ import {
   DEFAULT_VOICE_PRESET,
   type SpeechStyle,
   type MimoVoice,
+  type SpeechRole,
 } from "@/lib/speech/contracts";
 import {LightAudioPlayer,type LightAudioState,type PlaybackMode} from '@/lib/light-study/audio';
-import {getSpeechPreferences,legacyPresetFor,resolveSpeechSelection,setSpeechPreferences,subscribeSpeechPreferences} from '@/lib/speech/preferences';
+import {getSpeechPreferences,hydrateSpeechPreferences,legacyPresetFor,resolveSpeechSelection,setSpeechPreferences,subscribeSpeechPreferences} from '@/lib/speech/preferences';
+import {recordingActive,STOP_AUDIO_EVENT} from '@/lib/speech/recording-coordinator';
 
 export interface SpeakOptions {
+  role?:SpeechRole;
   rate?: number;
   lang?: string;
   voiceId?: VoicePresetId;
@@ -26,9 +29,10 @@ export interface SpeakOptions {
 
 /** 单次明确声线优先，其次来源口音；未指定时才使用用户的默认声线。 */
 export function resolveVoicePreset(active: VoicePresetId, options?: SpeakOptions) {
-  const selected = VOICE_PRESETS.find((p) => p.id === (options?.voiceId ?? active)) ?? VOICE_PRESETS.find(p => p.id === DEFAULT_VOICE_PRESET)!;
+  const roleDefault=options?.role?legacyPresetFor(getSpeechPreferences(options.role)):active;
+  const selected = VOICE_PRESETS.find((p) => p.id === (options?.voiceId ?? roleDefault)) ?? VOICE_PRESETS.find(p => p.id === DEFAULT_VOICE_PRESET)!;
   const accent=options?.lang==='en-US'||options?.lang==='en-GB'?options.lang:undefined;
-  const actual=resolveSpeechSelection({voiceId:selected.id,voice:options?.voice,accent});
+  const actual=resolveSpeechSelection({voiceId:selected.id,voice:options?.voice,accent,role:options?.role});
   return {...selected,mimoVoice:actual.voice,accent:actual.accent,gender:actual.voice==='Milo'||actual.voice==='Dean'?'male' as const:'female' as const};
 }
 
@@ -39,6 +43,7 @@ export interface TTSProvider {
   setVoice(voiceId: VoicePresetId): void;
   getVoice(): VoicePresetId;
   readonly name: string;
+  dispose?:()=>void;
 }
 
 const VOICE_STORAGE_KEY = "roastduck_active_voice";
@@ -105,10 +110,12 @@ class WebSpeechProvider implements TTSProvider {
   private playbackId = 0;
   private utterances:SpeechSynthesisUtterance[]=[];
   private unsubscribePreferences:(()=>void)|null=null;
+  private stopListener=()=>this.stop();
 
   constructor() {
     if (typeof window !== "undefined") {
       this.activeVoiceId = getStoredVoicePreference();
+      window.addEventListener?.(STOP_AUDIO_EVENT,this.stopListener);
     }
   }
 
@@ -122,6 +129,7 @@ class WebSpeechProvider implements TTSProvider {
   }
 
   speak(text: string, opts?: SpeakOptions): void {
+    if(recordingActive()){opts?.onState?.({phase:'blocked',provider:null,errorCode:'recording_active',message:'请先停止录音，再播放声音'});return;}
     if (typeof window === "undefined" || !window.speechSynthesis) { opts?.onError?.(new Error("browser_tts_unavailable")); return; }
     this.stop();
     const playbackId = this.playbackId;
@@ -136,8 +144,6 @@ class WebSpeechProvider implements TTSProvider {
     const voiceId = legacyPresetFor({voice:preset.mimoVoice,accent:preset.accent});
     const bestVoice = pickSpeechVoice(window.speechSynthesis.getVoices(),voiceId,opts?.localOnly);
     if(opts?.localOnly&&!bestVoice){opts.onError?.(new Error('local_voice_unavailable'));return;}
-    opts?.onState?.({phase:'playing',provider:'browser',voice:bestVoice?.name,
-      message:bestVoice?`${bestVoice.localService?'本机':'浏览器'}声音 · ${bestVoice.name}`:'浏览器默认声音'});
 
     // Split text into natural sentence fragments to prevent Chromium stutter/timeout bug
     const sentences = splitSentencesForTts(clean);
@@ -151,7 +157,7 @@ class WebSpeechProvider implements TTSProvider {
     this.unsubscribePreferences=subscribeSpeechPreferences(preferences=>{
       // Web Speech engines apply changes at utterance boundaries; never restart spoken text.
       for(const utterance of this.utterances)utterance.rate=preferences.playbackRate;
-    });
+    },opts?.role);
 
     // Queue utterances natively in browser speech synthesis engine to eliminate JS delays
     const total = sentences.length;
@@ -160,8 +166,9 @@ class WebSpeechProvider implements TTSProvider {
       const u = new SpeechSynthesisUtterance(sentenceText);
       if (bestVoice) u.voice = bestVoice;
       u.lang = bestVoice?.lang ?? preset.accent;
-      u.rate = opts?.rate ?? getSpeechPreferences().playbackRate;
+      u.rate = opts?.rate ?? getSpeechPreferences(opts?.role).playbackRate;
       this.utterances.push(u);
+      if(i===0)u.onstart=()=>{if(this.playbackId!==playbackId)return;if(recordingActive()){this.stop();return;}opts?.onState?.({phase:'playing',provider:'browser',voice:bestVoice?.name??'浏览器默认声音',message:bestVoice?`${bestVoice.localService?'本机':'浏览器'}声音 · ${bestVoice.name}`:'浏览器默认声音'});};
 
       if (i === total - 1) {
         u.onend = () => {
@@ -206,9 +213,11 @@ class WebSpeechProvider implements TTSProvider {
     this.playbackId++;
     this.isSpeaking = false;
     this.clearKeepalive();
+    this.utterances=[];this.unsubscribePreferences?.();this.unsubscribePreferences=null;
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
   }
+  dispose(){this.stop();if(typeof window!=='undefined')window.removeEventListener?.(STOP_AUDIO_EVENT,this.stopListener);}
 }
 
 class ServerTtsProvider implements TTSProvider {
@@ -217,6 +226,7 @@ class ServerTtsProvider implements TTSProvider {
   private player:LightAudioPlayer;
   private options:SpeakOptions|undefined;
   private began=false;
+  private requestGeneration=0;
   constructor(private readonly fallback:TTSProvider){
     this.activeVoiceId=getStoredVoicePreference();
     this.player=new LightAudioPlayer(fallback,state=>{
@@ -225,16 +235,19 @@ class ServerTtsProvider implements TTSProvider {
       if(state.phase==='idle'&&state.provider&&this.began){this.began=false;this.options?.onEnd?.();}
       if(state.phase==='error')this.options?.onError?.(new Error(state.message));
     });
+    if(typeof window!=='undefined')window.addEventListener?.(STOP_AUDIO_EVENT,()=>this.stop());
+    void hydrateSpeechPreferences();
   }
   getVoice(){return legacyPresetFor(getSpeechPreferences());}
   setVoice(id:VoicePresetId){this.activeVoiceId=id;setStoredVoicePreference(id);this.fallback.setVoice(id);}
   speak(text:string,opts?:SpeakOptions){
+    if(recordingActive()){opts?.onState?.({phase:'blocked',provider:null,errorCode:'recording_active',message:'请先停止录音，再播放声音'});return;}
     this.stop(undefined,true);if(!text.trim()){this.player.prime(null,null,false);opts?.onEnd?.();return;}
     this.options=opts;
-    const preset=resolveVoicePreset(this.getVoice(),opts),input={text:text.trim(),voiceId:preset.id,voice:preset.mimoVoice,accent:preset.accent,rate:opts?.rate,retryUnknown:opts?.retryUnknown,style:opts?.style,playbackMode:opts?.playbackMode};
-    this.player.prime(input,null,false);void this.player.play(input);
+    const generation=this.requestGeneration;
+    void hydrateSpeechPreferences().then(()=>{if(generation!==this.requestGeneration||recordingActive())return;const preset=resolveVoicePreset(this.getVoice(),opts),input={text:text.trim(),voiceId:preset.id,voice:preset.mimoVoice,accent:preset.accent,rate:opts?.rate,retryUnknown:opts?.retryUnknown,style:opts?.style,playbackMode:opts?.playbackMode,role:opts?.role};this.player.prime(input,null,false);void this.player.play(input);});
   }
-  stop(ownerId?:string,preserveAudio=false){if(ownerId&&this.options?.ownerId!==ownerId)return;const previous=this.options;this.options=undefined;this.began=false;if(!preserveAudio)this.player.prime(null,null,false);this.player.stop();previous?.onState?.({phase:'idle',provider:null,message:''});}
+  stop(ownerId?:string,preserveAudio=false){if(ownerId&&this.options?.ownerId!==ownerId)return;this.requestGeneration++;const previous=this.options;this.options=undefined;this.began=false;if(!preserveAudio)this.player.prime(null,null,false);this.player.stop();previous?.onState?.({phase:'idle',provider:null,message:''});}
 }
 
 let provider: TTSProvider | null = null;

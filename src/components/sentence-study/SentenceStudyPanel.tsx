@@ -15,6 +15,7 @@ import {HighlightText} from './HighlightText';
 import {GuidedReveal} from './GuidedReveal';
 import {SentenceTeaching} from './SentenceTeaching';
 import styles from './SentenceStudy.module.css';
+import {ContextWorkspace} from './ContextWorkspace';
 
 const ratings:Array<{value:SentenceRating;label:string;hint:string}>=[
   {value:'remembered',label:'脱口而出',hint:'自己顺畅、自然地表达出来'},
@@ -42,7 +43,9 @@ export function SentenceReading({card}:{card:SentenceCard}){
   return card.unavailable?<p className={styles.english} lang="en">{card.english}</p>:<HighlightText card={card} language="en" as="p" className={styles.english} initialHighlights={card.userHighlights}/>;
 }
 
-export function SentenceStudyPanel({sessionId,input,initialError,resumeOnLoad=false}:{sessionId?:string;input:SentenceCreate;initialError?:string;resumeOnLoad?:boolean}){
+type StudyPanelProps={sessionId?:string;input:SentenceCreate;initialError?:string;resumeOnLoad?:boolean};
+export function SentenceStudyPanel(props:StudyPanelProps){return props.input.experienceVersion==='guided-reveal-v1'?<LegacySentenceStudyPanel {...props}/>:<ContextWorkspace {...props}/>;}
+function LegacySentenceStudyPanel({sessionId,input,initialError,resumeOnLoad=false}:StudyPanelProps){
   const router=useRouter(),scratchId=useId(),retryId=useId();
   const controller=useRef<SentenceController|null>(null),heading=useRef<HTMLHeadingElement>(null),audio=useRef<LightAudioPlayer|null>(null);
   const previousDialog=useRef<HTMLDialogElement>(null),previousTrigger=useRef<HTMLElement|null>(null),stageAction=useRef<HTMLButtonElement>(null);
@@ -65,7 +68,7 @@ export function SentenceStudyPanel({sessionId,input,initialError,resumeOnLoad=fa
 
   useEffect(()=>{
     active.current=true;setLocalError(initialError??'');
-    const manager=new SentenceController();controller.current=manager;
+    const manager=new SentenceController(undefined,undefined,{guided:true});controller.current=manager;
     const update=()=>{if(active.current)setState(manager.getSnapshot());};
     const unsubscribe=manager.subscribe(update);update();
     if(!initialError){

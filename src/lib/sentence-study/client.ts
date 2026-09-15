@@ -1,4 +1,4 @@
-import {SentenceStudyError,projectSentenceEvent,emptySentencePractice,sentenceWordCount,type SentencePractice,type SentenceScope,type SentenceOverview,type SentenceSession,type SentenceCreate,type SentenceEvent,type SentenceRating} from './contracts';
+import {SentenceStudyError,projectSentenceEvent,emptySentencePractice,sentenceWordCount,sentencePracticeKey,type SentenceExperience,type SentencePractice,type SentenceScope,type SentenceOverview,type SentenceSession,type SentenceCreate,type SentenceEvent,type SentenceRating} from './contracts';
 export function sentenceScopeQuery(scope:SentenceScope){const p=new URLSearchParams({scope:scope.type});if('id'in scope)p.set('id',scope.id);if(scope.type==='collection')for(const k of ['questionId','topicId','seasonId'] as const)if(scope[k])p.set(k,scope[k]);return p.toString();}
 export interface SentenceClient {overview(scope:SentenceScope):Promise<SentenceOverview>;create(input:SentenceCreate):Promise<SentenceSession>;get(id:string):Promise<SentenceSession>;event(id:string,event:SentenceEvent):Promise<SentenceSession>}
 type ErrorContext='read'|'request'|'local'|'queued';
@@ -34,8 +34,12 @@ export interface SentenceClientState {view:SentenceSession|null;pending:number;s
 interface Saved {view:SentenceSession;queue:SentenceEvent[]}
 type LocalStore=Pick<Storage,'getItem'|'setItem'|'removeItem'>&Partial<Pick<Storage,'key'|'length'>>;
 export type PracticePatch=Partial<Pick<SentencePractice,'revealCount'|'draft'|'retryDraft'>>;
-export type SentenceAction={type:'reveal'|'pause'|'resume'|'upgrade_experience'|'enter_teaching'|'start_retry'|'reveal_retry'|'advance'}|{type:'rate';rating:SentenceRating}|{type:'revise_rating';rating:SentenceRating;targetEventId:string}|{type:'checkpoint';revealCount:number;maxRevealCount:number;draft:string;retryDraft:string};
-interface PracticeDraft {sessionId:string;sentenceId:string;unitVersion:string;version:number;stage:string;practice:SentencePractice;clientEventId:string;owner:string}
+export type SentenceAction=({type:'reveal'|'pause'|'resume'|'upgrade_experience'|'enter_teaching'|'start_retry'|'reveal_retry'|'advance'}|{type:'focus';sentenceId:string}|{type:'exposure';source:'audio'|'reveal'|'teaching'}|{type:'rate';rating:SentenceRating}|{type:'revise_rating';rating:SentenceRating;targetEventId:string}|{type:'checkpoint';revealCount:number;maxRevealCount:number;draft:string;retryDraft:string;expanded?:string|null})&{sentenceId?:string;unitVersion?:string};
+interface PracticeDraft {sessionId:string;sentenceId:string;unitVersion:string;version:number;stage:string;practice:SentencePractice;clientEventId:string;owner:string;experienceVersion?:SentenceExperience}
+function withPractice(view:SentenceSession,practice:SentencePractice):SentenceSession{
+  const card=view.cards[view.index];
+  return {...view,practice,...(view.experienceVersion==='context-workspace-v1'&&card?{practiceByUnit:{...view.practiceByUnit,[sentencePracticeKey(card)]:{...view.practiceByUnit?.[sentencePracticeKey(card)],...practice,stage:view.stage??'recall'}}}:{})};
+}
 export interface SentenceBrowserContext {sessionStorage:Pick<Storage,'getItem'|'setItem'>;locks?:Pick<LockManager,'request'>}
 const writerKey='roastduck_sentence_tab';
 function browserContext():SentenceBrowserContext|null{if(typeof window==='undefined')return null;try{return {sessionStorage:window.sessionStorage,locks:window.navigator.locks};}catch{return {sessionStorage:{getItem:()=>null,setItem:()=>{throw new Error('浏览器无法保留窗口身份，请允许本机存储后重试。');}}};}}
@@ -51,9 +55,9 @@ function reserveWriter(locks:Pick<LockManager,'request'>,id:string):Promise<(()=
 export class SentenceController {
   private state:SentenceClientState={view:null,pending:0,saving:false,error:null,loading:false,conflict:false};
   private queue:SentenceEvent[]=[];private listeners=new Set<()=>void>();private running=false;private disposed=false;private generation=0;
-  private draft:PracticeDraft|null=null;private draftTimer:ReturnType<typeof setTimeout>|null=null;private guided:boolean;private writerId:string;
+  private draft:PracticeDraft|null=null;private draftTimer:ReturnType<typeof setTimeout>|null=null;private guided:boolean;private context:boolean;private writerId:string;
   private practiceFlush:Promise<void>|null=null;private writerReady:Promise<void>|null=null;private releaseWriter:(()=>void)|null=null;private browser:SentenceBrowserContext|null;
-  constructor(private client:SentenceClient=sentenceClient,private storage:LocalStore|null=localStorageOrNull(),options:{guided?:boolean;writerId?:string;browser?:SentenceBrowserContext}={}){this.guided=options.guided??client===sentenceClient;this.writerId=options.writerId??crypto.randomUUID();this.browser=options.writerId?null:options.browser??browserContext();}
+  constructor(private client:SentenceClient=sentenceClient,private storage:LocalStore|null=localStorageOrNull(),options:{guided?:boolean;context?:boolean;writerId?:string;browser?:SentenceBrowserContext}={}){this.guided=options.guided??client===sentenceClient;this.context=options.context??(options.guided===undefined&&client===sentenceClient);this.writerId=options.writerId??crypto.randomUUID();this.browser=options.writerId?null:options.browser??browserContext();}
   private async ensureWriter(){if(!this.browser)return;if(this.writerReady)return this.writerReady;const browser=this.browser;
     this.writerReady=(async()=>{
       if(!browser.locks?.request)throw new SentenceStudyError('此浏览器暂不支持多窗口草稿保护。请用新版 Chrome 或 Edge 打开；原草稿保留，不会覆盖。',503,'writer_lock_unavailable');
@@ -86,26 +90,26 @@ export class SentenceController {
       if(card?.id===draft.sentenceId&&JSON.stringify(view.practice)===JSON.stringify(draft.practice)){try{this.storage?.removeItem(this.draftKey(draft));}catch{}return;}
       this.update({conflict:true,error:'草稿对应的位置已经变化，请恢复；原草稿不会套到下一句。'});return;
     }
-    this.draft=draft;this.update({view:{...view,practice:draft.practice}});
+    this.draft=draft;this.update({view:withPractice(view,draft.practice)});
   }
-  updatePractice(patch:PracticePatch){const view=this.state.view,card=view?.cards[view.index];if(this.disposed||!view||!card||view.status!=='active'||!view.experienceVersion||this.state.conflict||this.state.error||!['recall','retry'].includes(view.stage??''))return;
+  updatePractice(patch:PracticePatch){const view=this.state.view,card=view?.cards[view.index];if(this.disposed||!view||!card||view.status!=='active'||!view.experienceVersion||this.state.conflict||this.state.error||(view.experienceVersion!=='context-workspace-v1'&&!['recall','retry'].includes(view.stage??'')))return;
     let attempted:PracticeDraft|null=null;
     try{
       const practice={...(view.practice??emptySentencePractice())};
-      if(view.stage==='recall'){
+      if(view.stage==='recall'||view.experienceVersion==='context-workspace-v1'&&view.stage!=='retry'){
         if(patch.revealCount!==undefined){practice.revealCount=Math.max(0,Math.min(sentenceWordCount(card.english),Math.floor(patch.revealCount)));practice.maxRevealCount=Math.max(practice.maxRevealCount,practice.revealCount);}
         if(patch.draft!==undefined)practice.draft=patch.draft;
       }else if(patch.retryDraft!==undefined)practice.retryDraft=patch.retryDraft;
       if(practice.draft.length>12000||practice.retryDraft.length>12000)throw new Error('草稿太长，请先保留输入并缩短本句尝试。');
-      const draft:PracticeDraft={sessionId:view.id,sentenceId:card.id,unitVersion:card.version,version:view.version,stage:view.stage!,practice,clientEventId:this.draft?.clientEventId??crypto.randomUUID(),owner:this.writerId};attempted=draft;
+      const draft:PracticeDraft={sessionId:view.id,sentenceId:card.id,unitVersion:card.version,version:view.version,stage:view.stage!,practice,clientEventId:this.draft?.clientEventId??crypto.randomUUID(),owner:this.writerId,...(view.experienceVersion?{experienceVersion:view.experienceVersion}:{})};attempted=draft;
       if(this.storedDrafts(view.id).some(d=>d.owner!==this.writerId))throw new SentenceStudyError('另一个窗口有待保存草稿，请先恢复。',409,'version_conflict');
-      if(!this.storage)throw new Error('浏览器无法保存草稿');this.storage.setItem(this.draftKey(draft),JSON.stringify(draft));this.draft=draft;this.update({view:{...view,practice}});
+      if(!this.storage)throw new Error('浏览器无法保存草稿');this.storage.setItem(this.draftKey(draft),JSON.stringify(draft));this.draft=draft;this.update({view:withPractice(view,practice)});
       if(this.draftTimer)clearTimeout(this.draftTimer);this.draftTimer=setTimeout(()=>{void this.flushPractice();},500);
     }catch(e){const conflict=e instanceof SentenceStudyError&&e.status===409;let error=sentenceErrorMessage(e,'local');
       if(attempted){
         if(conflict){try{if(!this.storage)throw new Error('浏览器无法保留本次输入，请先复制。');this.storage.setItem(`sentence_conflict_draft:${view.id}:${attempted.clientEventId}`,JSON.stringify(attempted));error='另一个窗口有待保存草稿。本次输入已单独保留，请先恢复位置。';}catch(storageError){error=sentenceErrorMessage(storageError,'local');}}
         else this.draft=attempted;
-        this.update({view:{...view,practice:attempted.practice}});
+        this.update({view:withPractice(view,attempted.practice)});
       }
       this.update({error,conflict});
     }
@@ -118,7 +122,7 @@ export class SentenceController {
     const accepted=await this.apply(action,draft.clientEventId);
     if(accepted){this.draft=null;try{this.storage?.removeItem(this.draftKey(draft));}catch{this.update({error:'草稿已提交到本机队列，但旧回执未清理；请重试确认。'});}}
   }
-  private async upgradeIfNeeded(){if(this.guided&&this.state.view&&!this.state.view.experienceVersion&&!this.state.pending&&!this.state.error&&!this.state.conflict)await this.apply({type:'upgrade_experience'});}
+  private async upgradeIfNeeded(){const view=this.state.view;if(view&&!this.draft&&!this.state.pending&&!this.state.error&&!this.state.conflict&&(this.context?view.experienceVersion!=='context-workspace-v1':this.guided&&!view.experienceVersion))await this.apply({type:'upgrade_experience'});}
   private storedEvents(id:string,fallback:SentenceEvent[]=[]){const events=new Map(fallback.map(e=>[e.clientEventId,e]));
     if(this.storage?.key&&this.storage.length!==undefined)for(let i=0;i<this.storage.length;i++){const key=this.storage.key(i);if(key?.startsWith(`sentence_event:${id}:`)){const raw=this.storage.getItem(key);if(raw){const e=JSON.parse(raw) as SentenceEvent;events.set(e.clientEventId,e);}}}
     return [...events.values()].sort((a,b)=>a.version-b.version||a.clientEventId.localeCompare(b.clientEventId));
@@ -129,11 +133,11 @@ export class SentenceController {
     const events=this.storedEvents(id,saved?.view.id===id?saved.queue:[]);
     if(saved?.view.id===id&&events.length){this.queue=events;const conflict=new Set(events.map(e=>e.version)).size!==events.length;this.update({view:saved.view,pending:this.queue.length,conflict,error:conflict?'多个窗口留下了不同操作，请恢复服务端位置；各操作仍保存在本机。':null});if(!conflict)await this.drain();}
     else {const view=await this.client.get(id);if(generation!==this.generation)return;this.queue=events;this.persist(view,events);this.update({view,pending:events.length});if(events.length)await this.drain();}
-    if(!this.state.error&&!this.state.conflict){await this.upgradeIfNeeded();this.restoreDraft();}
+    if(!this.state.error&&!this.state.conflict){this.restoreDraft();if(this.context&&this.state.view?.experienceVersion!=='context-workspace-v1'){await this.flushPractice();await this.drain();}await this.upgradeIfNeeded();}
   }catch(e){this.update({error:sentenceErrorMessage(e,'read')});}finally{this.update({loading:false});}}
   async start(input:SentenceCreate){const generation=++this.generation;this.running=false;this.update({loading:true,error:null,conflict:false});try{await this.ensureWriter();if(this.disposed||generation!==this.generation)return;const key=`sentence_start:${sentenceScopeQuery(input.scope)}:${input.mode}:${input.selection??'scope'}:${input.resumeSessionId??''}`;const raw=this.storage?.getItem(key);let actual=input;
     if(raw){const saved=JSON.parse(raw) as SentenceCreate;if(saved.scope&&saved.clientRequestId)actual=saved;}
-    if(this.guided&&!raw)actual={...actual,experienceVersion:'guided-reveal-v1'};
+    if((this.guided||this.context)&&!raw)actual={...actual,experienceVersion:this.context?'context-workspace-v1':'guided-reveal-v1'};
     this.storage?.setItem(key,JSON.stringify(actual));const view=await this.client.create(actual);if(generation!==this.generation)return;
     try{this.storage?.removeItem(key);}catch{/* confirmed on server */}
     if(this.storage?.getItem(`sentence_session:${view.id}`)||this.storedEvents(view.id).length||this.storedDrafts(view.id).length){
@@ -148,9 +152,10 @@ export class SentenceController {
   }catch(e){this.update({error:sentenceErrorMessage(e,'request')});}finally{this.update({loading:false});}}
   async apply(action:SentenceAction,receiptId?:string):Promise<boolean>{if(this.disposed||!this.state.view||this.state.conflict)return false;
     if(action.type!=='checkpoint'&&this.draft){await this.flushPractice();if(this.draft||this.state.conflict||this.state.error)return false;}
-    const view=this.state.view,card=view.cards[view.index];
+    const view=this.state.view,card=action.sentenceId?view.cards.find(c=>c.id===action.sentenceId):view.cards[view.index];
     const unitAction=!['pause','resume','revise_rating','upgrade_experience'].includes(action.type);
-    const event={...action,version:view.version,clientEventId:receiptId??crypto.randomUUID(),...(view.experienceVersion?{experienceVersion:view.experienceVersion}:{}),...(unitAction?{sentenceId:card?.id,unitVersion:card?.version}:{})} as SentenceEvent;
+    const experienceVersion=action.type==='upgrade_experience'&&this.context?'context-workspace-v1':view.experienceVersion;
+    const event={...action,version:view.version,clientEventId:receiptId??crypto.randomUUID(),...(experienceVersion?{experienceVersion}:{}),...(unitAction?{sentenceId:card?.id,unitVersion:action.unitVersion??card?.version}:{})} as SentenceEvent;
     try{
       const other=this.storedEvents(view.id).filter(e=>!this.queue.some(q=>q.clientEventId===e.clientEventId));
       if(other.length){this.update({conflict:true,error:'另一个窗口还有待保存操作，请先恢复最新位置。'});return false;}
@@ -168,7 +173,7 @@ export class SentenceController {
     for(const event of events){
       try{live=await this.client.event(live.id,event);this.storage?.removeItem(this.eventKey(live.id,event));this.queue=this.queue.filter(e=>e.clientEventId!==event.clientEventId);}
       catch(error){
-        if(!(error instanceof SentenceStudyError)||!['version_conflict','progress_conflict','material_changed','event_conflict'].includes(error.code))throw error;
+        if(!(error instanceof SentenceStudyError)||!['version_conflict','progress_conflict','material_changed','event_conflict','client_update_required'].includes(error.code))throw error;
         rejected.push(event);
       }
     }
@@ -180,26 +185,27 @@ export class SentenceController {
     }
     const drafts=this.storedDrafts(live.id);let preservedDraft=false;
     for(const draft of drafts){
-      const event:SentenceEvent={type:'checkpoint',version:draft.version,clientEventId:draft.clientEventId,sentenceId:draft.sentenceId,unitVersion:draft.unitVersion,revealCount:draft.practice.revealCount,maxRevealCount:draft.practice.maxRevealCount,draft:draft.practice.draft,retryDraft:draft.practice.retryDraft};
+      const event:SentenceEvent={type:'checkpoint',version:draft.version,clientEventId:draft.clientEventId,sentenceId:draft.sentenceId,unitVersion:draft.unitVersion,revealCount:draft.practice.revealCount,maxRevealCount:draft.practice.maxRevealCount,draft:draft.practice.draft,retryDraft:draft.practice.retryDraft,...(draft.experienceVersion?{experienceVersion:draft.experienceVersion}:{})};
       try{live=await this.client.event(live.id,event);}
-      catch(error){if(!(error instanceof SentenceStudyError)||!['version_conflict','material_changed','stage_changed','experience_required'].includes(error.code))throw error;
+      catch(error){if(!(error instanceof SentenceStudyError)||!['version_conflict','material_changed','stage_changed','experience_required','client_update_required'].includes(error.code))throw error;
         this.storage?.setItem(`sentence_conflict_draft:${live.id}:${draft.clientEventId}`,JSON.stringify(draft));preservedDraft=true;live=await this.client.get(live.id);
       }
       this.storage?.removeItem(this.draftKey(draft));
     }
     this.draft=null;
     this.persist(live,[]);this.queue=[];this.update({view:{...live,notice:rejected.length||preservedDraft?'已恢复服务端位置；被拒绝的冲突操作和原草稿保留在本机，没有套用到其他句子。':'待保存的操作已确认，已恢复真实学习位置。'},pending:0,conflict:false,error:null});
+    await this.upgradeIfNeeded();
   }catch(e){this.update({error:sentenceErrorMessage(e,this.queue.length?'queued':'request')});}finally{this.update({loading:false});}return;}
     if(this.state.view)this.queue=this.storedEvents(this.state.view.id,this.queue);
     this.update({error:null,pending:this.queue.length});await this.drain();if(!this.state.error){await this.flushPractice();await this.upgradeIfNeeded();}}
   private async drain(){if(this.running||this.state.conflict||!this.state.view)return;const generation=this.generation;this.running=true;this.update({saving:true});
     try{while(this.queue.length){const event=this.queue[0],id=this.state.view!.id;let response:SentenceSession;
-      try{response=await this.client.event(id,event);if(generation!==this.generation)return;}catch(e){if(generation!==this.generation)return;this.update({error:sentenceErrorMessage(e,'queued'),conflict:e instanceof SentenceStudyError&&['version_conflict','progress_conflict','material_changed','event_conflict'].includes(e.code)});break;}
+      try{response=await this.client.event(id,event);if(generation!==this.generation)return;}catch(e){if(generation!==this.generation)return;this.update({error:sentenceErrorMessage(e,'queued'),conflict:e instanceof SentenceStudyError&&['version_conflict','progress_conflict','material_changed','event_conflict','client_update_required'].includes(e.code)});break;}
       const remaining=this.queue.slice(1);let view=remaining.length?this.state.view!:response;
-      if(this.draft?.version===view.version&&this.draft.sentenceId===view.cards[view.index]?.id&&this.draft.stage===view.stage)view={...view,practice:this.draft.practice};
+      if(this.draft?.version===view.version&&this.draft.sentenceId===view.cards[view.index]?.id&&this.draft.stage===view.stage)view=withPractice(view,this.draft.practice);
       // If local cleanup fails, retain the acknowledged event and retry its exact id.
       try{this.persist(view,remaining);this.storage?.removeItem(this.eventKey(id,event));}catch{this.update({error:'服务端已保存，但本机回执未更新；可以重试确认。'});break;}
       this.queue=remaining;this.update({view,pending:remaining.length,error:null});
-    }}finally{if(generation===this.generation){this.running=false;this.update({saving:false});}}}
+    }}finally{if(generation===this.generation){this.running=false;this.update({saving:false});if(this.context&&!this.state.loading&&!this.queue.length&&!this.draft)void this.upgradeIfNeeded();}}}
   dispose(){this.disposed=true;this.generation++;if(this.draftTimer)clearTimeout(this.draftTimer);this.releaseWriter?.();this.releaseWriter=null;this.listeners.clear();}
 }

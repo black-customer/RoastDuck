@@ -17,22 +17,23 @@ test("回答到四步：不可跳过、错误保留、刷新恢复、移动和�
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/questions/${question}/attempts/${attempt.id}`);
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
-  await page.getByText('我的原回答（中文、英文或混合）与补充原意',{exact:true}).click();
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeVisible();
+  await page.getByText('我的原回答与补充原意',{exact:true}).click();
   await expect(page.locator('details[open]')).toContainText('I saw a 井盖 outside.');
   await expect(page.locator('details[open]')).toContainText('我在外面看到了一个井盖。');
-  await page.getByText('我的原回答（中文、英文或混合）与补充原意',{exact:true}).click();
+  await page.getByText('我的原回答与补充原意',{exact:true}).click();
   for(const width of [1440,390,320]) {
     await page.setViewportSize({width,height:1000});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.evaluate(()=>window.scrollTo(0,0));
-    await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeInViewport();
+    await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeInViewport();
     if(width!==320) await page.screenshot({path:`test-results/visual/material-evidence-${width}.png`,fullPage:true});
   }
   await page.setViewportSize({width:1440,height:1000});
   const resultAccessibility=await new AxeBuilder({page}).include(".material-result").analyze();
   expect(resultAccessibility.violations.filter((i)=>["serious","critical"].includes(i.impact??""))).toEqual([]);
-  await page.getByRole('link',{name:'拓展功能与原学习记录',exact:true}).click();
+  await page.getByText('拓展功能与旧学习记录',{exact:true}).click();
+  await page.getByRole('link',{name:'进入拓展功能',exact:true}).click();
   await page.getByRole('link',{name:/四步强化/}).click();
   const dialog = page.getByRole("dialog", { name: "四步表达强化" });
   const field = page.getByRole("textbox", { name: "你的英文表达" });
@@ -81,11 +82,11 @@ test("历史回答旧链接进入已审核句子材料，打开不触发在线�
   await page.setViewportSize({width:390,height:844});
   await page.goto("/answer-studio/e2e-historical-linked");
   await expect(page).toHaveURL(new RegExp(`/questions/${question}/attempts/${attempt.id}$`));
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeInViewport();
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeInViewport();
   await expect(page.getByText("材料处理未完成",{exact:true})).toHaveCount(0);
   expect(writes).toEqual([]);
   await page.goto(`/questions/${question}`);
-  await expect(page.getByRole('link',{name:/学习本题句子|句子学习/}).first()).toBeVisible();
+  await expect(page.getByRole('link',{name:/开始整题学习|继续整题学习|打开整题学习/}).first()).toBeVisible();
   await expect(page.getByText("回答已保存，但学习材料还没有通过发布闸门。",{exact:true})).toHaveCount(0);
   await expect(page.getByText("可借用的公共表达",{exact:true})).toHaveCount(0);
 });
@@ -98,7 +99,7 @@ test("自然表达不因升级措辞制卡，零项提示不宣称完全掌握",
   await expect(page.getByText('准备表达 0 项，修复表达 0 项。',{exact:false})).toHaveCount(1);
   await expect(page.getByRole("button",{name:"可选：四步强化",exact:true})).toHaveCount(0);
   await expect(page.locator('.material-natural-text')).toHaveText('I really like my major.');
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeVisible();
   await expect(page.getByText(/非常自然完整|意图表达非常完整自然/)).toHaveCount(0);
 });
 

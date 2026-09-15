@@ -4,7 +4,8 @@ import {expect,test} from '@playwright/test';
 test('极简首页只突出学习/复习，热力图只读，菜单和键盘入口可达',async({page})=>{
   const writes:string[]=[];page.on('request',r=>{if(r.method()!=='GET'&&r.url().includes('/api/'))writes.push(r.url());});
   await page.setViewportSize({width:1280,height:800});await page.goto('/');
-  await expect(page.getByRole('heading',{name:'我的学习记录',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'今天，想聊点什么？',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'最近十二周',exact:true})).toBeVisible();
   const actions=page.locator('[aria-label="学习与复习"]');
   await expect(actions.locator('a[aria-label="学习"],button[aria-label="学习"]')).toBeInViewport();
   await expect(actions.locator('a[aria-label="复习"],button[aria-label="复习"]')).toBeInViewport();
@@ -24,7 +25,7 @@ test('极简首页只突出学习/复习，热力图只读，菜单和键盘入�
 test('320/390窄屏保留两主动作，不被统计挤出首屏',async({page})=>{
   for(const width of [320,390]){
     await page.setViewportSize({width,height:844});await page.goto('/');
-    await expect(page.getByRole('heading',{name:'我的学习记录'})).toBeVisible();
+    await expect(page.getByRole('heading',{name:'今天，想聊点什么？',exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await expect(page.locator('[aria-label="学习与复习"]')).toBeInViewport();
     await page.getByRole('button',{name:'展开或收起导航'}).click();
@@ -46,13 +47,20 @@ test('自动组选启动丢响应，刷新重试使用同一提交与会话',asy
   await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
   await expect(page.getByRole('alert')).toBeVisible();await page.reload();
   await page.getByRole('button',{name:'帮我选一道',exact:true}).click();
-  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'试着完整说一遍',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);expect(new Set(ids).size).toBe(1);
-  await page.getByRole('button',{name:'暂停学习'}).click();
+  await page.getByRole('button',{name:'今天先到这里',exact:true}).click();
   await expect.poll(async()=>(await(await request.get(`/api/sentence-study/sessions/${id}`)).json()).session.status).toBe('paused');
-  await page.goto('/');await page.getByRole('button',{name:'学习',exact:true}).click();
-  await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
+  await page.goto('/');await page.getByRole('link',{name:'学习',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'从一道题开始',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'自己选题',exact:false})).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('session')).toBeNull();
+  await page.getByRole('button',{name:'继续上次',exact:true}).click();
+  await expect(page.getByRole('button',{name:'试着完整说一遍',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('session')).toBe(id);
+  await page.getByRole('button',{name:'暂停并换题',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'想学会哪一道题？',exact:true})).toBeVisible();
+  await expect.poll(async()=>(await(await request.get(`/api/sentence-study/sessions/${id}`)).json()).session.status).toBe('paused');
 });
 
 test('选题直接开始本题新表达，不改变范围或经过四步',async({page,request})=>{
@@ -65,8 +73,13 @@ test('选题直接开始本题新表达，不改变范围或经过四步',async(
   const sessionId=new URL(page.url()).searchParams.get('session');
   const session=(await(await request.get(`/api/sentence-study/sessions/${sessionId}`)).json()).session;
   expect(session.scope).toEqual({type:'question',id:'light-e2e-home'});expect(session.mode).toBe('learn');
+  expect(session.experienceVersion).toBe('context-workspace-v1');
+  await expect(page.locator('[data-sentence-id]')).toHaveCount(session.cards.length);
   await expect(page.getByRole('button',{name:'看自然表达与讲解',exact:true})).toBeVisible();
-  await expect(page.getByRole('textbox',{name:'写下你的尝试（可留空）',exact:true})).toHaveValue('');
   await expect(page.getByRole('slider',{name:'揭晓英文进度',exact:true})).toHaveValue('0');
   await expect(page.getByTestId('guided-english')).not.toContainText(session.cards[session.index].english);
+  await page.getByRole('button',{name:'写下我的尝试',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'我的本句尝试',exact:true})).toHaveValue('');
+  const after=(await(await request.get(`/api/sentence-study/sessions/${sessionId}`)).json()).session;
+  expect(after.assessments).toHaveLength(0);
 });

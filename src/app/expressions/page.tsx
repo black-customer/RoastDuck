@@ -4,10 +4,18 @@ import {expressionScope,expressionScopeTitle} from '@/lib/light-study/scope-link
 import styles from '@/components/expressions/ExpressionCollection.module.css';
 import {SentenceMaterials} from '@/components/sentence-study/SentenceMaterials';
 import {sentenceOverview} from '@/lib/sentence-study/service';
+import {sentenceScopeSchema} from '@/lib/sentence-study/contracts';
 export const dynamic='force-dynamic';
 export default async function ExpressionsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const params=await searchParams;
-  if(params.extension!=='1')return <SentenceMaterials overview={await sentenceOverview({type:'all'})} kind={params.id==='free_talk'?'free_talk':'ielts'}/>;
+  if(params.extension!=='1'){
+    const value=(name:string)=>typeof params[name]==='string'?params[name] as string:undefined;
+    const type=value('scope')??'collection';
+    const parsed=sentenceScopeSchema.safeParse(type==='all'?{type}:{type,id:value('id')??'ielts',...(type==='collection'?{questionId:value('questionId'),topicId:value('topicId'),seasonId:value('seasonId')}:{})});
+    if(!parsed.success)return <div className="page-content"><p role="alert">材料范围不正确，请从学习材料重新进入。</p><Link href="/expressions">我的学习材料</Link></div>;
+    const scope=parsed.data;
+    return <SentenceMaterials overview={await sentenceOverview({type:'all'})} kind={scope.type==='collection'&&scope.id==='free_talk'||scope.type==='conversation'?'free_talk':'ielts'} initialScope={scope} initialQuery={value('q')??''}/>;
+  }
   const parsed=expressionScope(params);
   if(!parsed.success)return <div className="page-content"><p role="alert">表达范围不正确，请从我的表达重新进入。</p><Link href="/expressions">我的表达</Link></div>;
   const scope=parsed.data;

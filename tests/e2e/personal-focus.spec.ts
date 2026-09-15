@@ -3,20 +3,27 @@ import {readFileSync} from 'node:fs';
 
 const appVersion=(JSON.parse(readFileSync(new URL('../../package.json',import.meta.url),'utf8')) as {version:string}).version;
 
-test('Milo美式默认、独立口音与倍速可保存，改设置不合成音频',async({page})=>{
+test('Milo美式默认、独立口音与倍速可保存，改设置不合成音频',async({page,request})=>{
+  const defaults={version:4,learning:{voice:'Milo',accent:'en-US'},teacher:{voice:'Chloe',accent:'en-US'},playbackRate:1};
+  expect((await request.patch('/api/speech/preferences',{data:{preferences:defaults}})).ok()).toBe(true);
   let synthesis=0;
   page.on('request',request=>{if(request.url().includes('/api/speech/synthesis'))synthesis++;});
   await page.goto('/settings');
-  await expect(page.getByRole('combobox',{name:'声音',exact:true})).toHaveValue('Milo');
-  await expect(page.getByRole('combobox',{name:'口音',exact:true})).toHaveValue('en-US');
-  await page.getByRole('combobox',{name:'播放速度',exact:true}).selectOption('1.2');
-  await page.getByRole('combobox',{name:'口音',exact:true}).selectOption('en-GB');
-  await expect(page.getByRole('combobox',{name:'声音',exact:true})).toHaveValue('Milo');
-  await page.reload();await expect(page.getByRole('combobox',{name:'播放速度',exact:true})).toHaveValue('1.2');
-  await expect(page.getByRole('combobox',{name:'口音',exact:true})).toHaveValue('en-GB');
-  await page.getByRole('combobox',{name:'口音',exact:true}).selectOption('en-US');
+  await expect(page.getByRole('combobox',{name:'学习声音',exact:true})).toHaveValue('Milo');
+  await expect(page.getByRole('combobox',{name:'学习口音',exact:true})).toHaveValue('en-US');
+  await expect(page.getByRole('combobox',{name:'老师声音',exact:true})).toHaveValue('Chloe');
+  const speeds=page.getByRole('combobox',{name:'播放速度',exact:true});await expect(speeds).toHaveCount(2);
+  await speeds.first().selectOption('1.2');await expect(speeds.nth(1)).toHaveValue('1.2');
+  await page.getByRole('combobox',{name:'学习口音',exact:true}).selectOption('en-GB');
+  await expect(page.getByRole('combobox',{name:'学习声音',exact:true})).toHaveValue('Milo');
+  await expect(page.getByRole('combobox',{name:'老师口音',exact:true})).toHaveValue('en-US');
+  await page.reload();await expect(speeds.first()).toHaveValue('1.2');
+  await expect(page.getByRole('combobox',{name:'学习口音',exact:true})).toHaveValue('en-GB');
+  await page.getByRole('combobox',{name:'学习口音',exact:true}).selectOption('en-US');
   for(const width of [1440,390,320]){await page.setViewportSize({width,height:950});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/visual/personal-focus-settings-${width}.png`,fullPage:true});}
   expect(synthesis).toBe(0);await expect(page.getByText(`鱼块学英语 · v${appVersion} · 本机网页版`,{exact:true})).toBeVisible();
+  await expect.poll(async()=>(await(await request.get('/api/speech/preferences')).json()).preferences?.learning.accent).toBe('en-US');
+  expect((await request.patch('/api/speech/preferences',{data:{preferences:defaults}})).ok()).toBe(true);
 });
 
 test('纯英文的中文补充提醒可跳过，跳过只创建一份回答',async({page})=>{
@@ -32,5 +39,5 @@ test('纯英文的中文补充提醒可跳过，跳过只创建一份回答',asy
   await reminder.getByRole('button',{name:'仅根据英文继续',exact:true}).click();
   expect((await response).ok()).toBe(true);
   await expect(page).toHaveURL(/\/questions\/question_e2e_habits\/attempts\//);
-  await expect(page.getByRole('link',{name:'开始句子学习',exact:true})).toBeVisible({timeout:20000});
+  await expect(page.getByRole('link',{name:'开始整题学习',exact:true})).toBeVisible({timeout:20000});
 });

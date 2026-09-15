@@ -1,15 +1,20 @@
 import { z } from "zod";
 
 export const MIMO_TTS_MODEL = "mimo-v2.5-tts" as const;
-export const MIMO_TTS_VERSION = "mimo-young-american-v3" as const;
+export const MIMO_TTS_VERSION = "mimo-context-conversation-v4" as const;
 export const MIMO_TTS_VOICES = ["Mia", "Chloe", "Milo", "Dean"] as const;
 export type MimoVoice = typeof MIMO_TTS_VOICES[number];
 export type SpeechAccent = "en-US" | "en-GB";
+export type SpeechRole = 'learning' | 'teacher';
+export const DEFAULT_TEACHER_VOICE:MimoVoice='Chloe';
 export const PLAYBACK_RATES = [0.85, 1, 1.1, 1.2] as const;
 export type PlaybackRate = typeof PLAYBACK_RATES[number];
 export const DEFAULT_MIMO_VOICE: MimoVoice = "Milo";
 export const DEFAULT_SPEECH_ACCENT: SpeechAccent = "en-US";
 export const DEFAULT_VOICE_PRESET = "us-male" as const;
+const selectionSchema=z.object({voice:z.enum(MIMO_TTS_VOICES),accent:z.enum(['en-US','en-GB'])}).strict();
+export const roleSpeechPreferencesSchema=z.object({version:z.literal(4),learning:selectionSchema,teacher:selectionSchema,playbackRate:z.union([z.literal(.85),z.literal(1),z.literal(1.1),z.literal(1.2)])}).strict();
+export type RoleSpeechPreferences=z.infer<typeof roleSpeechPreferencesSchema>;
 export const SPEECH_STYLES = ["short-expression", "daily-conversation", "ielts-answer"] as const;
 export type SpeechStyle = typeof SPEECH_STYLES[number];
 

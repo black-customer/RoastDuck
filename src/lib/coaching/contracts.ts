@@ -7,7 +7,8 @@ export const coachingContextSchema=z.object({
   materialId:z.string().min(1).max(160),sentenceId:z.string().min(1).max(160).optional(),
   practiceId:z.string().min(8).max(160),
   questionId:z.string().min(1).max(160).optional(),mode:coachingModeSchema,
-}).refine(v=>v.mode!=='sentence_guided'||!!v.sentenceId,'单句练习需要句子编号');
+  sourceSessionId:z.string().min(1).max(160).optional(),rootPracticeId:z.string().min(8).max(160).optional(),relatedTaskId:z.string().min(1).max(160).optional(),
+}).refine(v=>v.mode!=='sentence_guided'||!!v.sentenceId,'单句练习需要句子编号').refine(v=>!v.relatedTaskId||v.mode==='answer_independent'&&!v.sentenceId,'相关新题以无提示整题输出开始');
 export type CoachingContext=z.infer<typeof coachingContextSchema>;
 export const coachingSubmitSchema=z.object({
   context:coachingContextSchema,clientMessageId:z.string().min(8).max(160),text:z.string().trim().min(1).max(12000),
@@ -26,7 +27,10 @@ export const coachingFeedbackSchema=z.object({
   findings:z.array(coachingFindingSchema).max(12),
   usedMemoryIds:z.array(z.string().max(160)).max(2).default([]),
 });
-export type CoachingFeedback=z.infer<typeof coachingFeedbackSchema>;
+export const targetObservationSchema=z.object({sentenceId:z.string().min(1).max(160),status:z.enum(['observed','not_observed','uncertain']),sourceQuote:z.string().max(1200),reasonZh:z.string().min(1).max(700)});
+export const contextCoachingFeedbackSchema=coachingFeedbackSchema.extend({targetObservations:z.array(targetObservationSchema).max(2).default([])});
+export type CoachingFeedback=z.infer<typeof coachingFeedbackSchema>&{targetObservations?:Array<z.infer<typeof targetObservationSchema>>};
+export interface CoachingPracticeEvidence {version:'context-coaching-evidence-v1';currentCueCondition:'sentence_chinese'|'answer_chinese'|'question_only';lastHelpAt:string|null;elapsedMsSinceHelp:number|null;sourceSessionId:string|null;rootPracticeId:string;relatedTaskId:string|null;exposureEventIds:string[];practiceEventIds:string[];firstOutputMessageId:string|null}
 /** Provider-side semantic validation runs before a paid response is marked reusable/completed. */
 export function assertCoachingFeedback(data:unknown,input:unknown){
   const result=coachingFeedbackSchema.parse(data),source=z.object({latestUserMessage:z.string(),correctionHint:z.boolean(),currentTask:z.object({mode:coachingModeSchema}),relevantMemories:z.array(z.object({id:z.string()}))}).parse(input);
@@ -35,6 +39,11 @@ export function assertCoachingFeedback(data:unknown,input:unknown){
   if(result.findings.some(f=>!source.latestUserMessage.includes(f.sourceQuote)))throw new AiProviderError('反馈证据不属于本次输出','invalid_output',true);
   if(result.verdict==='natural'&&result.findings.some(f=>f.kind==='confirmed_error'))throw new AiProviderError('反馈结论与证据矛盾','invalid_output',true);
   if(source.correctionHint&&result.extent==='full_answer')throw new AiProviderError('局部修正被误判为整题回答','invalid_output',true);
+  const context=z.object({coachingVersion:z.string().optional(),targets:z.array(z.object({id:z.string()})).optional()}).parse(input);
+  if(context.coachingVersion){
+    const feedback=contextCoachingFeedbackSchema.parse(data),ids=feedback.targetObservations.map(item=>item.sentenceId);
+    if(ids.length!==(context.targets?.length??0)||new Set(ids).size!==ids.length||feedback.targetObservations.some(item=>!context.targets?.some(t=>t.id===item.sentenceId)||item.status==='observed'&&(!item.sourceQuote||!source.latestUserMessage.includes(item.sourceQuote))||item.status==='not_observed'&&!!item.sourceQuote))throw new AiProviderError('目标使用证据不属于当前输出','invalid_output',true);
+  }
 }
 export const learningErrorReviewSchema=z.object({
   decisions:z.array(z.object({index:z.number().int().nonnegative(),confirmed:z.boolean(),sourceQuote:z.string().max(1200),
@@ -47,11 +56,11 @@ export interface CoachingMaterial {
 }
 export interface CoachingMessageView {
   id:string;role:'user'|'teacher';text:string;status:string;clientMessageId:string;createdAt:string;
-  feedback?:CoachingFeedback;replyTo?:string;errorCode?:string;assisted:boolean;correctionHint?:boolean;
+  feedback?:CoachingFeedback;replyTo?:string;errorCode?:string;assisted:boolean;correctionHint?:boolean;practiceEvidence?:CoachingPracticeEvidence;
 }
 export interface CoachingView {
   threadId:string|null;context:CoachingContext;questionEn:string;questionZh:string;chinese:string|null;
-  messages:CoachingMessageView[];pendingMemoryJobs:number;
+  messages:CoachingMessageView[];pendingMemoryJobs:number;practiceEvidence?:CoachingPracticeEvidence;
 }
 export interface LearningErrorReviewInput {
   kind:'coaching_error_review_v1';threadId:string;messageId:string;text:string;

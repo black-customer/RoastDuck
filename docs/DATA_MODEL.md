@@ -24,5 +24,7 @@ v25已实现experience_version默认V1保留旧记录、round_json与事件phase
 安卓全新库结构由隔离空库导出为版本25快照（177条DDL），校验固定哈希后事务初始化，独立_native_schema_bootstrap记录；不写入虚假的桌面历史迁移回执。未知非空库拒绝覆盖，后续原生编号升级仍需实施。
 共享平台存储端口、设备/数据集ID、事件同步来源/序号/回执与任务所有权按实现逐步登记；安卓本地SQLite不靠整体覆盖桌面数据库同步。未实现不填写虚假DDL。
 ## 迁移与隐私
+v36新增sentence_exposures/exposure_events、sentence_preferences/preference_events、sentence_feedback/feedback_events、sentence_practice_evidence，复用原句子进度与会话JSON体验版本，不创建第二份FSRS。
+context_practice_tasks及coaching_practice_links保存相关题及提示暴露来源；full_answer_attempts引用原草稿/回答/消息/任务。answer_audio_uploads为恢复检查点，answer_audio_assets保存原声哈希、类型、真实或未知录制时间和移除标记。user_settings新增speech_preferences_json，仅保存双角色声线/口音与倍率。迁移先备份、保留旧checksum；实际本机应用状态见PROJECT_STATUS。
 v24先在临时库验证，再通过已有init备份应用；不导入旧完成标签、不静默删除历史。测试必须启动前指定test-results数据库。私人原文不入Git。
 历史模型说明：archive/pre-light-study-2026-09-07/DATA_MODEL.md。

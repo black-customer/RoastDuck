@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FreeTalkMode } from "@/lib/free-talk/schemas";
 import { getTTS } from "@/lib/tts";
 import type {LightAudioState} from '@/lib/light-study/audio';
-import { VoiceSelector } from "./VoiceSelector";
+import { SpeechPreferences } from "./SpeechPreferences";
 import { IeltsTopicDrawer, type IeltsQuestionItem } from "./IeltsTopicDrawer";
 import {MaterialResult} from './MaterialResult';
 import styles from './FreeTalkChat.module.css';
@@ -269,7 +269,7 @@ export function FreeTalkChat({
     setSpeakingMsgId(msgId);
     const generation = epochRef.current;
     const finished = () => { if (generation === epochRef.current) setSpeakingMsgId((current) => current === msgId ? null : current); };
-    getTTS().speak(text, {retryUnknown,ownerId:`chat:${currentId}`,onState:state=>{if(generation===epochRef.current)setSpeechState({id:msgId,state});}, onEnd: finished, onError: finished });
+    getTTS().speak(text, {role:'teacher',playbackMode:'natural',retryUnknown,ownerId:`chat:${currentId}`,onState:state=>{if(generation===epochRef.current)setSpeechState({id:msgId,state});}, onEnd: finished, onError: finished });
   }
 
   function stopAudio() {
@@ -340,7 +340,7 @@ export function FreeTalkChat({
           {settingsOpen && <div id="conversation-settings" className={styles.settings}>
             <div>
               <h2>声音与模式</h2>
-              <VoiceSelector />
+              <SpeechPreferences compact role="teacher" />
             </div>
             <div className={styles.modeOptions} aria-label="对话模式">
               <button type="button" aria-pressed={mode === "relaxed"} onClick={() => setMode("relaxed")}>轻松畅聊</button>

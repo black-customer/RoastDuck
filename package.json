@@ -1,9 +1,9 @@
 {
   "name": "roastduck",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "鱼块学英语 — 从自己的意思出发，逐句学习自然口语",
+  "description": "鱼块学英语 — 在完整语境里学会自己的表达，留下每一次回答的声音",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS= next dev -H 127.0.0.1",
     "build": "cross-env NODE_OPTIONS= next build",
@@ -52,6 +52,7 @@
     "@libsql/client": "^0.17.4",
     "@noble/hashes": "2.4.0",
     "drizzle-orm": "^0.45.2",
+    "music-metadata": "11.15.0",
     "next": "^15.5.6",
     "qrcode": "1.5.4",
     "react": "^19.2.0",

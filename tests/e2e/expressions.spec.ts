@@ -16,7 +16,7 @@ async function mockExpressions(page:Page){
     await route.fulfill({json:{items:[item],summary}});
   });
   await page.route('**/api/light-study/**',route=>{writes.push('light-event');return route.fulfill({status:500,json:{error:'Quick review must not call learning'}});});
-  await page.route('**/api/speech/**',route=>{writes.push('speech');return route.fulfill({status:503,json:{error:'Mock only'}});});
+  await page.route('**/api/speech/**',route=>{if(!route.request().url().endsWith('/preferences'))writes.push('speech');return route.fulfill({status:503,json:{error:'Mock only'}});});
   return {writes,item};
 }
 test('快速回顾逐行真正隐藏英文，可键盘揭晓/收起，不产生学习写入',async({page})=>{

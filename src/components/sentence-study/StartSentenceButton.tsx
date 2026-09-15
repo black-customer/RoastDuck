@@ -20,7 +20,7 @@ export function StartSentenceButton({scope,mode,resumeSessionId,selection='scope
     try{
       if(!request.current){
         try{const raw=sessionStorage.getItem(key);if(raw){const previous=JSON.parse(raw) as SentenceCreate;if(previous.mode===mode&&JSON.stringify(previous.scope)===JSON.stringify(scope)&&previous.selection===selection&&previous.clientRequestId)request.current=previous;}}catch{/* Server request IDs also preserve response-loss retries. */}
-        request.current??={scope,mode,selection,clientRequestId:crypto.randomUUID()};
+        request.current??={scope,mode,selection,clientRequestId:crypto.randomUUID(),experienceVersion:'context-workspace-v1'};
       }
       try{sessionStorage.setItem(key,JSON.stringify(request.current));}catch{/* Stable in-memory receipt survives this retry. */}
       const value:SentenceSession=await sentenceClient.create(request.current);

@@ -11,10 +11,11 @@ interface Props {
   disabled?:boolean;
   onChange:(count:number)=>void;
   onCommit:()=>void;
+  compact?:boolean;
 }
 
 /** Unseen words never enter the rendered text, attributes, clipboard or accessibility tree. */
-export function GuidedReveal({english,count,disabled,onChange,onCommit}:Props){
+export function GuidedReveal({english,count,disabled,onChange,onCommit,compact=false}:Props){
   const words=useMemo(()=>sentenceWords(english),[english]),id=useId(),paragraph=useRef<HTMLParagraphElement>(null);
   const [widths,setWidths]=useState<number[]>([]),revealed=Math.max(0,Math.min(words.length,count));
   useEffect(()=>{
@@ -31,7 +32,7 @@ export function GuidedReveal({english,count,disabled,onChange,onCommit}:Props){
     return()=>{cancelled=true;};
   },[words]);
   function change(next:number){if(!disabled)onChange(Math.max(0,Math.min(words.length,next)));}
-  return <section className={styles.section} aria-label="按需揭晓英文">
+  return <section className={`${styles.section} ${compact?styles.compact:''}`} aria-label="按需揭晓英文">
     <p className={styles.hint} id={`${id}-hint`}>能说的先说，需要时往右揭一点。</p>
     <p ref={paragraph} className={styles.sentence} lang="en" data-testid="guided-english">
       {words.map((word,index)=><Fragment key={index}>

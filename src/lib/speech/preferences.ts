@@ -1,52 +1,27 @@
-import {DEFAULT_MIMO_VOICE,DEFAULT_SPEECH_ACCENT,DEFAULT_VOICE_PRESET,MIMO_TTS_VOICES,PLAYBACK_RATES,VOICE_PRESETS,type MimoVoice,type PlaybackRate,type SpeechAccent,type VoicePresetId} from './contracts';
-
+import {DEFAULT_MIMO_VOICE,DEFAULT_TEACHER_VOICE,DEFAULT_SPEECH_ACCENT,DEFAULT_VOICE_PRESET,MIMO_TTS_VOICES,PLAYBACK_RATES,VOICE_PRESETS,roleSpeechPreferencesSchema,type RoleSpeechPreferences,type SpeechRole,type MimoVoice,type PlaybackRate,type SpeechAccent,type VoicePresetId} from './contracts';
 export interface SpeechPreferences {version:3;voice:MimoVoice;accent:SpeechAccent;playbackRate:PlaybackRate}
 export const SPEECH_PREFERENCES_KEY='roastduck_speech_preferences_v3';
+export const ROLE_SPEECH_PREFERENCES_KEY='roastduck_speech_preferences_v4';
 export const SPEECH_PREFERENCES_EVENT='roastduck:speech-preferences';
+export const SPEECH_SYNC_EVENT='roastduck:speech-preferences-sync';
 export const DEFAULT_SPEECH_PREFERENCES:SpeechPreferences={version:3,voice:DEFAULT_MIMO_VOICE,accent:DEFAULT_SPEECH_ACCENT,playbackRate:1};
-const LEGACY_VOICE_KEY='roastduck_active_voice';
+export const DEFAULT_TEACHER_PREFERENCES:SpeechPreferences={...DEFAULT_SPEECH_PREFERENCES,voice:DEFAULT_TEACHER_VOICE};
+const LEGACY_VOICE_KEY='roastduck_active_voice',PENDING_KEY='roastduck_speech_preferences_pending_v4';
 const isVoice=(value:unknown):value is MimoVoice=>MIMO_TTS_VOICES.includes(value as MimoVoice);
 const isAccent=(value:unknown):value is SpeechAccent=>value==='en-US'||value==='en-GB';
 const isRate=(value:unknown):value is PlaybackRate=>PLAYBACK_RATES.includes(value as PlaybackRate);
-let sessionPreference:{owner:Window;preferences:SpeechPreferences}|null=null;
-
-export function legacyPresetFor(preferences:Pick<SpeechPreferences,'voice'|'accent'>):VoicePresetId {
-  return `${preferences.accent==='en-GB'?'uk':'us'}-${preferences.voice==='Milo'||preferences.voice==='Dean'?'male':'female'}` as VoicePresetId;
-}
-/** The old male default becomes Milo; old female/accent selections are preserved. */
-export function getSpeechPreferences():SpeechPreferences {
-  if(typeof window==='undefined')return {...DEFAULT_SPEECH_PREFERENCES};
-  if(sessionPreference?.owner===window)return sessionPreference.preferences;
-  try {
-    const raw=window.localStorage.getItem(SPEECH_PREFERENCES_KEY);
-    if(raw){try {const value=JSON.parse(raw);if(value.version===3&&isVoice(value.voice)&&isAccent(value.accent)&&isRate(value.playbackRate))return value;}catch{/* A damaged new setting must not discard a valid old accent/voice choice. */}}
-    const legacy=window.localStorage.getItem(LEGACY_VOICE_KEY);
-    const preset=VOICE_PRESETS.find(value=>value.id===legacy)??VOICE_PRESETS.find(value=>value.id===DEFAULT_VOICE_PRESET)!;
-    return {version:3,voice:preset.mimoVoice,accent:preset.accent,playbackRate:1};
-  } catch {return {...DEFAULT_SPEECH_PREFERENCES};}
-}
-/** Returns false when persistence failed; subscribers still receive the session choice. */
-export function setSpeechPreferences(patch:Partial<Omit<SpeechPreferences,'version'>>):boolean {
-  if(typeof window==='undefined')return false;
-  const previous=getSpeechPreferences(),next:SpeechPreferences={...previous,
-    ...(isVoice(patch.voice)?{voice:patch.voice}:{}),...(isAccent(patch.accent)?{accent:patch.accent}:{}),...(isRate(patch.playbackRate)?{playbackRate:patch.playbackRate}:{})};
-  let saved=true;
-  try {window.localStorage.setItem(SPEECH_PREFERENCES_KEY,JSON.stringify(next));window.localStorage.setItem(LEGACY_VOICE_KEY,legacyPresetFor(next));}
-  catch {saved=false;}
-  sessionPreference=saved?null:{owner:window,preferences:next};
-  window.dispatchEvent?.(new CustomEvent<SpeechPreferences>(SPEECH_PREFERENCES_EVENT,{detail:next}));
-  return saved;
-}
-export function subscribeSpeechPreferences(listener:(preferences:SpeechPreferences)=>void):()=>void {
-  if(typeof window==='undefined'||typeof window.addEventListener!=='function')return ()=>{};
-  const local=(event:Event)=>listener((event as CustomEvent<SpeechPreferences>).detail);
-  const storage=(event:StorageEvent)=>{if(event.key===SPEECH_PREFERENCES_KEY||event.key===LEGACY_VOICE_KEY||event.key===null){sessionPreference=null;listener(getSpeechPreferences());}};
-  window.addEventListener(SPEECH_PREFERENCES_EVENT,local);window.addEventListener('storage',storage);
-  return ()=>{window.removeEventListener(SPEECH_PREFERENCES_EVENT,local);window.removeEventListener('storage',storage);};
-}
-/** Source accent overrides only accent; it never silently swaps the chosen speaker. */
-export function resolveSpeechSelection(input:{voiceId?:VoicePresetId;voice?:MimoVoice;accent?:SpeechAccent}):Pick<SpeechPreferences,'voice'|'accent'> {
-  const saved=getSpeechPreferences();
-  const legacy=input.voiceId&&input.voiceId!==legacyPresetFor(saved)?VOICE_PRESETS.find(value=>value.id===input.voiceId):null;
-  return {voice:input.voice??legacy?.mimoVoice??saved.voice,accent:input.accent??legacy?.accent??saved.accent};
-}
+let sessionPreference:{owner:Window;preferences:RoleSpeechPreferences}|null=null;
+let hydrated:{owner:Window;promise:Promise<void>}|null=null,revision=0,remoteTail:Promise<void>=Promise.resolve();
+export function legacyPresetFor(preferences:Pick<SpeechPreferences,'voice'|'accent'>):VoicePresetId{return `${preferences.accent==='en-GB'?'uk':'us'}-${preferences.voice==='Milo'||preferences.voice==='Dean'?'male':'female'}` as VoicePresetId;}
+function oldLearning():SpeechPreferences{if(typeof window==='undefined')return {...DEFAULT_SPEECH_PREFERENCES};try{const raw=window.localStorage.getItem(SPEECH_PREFERENCES_KEY);if(raw){try{const value=JSON.parse(raw);if(value.version===3&&isVoice(value.voice)&&isAccent(value.accent)&&isRate(value.playbackRate))return value;}catch{/* Preserve a valid legacy preference. */}}const legacy=window.localStorage.getItem(LEGACY_VOICE_KEY),preset=VOICE_PRESETS.find(v=>v.id===legacy)??VOICE_PRESETS.find(v=>v.id===DEFAULT_VOICE_PRESET)!;return {version:3,voice:preset.mimoVoice,accent:preset.accent,playbackRate:1};}catch{return {...DEFAULT_SPEECH_PREFERENCES};}}
+export function getRoleSpeechPreferences():RoleSpeechPreferences{if(typeof window!=='undefined'&&sessionPreference?.owner===window)return sessionPreference.preferences;if(typeof window!=='undefined')try{const raw=window.localStorage.getItem(ROLE_SPEECH_PREFERENCES_KEY);if(raw){const value=roleSpeechPreferencesSchema.safeParse(JSON.parse(raw));if(value.success)return value.data;}}catch{/* Fall through to the original explicit learning preference. */}const learning=oldLearning();return {version:4,learning:{voice:learning.voice,accent:learning.accent},teacher:{voice:DEFAULT_TEACHER_VOICE,accent:'en-US'},playbackRate:learning.playbackRate};}
+export function getSpeechPreferences(role:SpeechRole='learning'):SpeechPreferences{const all=getRoleSpeechPreferences();return {version:3,...all[role],playbackRate:all.playbackRate};}
+function publish(next:RoleSpeechPreferences){let saved=true;try{window.localStorage.setItem(ROLE_SPEECH_PREFERENCES_KEY,JSON.stringify(next));window.localStorage.setItem(SPEECH_PREFERENCES_KEY,JSON.stringify({version:3,...next.learning,playbackRate:next.playbackRate}));window.localStorage.setItem(LEGACY_VOICE_KEY,legacyPresetFor(next.learning));}catch{saved=false;}sessionPreference=saved?null:{owner:window,preferences:next};window.dispatchEvent?.(new Event(SPEECH_PREFERENCES_EVENT));return saved;}
+function syncStatus(state:'saving'|'saved'|'error'){if(typeof window!=='undefined')window.dispatchEvent?.(new CustomEvent(SPEECH_SYNC_EVENT,{detail:state}));}
+function saveRemote(next:RoleSpeechPreferences){const owner=window;syncStatus('saving');const work=remoteTail.catch(()=>undefined).then(async()=>{const response=await owner.fetch('/api/speech/preferences',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({preferences:next})});if(!response.ok)throw new Error('声音偏好未保存到服务端');try{if(owner.localStorage.getItem(PENDING_KEY)===JSON.stringify(next))owner.localStorage.removeItem(PENDING_KEY);}catch{/* Keep retryable pending intent. */}syncStatus('saved');});remoteTail=work;void work.catch(()=>syncStatus('error'));return work;}
+/** Existing callers retain learning defaults; speed remains shared by both roles. */
+export function setSpeechPreferences(patch:Partial<Omit<SpeechPreferences,'version'>>,role:SpeechRole='learning'):boolean{if(typeof window==='undefined')return false;revision++;const previous=getRoleSpeechPreferences(),selected={...previous[role],...(isVoice(patch.voice)?{voice:patch.voice}:{}),...(isAccent(patch.accent)?{accent:patch.accent}:{})};const next:RoleSpeechPreferences={...previous,[role]:selected,...(isRate(patch.playbackRate)?{playbackRate:patch.playbackRate}:{})};const saved=publish(next);try{window.localStorage.setItem(PENDING_KEY,JSON.stringify(next));}catch{/* Session choice remains usable. */}if(typeof window.fetch==='function')void saveRemote(next).catch(()=>undefined);return saved;}
+/** Read server preferences once; pending explicit browser choices win over a late read. No synthesis. */
+export function hydrateSpeechPreferences():Promise<void>{if(typeof window==='undefined'||typeof window.fetch!=='function')return Promise.resolve();if(hydrated?.owner===window)return hydrated.promise;const owner=window,at=revision;const promise=(async()=>{try{const response=await owner.fetch('/api/speech/preferences',{cache:'no-store'});if(!response.ok)throw new Error('preferences unavailable');const body=await response.json();if(at!==revision)return;const pending=owner.localStorage.getItem(PENDING_KEY),server=roleSpeechPreferencesSchema.safeParse(body.preferences);if(pending){const value=roleSpeechPreferencesSchema.parse(JSON.parse(pending));await saveRemote(value);}else if(server.success)publish(server.data);else if(owner.localStorage.getItem(SPEECH_PREFERENCES_KEY)||owner.localStorage.getItem(LEGACY_VOICE_KEY)){const current=getRoleSpeechPreferences();owner.localStorage.setItem(PENDING_KEY,JSON.stringify(current));await saveRemote(current);}}catch{syncStatus('error');}})();hydrated={owner,promise};return promise;}
+export function subscribeSpeechPreferences(listener:(preferences:SpeechPreferences)=>void,role:SpeechRole='learning'):()=>void{if(typeof window==='undefined'||typeof window.addEventListener!=='function')return()=>{};const local=()=>listener(getSpeechPreferences(role));const storage=(event:StorageEvent)=>{if([ROLE_SPEECH_PREFERENCES_KEY,SPEECH_PREFERENCES_KEY,LEGACY_VOICE_KEY,null].includes(event.key)){sessionPreference=null;listener(getSpeechPreferences(role));}};window.addEventListener(SPEECH_PREFERENCES_EVENT,local);window.addEventListener('storage',storage);return()=>{window.removeEventListener(SPEECH_PREFERENCES_EVENT,local);window.removeEventListener('storage',storage);};}
+export function resolveSpeechSelection(input:{voiceId?:VoicePresetId;voice?:MimoVoice;accent?:SpeechAccent;role?:SpeechRole}):Pick<SpeechPreferences,'voice'|'accent'>{const saved=getSpeechPreferences(input.role);const legacy=input.voiceId&&input.voiceId!==legacyPresetFor(saved)?VOICE_PRESETS.find(v=>v.id===input.voiceId):null;return {voice:input.voice??legacy?.mimoVoice??saved.voice,accent:input.accent??legacy?.accent??saved.accent};}

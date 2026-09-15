@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import {useRef,useState} from 'react';
 import type {SentenceHomeOverview} from '@/lib/sentence-study/home';
-import {StartSentenceButton} from '@/components/sentence-study/StartSentenceButton';
-import styles from './HomeDashboard.module.css';
+import {Icon} from '@/components/ui/Icon';
+import styles from './HomeOverview.module.css';
 
 export function HomeDashboard({overview}:{overview:SentenceHomeOverview|null}){
   const [selected,setSelected]=useState<string|null>(null);
@@ -12,8 +12,9 @@ export function HomeDashboard({overview}:{overview:SentenceHomeOverview|null}){
   const {activity,sentence,resumeByMode}=overview;
   const selectedDay=activity.days.find(day=>day.date===selected);
   return <div className={styles.home}>
+    <header className={styles.welcome}><h1>今天，想聊点什么？</h1><p>从你真正想说的事情开始。</p></header>
     <section className={styles.history} aria-label="学习记录">
-      <div className={styles.heading}><h1>我的学习记录</h1><span>最近十二周</span></div>
+      <div className={styles.heading}><h2>最近十二周</h2><span>有学习记录的日子</span></div>
       <div ref={calendar} className={styles.heatmap} aria-label="每日学习记录">
         {activity.days.map((day,index)=><button key={day.date} className={styles.day} data-date={day.date} data-level={day.level} data-today={day.isToday} disabled={day.isFuture}
           tabIndex={(selected?selected===day.date:day.isToday)?0:-1}
@@ -29,11 +30,11 @@ export function HomeDashboard({overview}:{overview:SentenceHomeOverview|null}){
     <div className={styles.homeActions} aria-label="学习与复习">
       {(['learn','review'] as const).map(mode=>{
         const resume=resumeByMode[mode],title=mode==='learn'?'学习':'复习';
-        const description=resume?`继续上次 · 第 ${Math.min(resume.index+1,resume.total)} / ${resume.total} 句`:mode==='learn'?'把想说的话，一句句说出来':sentence.dueCount?`${sentence.dueCount} 句到了复习时间`:'今天暂时没有到期句子';
-        const content=<><strong>{title}</strong><span>{description}</span></>;
-        return resume?<StartSentenceButton key={mode} className={styles.homeAction} scope={resume.scope} mode={mode} resumeSessionId={resume.id} label={title}>{content}</StartSentenceButton>:
-          <Link key={mode} className={styles.homeAction} href={`/study?mode=${mode}`} aria-label={title}>{content}</Link>;
+        const description=resume?`可继续上次，也可以换一道题`:mode==='learn'?'选一道题，把自己的意思说出来':sentence.dueCount?`${sentence.dueCount} 句到了复习时间`:'今天暂时没有到期句子';
+        const content=<><strong>{title}<Icon name="arrow"/></strong><span>{description}</span></>;
+        return <Link key={mode} className={styles.homeAction} href={`/study?mode=${mode}`} aria-label={title}>{content}</Link>;
       })}
     </div>
+    <p className={styles.historyNote}>学习记录不是口语分数。今天只学一点也可以。</p>
   </div>;
 }

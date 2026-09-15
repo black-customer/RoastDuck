@@ -19,7 +19,7 @@ it("Android 本地界面缺失立即停止，不打包远程壳或假加载页",
 });
 
 it("浏览器降级停止后丢弃迟到事件，不结束下一段播放", async () => {
-  const utterances: Array<{ onend?: () => void; onerror?: (error: { error: string }) => void }> = [];
+  const utterances: Array<{ onstart?: () => void; onend?: () => void; onerror?: (error: { error: string }) => void }> = [];
   vi.stubGlobal("window", { speechSynthesis: { cancel: () => undefined, getVoices: () => [], speak: (u: typeof utterances[number]) => utterances.push(u) } });
   vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("synthetic remote failure")));
@@ -35,6 +35,6 @@ it("浏览器降级停止后丢弃迟到事件，不结束下一段播放", asyn
   expect(oldEnd).not.toHaveBeenCalled();
   expect(onError).not.toHaveBeenCalled();
   expect(newEnd).not.toHaveBeenCalled();
-  utterances[1].onend?.();
+  utterances[1].onstart?.();utterances[1].onend?.();
   expect(newEnd).toHaveBeenCalledOnce();
 });

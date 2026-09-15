@@ -5,8 +5,9 @@
 | 文档 | 状态 | 职责 |
 | --- | --- | --- |
 | [README](README.md) | 现行 | 本索引 |
-| [SENTENCE_STUDY](SENTENCE_STUDY.md) | 现行 | 2026-09-10唯一默认句子学习路线；冲突时优先于其他执行契约 |
-| [GUIDED_REVEAL](GUIDED_REVEAL.md) | 现行 | 2026-09-11增量：跟手揭晓、完整教学、自评停留及本地再练；冲突时优先 |
+| [CONTEXT_WORKSPACE](CONTEXT_WORKSPACE.md) | 现行 | v0.4.0实施中：整题同页、首次复习、完整回答录音与含媒体备份；冲突时优先 |
+| [SENTENCE_STUDY](SENTENCE_STUDY.md) | 兼容 | 句子身份、独立调度和旧体验；默认路线已由CONTEXT_WORKSPACE替代 |
+| [GUIDED_REVEAL](GUIDED_REVEAL.md) | 兼容 | 跟手揭晓与教学合同保留；评分门槛、逐句页面以CONTEXT_WORKSPACE为准 |
 | [PERSONAL_FOCUS](PERSONAL_FOCUS.md) | 现行 | 真实生成修复、年轻美式文本/Milo、高亮、错误记忆及版本发布增量 |
 | [WEB_USABILITY](WEB_USABILITY.md) | 兼容 | 旧网页版收敛要求，未冲突部分仍参考 |
 | [WEB_SIMPLICITY](WEB_SIMPLICITY.md) | 兼容 | 旧轻学习与首页实施记录，句子主线优先 |
@@ -25,6 +26,7 @@
 | [VIBE_CODING_WORKFLOW](VIBE_CODING_WORKFLOW.md) | 现行 | 开工/交接 |
 | [ROADMAP](ROADMAP.md) | 现行 | 仅未来路线 |
 | [PROJECT_STATUS](PROJECT_STATUS.md) | 现行 | 当前事实与退出码 |
+| [语境优先研究提案](research/2026-09-15-context-first-learning.md) | 历史 | 学习证据与研究提案，不替代现行契约或新增费用授权 |
 | [DESIGN](DESIGN.md) | 现行 | 已截图核验界面，不提前写完成 |
 | [DESKTOP_LAUNCHER](DESKTOP_LAUNCHER.md) | 现行 | 桌面启动与隔离 |
 | [HISTORICAL_ANSWER_IMPORT](HISTORICAL_ANSWER_IMPORT.md) | 现行 | 原文归档与追溯 |

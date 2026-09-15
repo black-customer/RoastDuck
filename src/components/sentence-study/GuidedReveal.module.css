@@ -18,3 +18,4 @@
 .tools button:disabled,.slider:disabled{opacity:.55;cursor:default}
 @media(max-width:580px){.sentence{font-size:1.375rem}.section{margin-top:18px;padding-top:16px}.tools{gap:0 12px}}
 @media(prefers-reduced-motion:reduce){.section *{transition:none}}
+.compact .hint{display:none}.compact .sentence{font-size:clamp(23px,2vw,29px);line-height:1.6;margin:0 0 14px}.compact .sliderLabel{font-size:12px}.compact .tools{gap:7px;margin-top:8px}.compact .tools button{font-size:13px;min-height:44px;padding:7px 10px}.compact{padding:0;border:0;background:none}

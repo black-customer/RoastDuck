@@ -1006,6 +1006,7 @@ export const userSettings = sqliteTable("user_settings", {
   /** 关闭时，查询、理解选择和练习错误只写学习事件，不创建难点笔记。 */
   autoCollectDifficulties: integer("auto_collect_difficulties", { mode: "boolean" }).notNull().default(false),
   autoPlay: integer("auto_play", { mode: "boolean" }).notNull().default(true),
+  speechPreferencesJson: text('speech_preferences_json'),
   defaultAccent: text("default_accent").notNull().default("en-GB"),
   dailyNewTarget: integer("daily_new_target").notNull().default(20),
   dailyReviewCap: integer("daily_review_cap").notNull().default(100),
@@ -1434,5 +1435,43 @@ export const sentenceHighlights=sqliteTable('sentence_highlights',{
 export const sentenceTeachingEditions=sqliteTable('sentence_teaching_editions',{
   id:text('id').primaryKey(),materialId:text('material_id').notNull(),sourceHash:text('source_hash').notNull(),candidateHash:text('candidate_hash').notNull(),authorJson:text('author_json').notNull(),reviewJson:text('review_json').notNull(),teachingsJson:text('teachings_json').notNull(),status:text('status').notNull().default('ready'),createdAt:text('created_at').notNull(),
 },t=>[index('sentence_teaching_material').on(t.materialId,t.createdAt,t.id)]);
+
+/** v36: context exposure is separate from an actual FSRS self-rating. */
+export const sentenceExposures=sqliteTable('sentence_exposures',{
+  sentenceId:text('sentence_id').notNull(),unitVersion:text('unit_version').notNull(),firstExposedAt:text('first_exposed_at').notNull(),lastExposedAt:text('last_exposed_at').notNull(),firstReviewDueAt:text('first_review_due_at').notNull(),
+},t=>[primaryKey({columns:[t.sentenceId,t.unitVersion]}),index('sentence_exposure_due').on(t.firstReviewDueAt,t.sentenceId)]);
+export const sentenceExposureEvents=sqliteTable('sentence_exposure_events',{
+  sessionId:text('session_id').notNull(),clientEventId:text('client_event_id').notNull(),sentenceId:text('sentence_id').notNull(),unitVersion:text('unit_version').notNull(),source:text('source').notNull(),createdAt:text('created_at').notNull(),
+},t=>[primaryKey({columns:[t.sessionId,t.clientEventId]}),index('sentence_exposure_activity').on(t.createdAt,t.sentenceId)]);
+export const sentencePreferences=sqliteTable('sentence_preferences',{
+  sentenceId:text('sentence_id').primaryKey(),hidden:integer('hidden').notNull().default(0),favorite:integer('favorite').notNull().default(0),selfKnown:integer('self_known').notNull().default(0),note:text('note').notNull().default(''),version:integer('version').notNull().default(0),updatedAt:text('updated_at').notNull(),
+});
+export const sentencePreferenceEvents=sqliteTable('sentence_preference_events',{
+  clientRequestId:text('client_request_id').primaryKey(),payloadHash:text('payload_hash').notNull(),sentenceId:text('sentence_id').notNull(),unitVersion:text('unit_version').notNull(),beforeJson:text('before_json').notNull(),afterJson:text('after_json').notNull(),createdAt:text('created_at').notNull(),
+});
+export const sentenceFeedback=sqliteTable('sentence_feedback',{
+  id:text('id').primaryKey(),clientRequestId:text('client_request_id').notNull().unique(),payloadHash:text('payload_hash').notNull(),sentenceId:text('sentence_id').notNull(),unitVersion:text('unit_version').notNull(),materialId:text('material_id').notNull(),kind:text('kind').notNull(),reason:text('reason').notNull(),status:text('status').notNull().default('open'),createdAt:text('created_at').notNull(),
+},t=>[index('sentence_feedback_unit').on(t.sentenceId,t.unitVersion,t.status)]);
+export const sentenceFeedbackEvents=sqliteTable('sentence_feedback_events',{
+  clientRequestId:text('client_request_id').primaryKey(),payloadHash:text('payload_hash').notNull(),feedbackId:text('feedback_id').notNull(),action:text('action').notNull(),createdAt:text('created_at').notNull(),
+});
+export const sentencePracticeEvidence=sqliteTable('sentence_practice_evidence',{
+  sessionId:text('session_id').notNull(),clientEventId:text('client_event_id').notNull(),sentenceId:text('sentence_id').notNull(),unitVersion:text('unit_version').notNull(),kind:text('kind').notNull(),payloadJson:text('payload_json').notNull(),scheduled:integer('scheduled').notNull().default(0),createdAt:text('created_at').notNull(),
+},t=>[primaryKey({columns:[t.sessionId,t.clientEventId]})]);
+export const contextPracticeTasks=sqliteTable('context_practice_tasks',{
+  id:text('id').primaryKey(),clientRequestId:text('client_request_id').notNull().unique(),inputHash:text('input_hash').notNull(),materialId:text('material_id').notNull(),sourceQuestionId:text('source_question_id'),questionId:text('question_id'),sourceSentenceIdsJson:text('source_sentence_ids_json').notNull().default('[]'),sourceMemoryIdsJson:text('source_memory_ids_json').notNull().default('[]'),promptEn:text('prompt_en').notNull().default(''),promptZh:text('prompt_zh').notNull().default(''),origin:text('origin').notNull(),status:text('status').notNull(),requestJson:text('request_json').notNull().default('{}'),runId:text('run_id'),errorCode:text('error_code'),version:integer('version').notNull().default(0),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+},t=>[index('context_practice_source').on(t.materialId,t.createdAt)]);
+export const coachingPracticeLinks=sqliteTable('coaching_practice_links',{
+  practiceId:text('practice_id').primaryKey(),rootPracticeId:text('root_practice_id').notNull(),materialId:text('material_id').notNull(),sentenceId:text('sentence_id'),sourceSessionId:text('source_session_id'),relatedTaskId:text('related_task_id'),createdAt:text('created_at').notNull(),
+},t=>[index('coaching_practice_material').on(t.materialId,t.createdAt)]);
+export const fullAnswerAttempts=sqliteTable('full_answer_attempts',{
+  id:text('id').primaryKey(),questionId:text('question_id').notNull().references(()=>questions.id),sourceKey:text('source_key').notNull().unique(),stage:text('stage').notNull(),promptCondition:text('prompt_condition').notNull(),materialId:text('material_id'),text:text('text').notNull().default(''),refsJson:text('refs_json').notNull().default('{}'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+},t=>[index('full_answer_question').on(t.questionId,t.createdAt)]);
+export const answerAudioUploads=sqliteTable('answer_audio_uploads',{
+  id:text('id').primaryKey(),requestHash:text('request_hash').notNull(),metadataJson:text('metadata_json').notNull(),status:text('status').notNull(),assetId:text('asset_id'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),
+});
+export const answerAudioAssets=sqliteTable('answer_audio_assets',{
+  id:text('id').primaryKey(),fullAnswerId:text('full_answer_id').notNull().references(()=>fullAnswerAttempts.id),uploadId:text('upload_id').notNull().unique(),sha256:text('sha256').notNull(),byteLength:integer('byte_length').notNull(),mimeType:text('mime_type').notNull(),extension:text('extension').notNull(),durationSeconds:real('duration_seconds'),source:text('source').notNull(),originalName:text('original_name').notNull(),note:text('note').notNull().default(''),createdAt:text('created_at').notNull(),recordedAt:text('recorded_at'),recordedAtSource:text('recorded_at_source').notNull().default('unknown'),removedAt:text('removed_at'),purgedAt:text('purged_at'),
+},t=>[uniqueIndex('answer_audio_same_content').on(t.fullAnswerId,t.sha256),index('answer_audio_attempt').on(t.fullAnswerId,t.createdAt)]);
 
 

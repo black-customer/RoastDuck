@@ -63,7 +63,7 @@ async function setup(page:Page,{audioDelay=0,autoPlay=false}:{audioDelay?:number
   return {current:()=>live,events,dropCheckpoint:()=>{dropNextCheckpoint=true;},coachingPosts:()=>coachingPosts};
 }
 
-async function open(page:Page){await page.goto('/sentence-study?scope=question&id=guided-question&mode=learn');await expect(page.getByRole('heading',{level:1,name:chinese,exact:true})).toBeVisible();}
+async function open(page:Page){await page.goto('/sentence-study?extension=guided&scope=question&id=guided-question&mode=learn');await expect(page.getByRole('heading',{level:1,name:chinese,exact:true})).toBeVisible();}
 const recallBox=(page:Page)=>page.getByRole('textbox',{name:'写下你的尝试（可留空）',exact:true});
 const retryBox=(page:Page)=>page.getByRole('textbox',{name:'再练一次的表达（可留空）',exact:true});
 const saveError=(page:Page)=>page.locator('[data-sentence-focus] [role="alert"]');

@@ -17,15 +17,15 @@
 .main:focus { outline: none; }
 .menuButton { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-control); }
 .shell.simple { display:block; }
-.simple .sidebar { position:relative; height:auto; border:0; padding:22px clamp(16px,4vw,60px); overflow:visible; }
-.simple .brandRow { width:100%; max-width:1100px; margin:auto; }
-.simple .menuButton { display:flex; }
-.simple .navigation { display:none; max-width:1100px; margin:auto; }
+.simple .sidebar { position:relative; height:auto; border:0; border-bottom:1px solid var(--border);padding:19px clamp(16px,4vw,60px); overflow:visible; background:#f1f5fb;z-index:30; }
+.simple .brandRow { width:100%; max-width:1500px; margin:auto; }
+.simple .menuButton { display:flex;width:auto;gap:9px;padding:8px 13px;border:0;color:var(--muted);background:transparent;font-size:15px; }
+.simple .navigation { display:none;position:absolute;right:clamp(16px,4vw,60px);top:calc(100% - 4px);width:300px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 100px);overflow:auto;margin:0;padding:14px;background:var(--card);border-radius:14px;box-shadow:var(--surface-raised); }
 .simple .navigation[data-expanded="true"] { display:flex; }
-.simple .primaryNav { margin-top:18px; }
-.simple .sidebarBottom { padding-top:16px; }
+.simple .primaryNav { margin-top:0;gap:3px; }
+.simple .sidebarBottom { padding-top:10px;margin-top:10px;border-top:1px solid var(--border); }
 .simple .sidebarNote { display:none; }
-.simple .main { padding:24px clamp(16px,4vw,48px) 32px; }
+.simple .main { padding:30px clamp(16px,4vw,48px) 38px; }
 .simple .mobileBottomNav { display:none; }
 @media (max-width: 1150px) {
   .shell { grid-template-columns: 192px minmax(0, 1fr); }

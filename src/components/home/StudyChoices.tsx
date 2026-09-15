@@ -7,12 +7,13 @@ import styles from './StudyChoices.module.css';
 
 export function StudyChoices({mode,overview,chooseQuestions=false}:{mode:SentenceMode;overview:SentenceOverview;chooseQuestions?:boolean}){
   const [search,setSearch]=useState(''),[part,setPart]=useState(''),[topic,setTopic]=useState(''),[season,setSeason]=useState(''),[limit,setLimit]=useState(24);
-  const review=mode==='review',count=review?overview.dueCount:overview.newCount;
+  const review=mode==='review',count=review?overview.dueCount:overview.newCount,resume=overview.resumable[mode];
   const questions=overview.sources.filter(source=>source.type==='question'&&(!review||source.dueCount>0));
   const topics=[...new Map(questions.map(q=>[q.topicId??'unmarked',q.topic])).entries()];
   const seasons=[...new Map(questions.flatMap(q=>q.seasons.map(s=>[s.id,s.name] as const))).entries()];
   const filtered=questions.filter(q=>(!part||String(q.part)===part)&&(!topic||(q.topicId??'unmarked')===topic)&&(!season||q.seasons.some(s=>s.id===season))&&`${q.title} ${q.textEn}`.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className={styles.page}><Link className={styles.back} href={chooseQuestions?`/study?mode=${mode}`:'/'}>返回{chooseQuestions?'选择方式':'首页'}</Link><h1>{chooseQuestions?(review?'选一道题复习':'想学会哪一道题？'):review?'今天怎么复习？':'从一道题开始'}</h1>
+    {!chooseQuestions&&resume?<section className={styles.resume}><div><h2>{resume.title}</h2><p>上次停在第 {Math.min(resume.index+1,resume.total)} / {resume.total} 句；也可以选另一题。</p></div><StartSentenceButton scope={{type:'all'}} mode={mode} resumeSessionId={resume.id} label="继续上次"/></section>:null}
     {chooseQuestions?<>
       <label className={styles.search}>搜索题目<input value={search} onChange={e=>{setSearch(e.target.value);setLimit(24);}} placeholder="输入题目中的中文或英文" /></label>
       <details className={styles.filters}><summary>按 Part、话题或题季筛选</summary><div>
@@ -25,7 +26,7 @@ export function StudyChoices({mode,overview,chooseQuestions=false}:{mode:Sentenc
         const available=review?q.dueCount:q.newCount;
         const label=available?`${review?'复习':'学习'}：${q.title}`:q.totalCount?'查看已有材料':q.materialStatus==='failed'?'查看原因并恢复':q.materialStatus==='ready'?'查看本次反馈':q.materialStatus?'查看处理进度':'开始回答';
         const content=<><span className={styles.meta}>Part {q.part} · {q.topic}</span><strong lang="en">{q.textEn}</strong>{q.title!==q.textEn&&<span>{q.title}</span>}<span className={styles.action}>{available?`${available} 句${review?'到期':'待学'} · 开始${review?'复习':'学习'}`:label}</span></>;
-        return <div key={q.id} data-question-id={q.id}>{available?<StartSentenceButton className={styles.question} scope={{type:'question',id:q.id}} mode={mode} label={label}>{content}</StartSentenceButton>:<Link className={styles.question} href={q.totalCount||q.materialStatus?`/questions/${encodeURIComponent(q.id)}`:`/questions/${encodeURIComponent(q.id)}/practice`}>{content}</Link>}</div>;
+        return <div key={q.id} data-question-id={q.id}>{available||(!review&&q.totalCount)?<StartSentenceButton className={styles.question} scope={{type:'question',id:q.id}} mode={mode} label={label}>{content}</StartSentenceButton>:<Link className={styles.question} href={q.materialStatus?`/questions/${encodeURIComponent(q.id)}`:`/questions/${encodeURIComponent(q.id)}/practice`}>{content}</Link>}</div>;
       })}</div>
       {filtered.length>limit&&<button className="secondary-button" onClick={()=>setLimit(n=>n+24)}>查看更多题目</button>}
     </>:!overview.totalCount?<section className={styles.empty}><h2>{review?'还没有需要复习的句子':'先准备第一份材料'}</h2><p>选一道题，写下你想表达的意思。中文、英文或混合都可以。</p><Link className="primary-button" href="/study?mode=learn&choose=questions">选择一道题</Link>{overview.unavailableCount>0&&<p>部分已有材料还在处理或待确认，可以回到原回答查看。</p>}</section>:!count&&!overview.resumable[mode]?<section className={styles.empty}><h2>{review?'今天暂时无需复习':'这些句子都已经学过一遍'}</h2><p>{review?'到期句子会自动出现在这里。今天可以先休息，或学习新的题目。':'你可以准备另一道题，复习会按每句的回想情况安排。'}</p>{!review&&<Link className="primary-button" href="/study?mode=learn&choose=questions">选择一道新题目</Link>}<Link className={styles.back} href="/">返回首页</Link></section>:<div className={styles.choices}>

@@ -8,6 +8,7 @@ import {V32_DDL} from '../../db/migrations/v32-expression-study';
 import {V33_DDL} from '../../db/migrations/v33-sentence-study';
 import {V34_DDL} from '../../db/migrations/v34-personal-focus';
 import {V35_DDL} from '../../db/migrations/v35-guided-reveal';
+import {V36_DDL} from '../../db/migrations/v36-context-and-original-audio';
 /** Real SQLite in memory, native schema, no production paths and no libsql worker lifecycle. */
 export function portableTestDatabase(){
   const connection=new DatabaseSync(":memory:");
@@ -20,6 +21,7 @@ export function portableTestDatabase(){
   for(const statement of V33_DDL)connection.exec(statement);
   for(const statement of V34_DDL)connection.exec(statement);
   for(const statement of V35_DDL)connection.exec(statement);
+  for(const statement of V36_DDL)connection.exec(statement);
   const driver:TransactionDriver={
     async begin(mode){connection.exec("BEGIN");if(mode==="read")connection.exec("PRAGMA query_only=ON");},
     async commit(){connection.exec("PRAGMA query_only=OFF; COMMIT");},

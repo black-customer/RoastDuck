@@ -44,6 +44,8 @@ it('快捷语音只选择本机英语声音并报告实际名称，不能把女�
   const provider=createBrowserSpeechProvider(),state=vi.fn();
   provider.speak('I can say it.',{localOnly:true,voiceId:'us-male',onState:state});
   expect(speak.mock.calls[0][0].voice).toBe(male);
+  expect(state).not.toHaveBeenCalled();
+  speak.mock.calls[0][0].onstart?.();
   expect(state).toHaveBeenCalledWith(expect.objectContaining({provider:'browser',voice:'Microsoft David',message:'本机声音 · Microsoft David'}));
   provider.stop();
 });

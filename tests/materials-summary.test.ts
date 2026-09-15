@@ -27,7 +27,7 @@ describe('material summary preserves learning evidence semantics',()=>{
 
   it('keeps prepared cards learnable when confirmed problem count is zero',()=>{
     const html=render(fixture(),'question-1');
-    expect(html).toContain('1 句可逐句学习');
+    expect(html).toContain('1 句已确认的自然表达');
     expect(html).toContain('准备表达 1 项，修复表达 0 项');
     expect(html).toContain('准备项不代表你曾经犯错');
     expect(html).toContain('/sentence-study?scope=material&amp;id=material%2F1');
@@ -68,7 +68,7 @@ describe('material summary preserves learning evidence semantics',()=>{
   it('shows uncertainty found by the sentence edition even if the old material had none',()=>{
     const analysis=fixture();analysis.needsAttention=[];
     const html=renderToStaticMarkup(createElement(MaterialsSummary,{analysis,materialId:'m',sourceId:'s',originalEnglish:'uncertain source',originalChinese:'',onStrengthen:()=>{},initialLesson:{referenceText:'I enjoy live music.',sentences:[{id:'s',chinese:'我喜欢现场音乐。',english:'I enjoy live music.'}],needsAttention:[{intentZh:'我当时是否已经准备好了',reasonZh:'原回答无法确定，待补充。'}]}}));
-    expect(html).toContain('有 1 处意思待确认');expect(html).toContain('原回答无法确定，待补充。');expect(html).toContain('1 句可逐句学习');
+    expect(html).toContain('有 1 处意思待确认');expect(html).toContain('原回答无法确定，待补充。');expect(html).toContain('1 句已确认的自然表达');
   });
   it.each([['question-1','ielts-answer'],[undefined,'daily-conversation']])('complete material uses its actual source audio style %s', (questionId,style)=>{
     const analysis=fixture();analysis.needsAttention=[];

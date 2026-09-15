@@ -7,7 +7,7 @@ import {localJson} from '@/lib/http/local-write';
 export const dynamic='force-dynamic';
 export async function GET(request:Request){
   try{const p=new URL(request.url).searchParams;
-    const context=coachingContextSchema.parse({materialId:p.get('materialId'),sentenceId:p.get('sentenceId')??undefined,questionId:p.get('questionId')??undefined,mode:p.get('mode'),practiceId:p.get('practiceId')});
+    const context=coachingContextSchema.parse({materialId:p.get('materialId'),sentenceId:p.get('sentenceId')??undefined,questionId:p.get('questionId')??undefined,mode:p.get('mode'),practiceId:p.get('practiceId'),sourceSessionId:p.get('sourceSessionId')??undefined,rootPracticeId:p.get('rootPracticeId')??undefined,relatedTaskId:p.get('relatedTaskId')??undefined});
     return NextResponse.json(await webCompanion().coaching.view(context));
   }catch(error){return webError(error);}
 }

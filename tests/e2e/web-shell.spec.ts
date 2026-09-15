@@ -93,8 +93,7 @@ test("全站共享蓝白 Web 框架，桌面/手机/放大无溢出，保留导�
       if (name === "workspace") await expect(page.getByLabel("可编辑的英文答案版本")).toBeVisible();
       await expect(page.locator("[data-app-shell]")).toHaveCount(1);
       await expect(page.getByRole("main")).toHaveCount(1);
-      if (width > 767 && name!=='home') await expect(page.getByRole("navigation", { name: "主导航", exact: true })).toBeVisible();
-      else await expect(page.getByRole("button", { name: "展开或收起导航" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "展开或收起导航" })).toBeVisible();
       const metrics = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
         width: window.innerWidth,
@@ -133,14 +132,14 @@ test("手机导航可展开、Escape 收起；搜索失败明确且可重试", a
   await page.keyboard.press("Escape");
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await page.route("**/api/expressions?*", route => route.fulfill({ status: 503, json: { error: "搜索服务暂时不可用" } }));
+  await page.route("**/api/sentence-study/preferences?*", route => route.fulfill({ status: 503, json: { error: "搜索服务暂时不可用" } }));
   await page.reload();
-  await page.getByLabel("搜索当前中文或英文表达").fill("brush my teeth");
+  await page.getByLabel("查找句子、用法或备注").fill("breakfast");
   await expect(page.getByRole("main").getByRole("alert")).toContainText("搜索服务暂时不可用");
-  await page.unroute("**/api/expressions?*");
+  await page.unroute("**/api/sentence-study/preferences?*");
   await page.getByRole("button", { name: "重新读取", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: 'brush my teeth',exact:true })).toBeVisible();
+  await expect(page.getByText('I want to make breakfast.',{exact:true}).first()).toBeVisible();
 });
 
 test("切分修复旧链接只读，缺失原问句不显示伪造英文或播放按钮", async ({ page }) => {

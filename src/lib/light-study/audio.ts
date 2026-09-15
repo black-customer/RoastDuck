@@ -1,9 +1,10 @@
-import { MIMO_TTS_VERSION, resolveSpeechStyle, type MimoVoice, type SpeechAccent, type SpeechStyle, type VoicePresetId } from "@/lib/speech/contracts";
+import { MIMO_TTS_VERSION, resolveSpeechStyle, type MimoVoice, type SpeechAccent, type SpeechStyle, type VoicePresetId,type SpeechRole } from "@/lib/speech/contracts";
+import {recordingActive,STOP_AUDIO_EVENT} from '@/lib/speech/recording-coordinator';
 import {getSpeechPreferences,resolveSpeechSelection,subscribeSpeechPreferences} from '@/lib/speech/preferences';
 import type { TTSProvider } from "@/lib/tts";
 /** Omitted mode preserves the old extension playback contract. */
 export type PlaybackMode = "natural" | "quick";
-export interface LightAudioInput { text:string; voiceId:VoicePresetId;voice?:MimoVoice;accent?:SpeechAccent;rate?:number;synthesisRate?:number;retryUnknown?:boolean;style?:SpeechStyle;playbackMode?:PlaybackMode }
+export interface LightAudioInput { text:string; voiceId:VoicePresetId;voice?:MimoVoice;accent?:SpeechAccent;rate?:number;synthesisRate?:number;retryUnknown?:boolean;style?:SpeechStyle;playbackMode?:PlaybackMode;role?:SpeechRole }
 export interface LightAudioState { phase:"idle"|"loading"|"playing"|"blocked"|"error"; provider:"mimo"|"browser"|"device"|null; message:string;errorCode?:string;voice?:string }
 export const speechFailureMessage=(code:string)=>({missing_key:'未配置 MiMo Key',authentication_failed:'MiMo 鉴权失败',rate_limited:'MiMo 请求较多',timeout:'MiMo 响应超时',network_error:'MiMo 连接暂不可用',invalid_audio:'示范音频校验失败',result_unknown:'上次合成结果尚未确认',invalid_configuration:'MiMo 配置需要检查',preparing:'MiMo 仍在准备'})[code]??'MiMo 暂不可用';
 interface Resource {url:string;voice?:string;release?:()=>void}
@@ -29,6 +30,7 @@ export class LightAudioPlayer {
   private failures=new Map<string,string>();
   private playbackRate=getSpeechPreferences().playbackRate as number;
   private unsubscribePreferences:()=>void;
+  private stopListener=()=>{this.prime(null,null,false);this.stop();};
   constructor(private fallback:TTSProvider,private update:(state:LightAudioState)=>void,
     private fetcher:typeof fetch=(...args)=>globalThis.fetch(...args),private audioFactory:(url:string)=>HTMLAudioElement=url=>new Audio(url),
     private nativeLoader?: (input:LightAudioInput)=>Promise<Resource|null>) {
@@ -36,6 +38,7 @@ export class LightAudioPlayer {
         this.playbackRate=preferences.playbackRate;
         if(this.audio)this.applyPlaybackRate(this.audio);
       });
+      if(typeof window!=='undefined')window.addEventListener?.(STOP_AUDIO_EVENT,this.stopListener);
     }
   private applyPlaybackRate(audio:HTMLAudioElement){audio.playbackRate=this.playbackRate;audio.preservesPitch=true;}
   prime(current:LightAudioInput|null,next:LightAudioInput|null,warm=true) {
@@ -45,7 +48,7 @@ export class LightAudioPlayer {
     this.desired=new Set([current,next].filter((v):v is LightAudioInput=>Boolean(v)).map(keyOf));
     for(const [key,requests] of this.requests)if(!this.desired.has(key))for(const request of requests)request.abort();
     this.pruneResources();
-    if(warm){if(current)void this.prepare(current,1);if(next)void this.prepare(next,0);}
+    if(warm&&!recordingActive()){if(current)void this.prepare(current,1);if(next)void this.prepare(next,0);}
   }
   private releaseResource(key:string){const resource=this.cache.get(key);this.cache.delete(key);resource?.release?.();}
   private clearAudio(){
@@ -66,7 +69,7 @@ export class LightAudioPlayer {
     if(this.pending.has(key)&&[...this.requests.get(key)??[]].some(request=>!request.signal.aborted))return this.pending.get(key)!;
     this.priorities.set(key,priority);
     const controller=new AbortController();if(!this.requests.has(key))this.requests.set(key,new Set());this.requests.get(key)!.add(controller);
-    const wanted=()=>!this.disposed&&!controller.signal.aborted&&this.desired.has(key);
+    const wanted=()=>!this.disposed&&!recordingActive()&&!controller.signal.aborted&&this.desired.has(key);
     const work=Promise.resolve().then(async()=>{
       if(!wanted())return null;
       try {
@@ -74,7 +77,7 @@ export class LightAudioPlayer {
         const signal=AbortSignal.any([this.controller.signal,controller.signal,AbortSignal.timeout(65000)]);
         const response=await this.fetcher("/api/speech/synthesis",{method:"POST",headers:{"content-type":"application/json"},
           signal,
-          body:JSON.stringify({text:input.text,purpose:"example",voice:input.voice,accent:input.accent,rate:input.synthesisRate??1,style:resolveSpeechStyle(input),priority,retryUnknown:input.retryUnknown??false})});
+          body:JSON.stringify({text:input.text,purpose:input.role==='teacher'?'teacher_message':"example",voice:input.voice,accent:input.accent,rate:input.synthesisRate??1,style:resolveSpeechStyle(input),priority,retryUnknown:input.retryUnknown??false})});
         const body=await response.json();
         if(!wanted())return null;
         if(!response.ok||typeof body.audio?.audioUrl!=="string"||!body.audio.audioUrl.startsWith("/api/speech/assets/")){this.failures.set(key,typeof body.code==='string'?body.code:'upstream_unavailable');return null;}
@@ -113,6 +116,7 @@ export class LightAudioPlayer {
   stop(){this.haltPlayback();this.pruneResources();}
   async play(input:LightAudioInput) {
     if(this.disposed)return;
+    if(recordingActive()){this.update({phase:'blocked',provider:null,errorCode:'recording_active',message:'请先停止录音，再播放声音'});return;}
     input=normalized(input);
     this.playbackRate=input.rate??getSpeechPreferences().playbackRate;
     if(LightAudioPlayer.active&&LightAudioPlayer.active!==this)LightAudioPlayer.active.stop();
@@ -122,7 +126,7 @@ export class LightAudioPlayer {
     this.desired=new Set([input,this.next].filter((v):v is LightAudioInput=>Boolean(v)).map(keyOf));
     for(const [key,requests] of this.requests)if(!this.desired.has(key))for(const request of requests)request.abort();
     this.pruneResources();
-    const alive=()=>!this.disposed&&token===this.generation;
+    const alive=()=>!this.disposed&&!recordingActive()&&token===this.generation;
     const naturalFailure=(code:string)=>{
       if(!alive())return;
       this.clearAudio();
@@ -135,8 +139,8 @@ export class LightAudioPlayer {
       const quick=input.playbackMode==='quick';
       const code=quick?undefined:this.failures.get(keyOf(input))??'preparing',label=source==='device'?'设备快捷声音':quick?'本机快捷声音':'系统备用声音';
       let actual:Pick<LightAudioState,'voice'|'message'>={message:code?`${label} · ${speechFailureMessage(code)}`:label};
-      this.update({phase:"playing",provider:source,errorCode:code,...actual});
-      this.fallback.speak(input.text,{voiceId:input.voiceId,voice:input.voice,lang:input.accent,rate:this.playbackRate,localOnly:quick,
+      this.update({phase:"loading",provider:source,errorCode:code,...actual});
+      this.fallback.speak(input.text,{voiceId:input.voiceId,voice:input.voice,lang:input.accent,rate:this.playbackRate,localOnly:quick,role:input.role,
         onState:state=>{if(alive()){actual={voice:state.voice,message:state.message};this.update({...state,provider:source});}},
         onEnd:()=>{if(alive()){this.playingKey=null;this.pruneResources();this.update({phase:"idle",provider:source,errorCode:code,...actual});}},
         onError:error=>{if(alive()){const unavailable=error instanceof Error&&error.message==='local_voice_unavailable';this.update({phase:"error",provider:source,errorCode:unavailable?'local_voice_unavailable':undefined,message:unavailable?'设备没有可用的本机英语声音，可以准备 MiMo 自然声音':'声音暂不可用，仍可继续学习'});}}});
@@ -168,5 +172,5 @@ export class LightAudioPlayer {
       else {this.failures.set(keyOf(input),'invalid_audio');this.releaseResource(keyOf(input));unavailable();}
     }
   }
-  dispose(){this.stop();this.disposed=true;this.desired.clear();this.controller.abort();this.pruneResources();this.unsubscribePreferences();}
+  dispose(){this.stop();this.disposed=true;this.desired.clear();this.controller.abort();this.pruneResources();this.unsubscribePreferences();this.fallback.dispose?.();if(typeof window!=='undefined')window.removeEventListener?.(STOP_AUDIO_EVENT,this.stopListener);}
 }

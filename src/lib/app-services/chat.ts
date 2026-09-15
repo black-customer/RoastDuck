@@ -5,7 +5,8 @@ import {query as sql} from "@/lib/platform/sql";
 import type {RuntimeCalls,RuntimeCallOptions} from "@/lib/ai/runtime-ledger";
 import {RuntimeRequestError} from "@/lib/ai/runtime-ledger";
 import {AiProviderError} from "@/lib/ai/errors";
-import {createLightCatalogue} from "@/lib/light-study/core-catalogue";
+import {readSentenceCatalogue,sentenceIsTarget} from '@/lib/sentence-study/catalogue';
+import type {SentenceSession} from '@/lib/sentence-study/contracts';
 import type {MaterialService} from "@/lib/four-step/core-materials";
 import {TrainingError} from "@/lib/four-step/shared";
 import type {MemoryService} from "./memory";
@@ -76,13 +77,15 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     if(meta(user).deliveryStatus==="completed")return history;
     const memoryLimit=conversation.question_id?2:1;
     const relevant=await memories.relevantForTeacher(conversation.title+" "+user.text,4,memoryLimit);
-    const due=await database.read(async tx=>{
+    const contextSentences=await database.read(async tx=>{
       const availableSlots=Math.max(0,memoryLimit-relevant.filter(m=>m.category==='learning').length);
       if(!availableSlots)return [];
-      const {cards,progress}=await createLightCatalogue(tx,platform.allowMock).readLightCatalogue({type:'all'});
-      return cards.filter(card=>(progress.get(card.itemId)?.due_at??'9999')<=now())
-        .sort((a,b)=>progress.get(a.itemId)!.due_at.localeCompare(progress.get(b.itemId)!.due_at)||a.itemId.localeCompare(b.itemId))
-        .slice(0,availableSlots).map(card=>({id:card.itemId,target_english:card.english,intention_zh:card.chinese}));
+      const {cards}=await readSentenceCatalogue(tx,conversation.question_id?{type:'question',id:conversation.question_id}:{type:'all'},platform.now(),false);
+      const sessions=await tx.all<{view_json:string}>(sql`SELECT view_json FROM sentence_study_sessions ORDER BY updated_at DESC,id DESC LIMIT 12`);
+      const session=sessions.map(row=>parseJson<SentenceSession|null>(row.view_json,null)).find(v=>v&&v.cards.some(c=>cards.some(live=>live.id===c.id&&live.version===c.version)));
+      const focusId=session?.focusId??session?.cards[session.index]?.id,materialId=session?.cards.find(c=>c.id===focusId)?.materialId;
+      return cards.filter(card=>sentenceIsTarget(card)&&(!materialId||card.materialId===materialId)).sort((a,b)=>Number(b.id===focusId)-Number(a.id===focusId)||a.ordinal-b.ordinal)
+        .slice(0,availableSlots).map(card=>({id:card.id,version:card.version,materialId:card.materialId,target_english:card.english,context_zh:card.chinese}));
     });
     const token=`native.${platform.bootId}.${platform.newId()}`;
     const reserved=await database.write(async tx=>{
@@ -92,9 +95,9 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
       if(metadata.deliveryStatus==="completed")return null;
       if(metadata.deliveryStatus==="failed"&&!options.retryFailed&&!options.retryUnknown)throw new TrainingError("消息已保留，请明确重试",409,"message_retry_required");
       if(metadata.leaseExpiresAt&&metadata.leaseExpiresAt>now())throw new TrainingError("回复还在处理，请稍后恢复",409,"message_busy");
-      const base=metadata.payload as {dialogueVersion?:'v2'|'v3';registerProfileVersion?:string;dueExpressions?:Array<{id:string}>;relevantMemories?:Array<{id:string}>}|undefined;
+      const base=metadata.payload as {dialogueVersion?:'v2'|'v3'|'v4';registerProfileVersion?:string;dueExpressions?:Array<{id:string}>;contextSentences?:Array<{id:string;version:string}>;relevantMemories?:Array<{id:string}>}|undefined;
       // A retry cannot reintroduce invalidated material or memories removed since the initial request.
-      const payload=base?{...base,dueExpressions:base.dueExpressions?.filter(item=>due.some(row=>row.id===item.id))??[],relevantMemories:base.relevantMemories?.filter(item=>relevant.some(row=>row.id===item.id))??[]}:{dialogueVersion:'v3' as const,registerProfileVersion:SPOKEN_REGISTER_VERSION,mode:conversation.mode,questionId:conversation.question_id,recentHistory:history.filter(row=>row.sequence_no<=user.sequence_no).slice(-12).map(row=>({id:row.id,role:row.role,text:row.text})),latestUserMessage:user.text,relevantMemories:relevant,memoryUsePolicy:{maxOldIssues:memoryLimit,onlyWhenRelevant:true,absenceIsNotImprovement:true},dueExpressions:due};
+      const payload=base?{...base,dueExpressions:[],...(base.dialogueVersion==='v4'?{contextSentences:base.contextSentences?.filter(item=>contextSentences.some(row=>row.id===item.id&&row.version===item.version))??[]} :{}),relevantMemories:base.relevantMemories?.filter(item=>relevant.some(row=>row.id===item.id))??[]}:{dialogueVersion:'v4' as const,registerProfileVersion:SPOKEN_REGISTER_VERSION,mode:conversation.mode,questionId:conversation.question_id,recentHistory:history.filter(row=>row.sequence_no<=user.sequence_no).slice(-12).map(row=>({id:row.id,role:row.role,text:row.text})),latestUserMessage:user.text,relevantMemories:relevant,memoryUsePolicy:{maxOldIssues:memoryLimit,onlyWhenRelevant:true,absenceIsNotImprovement:true},dueExpressions:[],contextSentences};
       const updated={...metadata,payload,deliveryStatus:"pending",leaseToken:token,leaseExpiresAt:new Date(platform.now().getTime()+180000).toISOString(),errorCode:undefined};
       await tx.run(sql`UPDATE free_talk_messages SET metadata_json=${JSON.stringify(updated)} WHERE id=${userId}`);
       return {payload,metadata:updated,threadId:await ensureThread(tx,conversation,conversation.question_id)};
@@ -102,9 +105,9 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
     if(!reserved)return messages(conversationId);
     let deliveredConversationId=conversationId,deliveredThreadId=reserved.threadId;
     try{
-      const dialogueVersion=reserved.payload.dialogueVersion==='v3'?'v3':'v2';
+      const dialogueVersion=reserved.payload.dialogueVersion==='v4'?'v4':reserved.payload.dialogueVersion==='v3'?'v3':'v2';
       const result=await runtime.call({role:"companion_response",instructions:await spokenInstructions(platform.loadPrompt,`companion_dialogue.chloe.${dialogueVersion}.md`,reserved.payload.registerProfileVersion),input:JSON.stringify(reserved.payload),schema:dialogueResponseSchema,schemaName:"companion_dialogue_v2",promptVersion:`companion-dialogue-${dialogueVersion}${reserved.payload.registerProfileVersion?'-'+reserved.payload.registerProfileVersion:''}`,schemaVersion:"companion-dialogue-v2",idempotencyKey:stableId("ft_resp",conversationId,meta(user).clientMessageId??userId)},options);
-      const allowed=(reserved.payload as {dueExpressions?:Array<{id:string}>}).dueExpressions??[];
+      const allowed=reserved.payload.dialogueVersion==='v4'?reserved.payload.contextSentences??[]:(reserved.payload as {dueExpressions?:Array<{id:string}>}).dueExpressions??[];
       if(result.data.usedLearningItemIds.some(id=>!allowed.some(item=>item.id===id))||result.data.usedLearningItemIds.length>allowed.length)throw new TrainingError("回复引用了未提供的旧表达",422,"dialogue_invalid_reference");
       await database.write(async tx=>{
         const [owner]=await tx.all<AppMessage>(sql`SELECT * FROM free_talk_messages WHERE id=${userId}`);

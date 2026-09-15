@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandMark, Icon, type IconName } from "./Icon";
 import styles from "./AppShell.module.css";
 
@@ -18,15 +18,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
   const expanded = expandedPath === pathname;
   const menu = useRef<HTMLButtonElement>(null);
+  const navigationPanel=useRef<HTMLDivElement>(null);
   const close = () => setExpandedPath(null);
-  return <div className={`${styles.shell} ${pathname==='/'||pathname==='/study'?styles.simple:''}`} data-app-shell>
+  useEffect(()=>{
+    if(!expanded)return;
+    const pointer=(event:PointerEvent)=>{if(event.target instanceof Node&&!navigationPanel.current?.contains(event.target)&&!menu.current?.contains(event.target))setExpandedPath(null)};
+    const keyboard=(event:KeyboardEvent)=>{if(event.key==='Escape'){setExpandedPath(null);menu.current?.focus()}};
+    document.addEventListener('pointerdown',pointer);document.addEventListener('keydown',keyboard);
+    return()=>{document.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',keyboard)};
+  },[expanded]);
+  return <div className={`${styles.shell} ${styles.simple}`} data-app-shell>
     <a className={styles.skipLink} href="#main-content">跳到主要内容</a>
     <aside className={styles.sidebar} aria-label="工作台导航">
       <div className={styles.brandRow}>
         <Link href="/" className={styles.brand} aria-label="鱼块学英语首页" onClick={close}><BrandMark /><span>鱼块学英语</span></Link>
-        <button ref={menu} type="button" className={styles.menuButton} aria-label="展开或收起导航" aria-expanded={expanded} aria-controls="workspace-navigation" onClick={() => setExpandedPath(expanded ? null : pathname)}><Icon name="menu" /></button>
+        <button ref={menu} type="button" className={styles.menuButton} aria-label="展开或收起导航" aria-expanded={expanded} aria-controls="workspace-navigation" onClick={() => setExpandedPath(expanded ? null : pathname)}><Icon name="menu" /><span>菜单</span></button>
       </div>
-      <div id="workspace-navigation" className={styles.navigation} data-expanded={expanded} onKeyDown={(event) => {
+      <div ref={navigationPanel} id="workspace-navigation" className={styles.navigation} data-expanded={expanded} onKeyDown={(event) => {
         if (event.key === "Escape") { close(); menu.current?.focus(); }
       }}>
         <nav className={styles.primaryNav} aria-label="主导航">
