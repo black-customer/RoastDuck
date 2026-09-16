@@ -47,6 +47,7 @@ it('keeps nine ordered context cards when only five are new targets',async()=>{
   const f=await fixture();let legacy=await f.service.create({scope:{type:'question',id:'q'},mode:'learn',clientRequestId:'old'});
   for(let index=0;index<4;index++){legacy=await f.service.event(legacy.id,unit(legacy,'reveal',`old-reveal-${index}`));legacy=await f.service.event(legacy.id,unit(legacy,'rate',`old-rate-${index}`,legacy.index,{rating:'remembered'}));}
   const v=await f.create();expect(v.cards).toHaveLength(9);expect(v.cards.map(c=>c.ordinal)).toEqual([0,1,2,3,4,5,6,7,8]);expect(v.targetIds).toEqual(v.cards.slice(4).map(c=>c.id));expect(v.focusId).toBe(v.cards[0].id);
+  expect(v.cards[0].source.questionEn).toBe('Where do you live?');
   expect((await f.service.overview()).newCount).toBe(5);
 });
 it('opening, focusing and typing do not create exposure or ratings; reveal sets a first review 24 hours later',async()=>{

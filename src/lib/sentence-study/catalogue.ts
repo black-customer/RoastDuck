@@ -56,7 +56,7 @@ export async function readSentenceCatalogue(db:SqlReader,scope:SentenceScope={ty
     if(card.id!==row.id||card.version!==row.version||card.materialId!==material.id)throw new SentenceStudyError('句子资料已变化，暂时无法学习',409,'material_changed');
     const userHighlights=(['zh','en'] as const).flatMap(language=>projectStoredSentenceHighlights(highlights,{sentenceId:card.id,language,textVersion:card.version},language==='zh'?card.chinese:card.english).highlights);
     const exposure=exposures.get(`${card.id}:${card.version}`),preference=preferences.get(card.id)??{hidden:false,favorite:false,selfKnown:false,note:'',version:0};
-    const available=withTeaching({...card,userHighlights,preference,firstExposedAt:exposure?.first_exposed_at??null,firstReviewDueAt:exposure?.first_review_due_at??null,progressVersion:progress.get(row.id)?.version??0,source:{...card.source,title:material.title}},teaching);
+    const available=withTeaching({...card,userHighlights,preference,firstExposedAt:exposure?.first_exposed_at??null,firstReviewDueAt:exposure?.first_review_due_at??null,progressVersion:progress.get(row.id)?.version??0,source:{...card.source,title:material.title,questionEn:card.source.questionId?material.question_en:undefined}},teaching);
     return feedback.some(f=>f.sentence_id===card.id&&f.unit_version===card.version)?{...available,english:'',chinese:'这句已标记内容问题，等待确认。',contextZh:'',teaching:undefined,usages:[],notes:[],userHighlights:[],unavailable:'内容问题待确认'}:available;
   }));
   const seasons=await db.all<{question_id:string;id:string;name:string}>(sql`SELECT l.question_id,s.id,s.name_zh name FROM question_set_links l JOIN question_sets s ON s.id=l.question_set_id ORDER BY s.sort,s.id`);

@@ -39,6 +39,8 @@ export function ContextWorkspace({sessionId,input,initialError,resumeOnLoad=fals
   const initKey=JSON.stringify(input),view=state.view,card=view?.cards.find(c=>c.id===view.focusId)??view?.cards[view.index]??null;
   const practice=card&&view?view.practiceByUnit?.[sentencePracticeKey(card)]??{...(view.practice??emptySentencePractice()),stage:view.stage??'recall'}:null;
   const stage=practice?.stage??'recall',visible=['teaching','rated','retry_reveal'].includes(stage),source=view?.cards[0]?.source;
+  const questionEn=source?.questionId?source.questionEn?.trim():undefined;
+  const questionZh=questionEn&&source?.title!==questionEn&&/\p{Script=Han}/u.test(source?.title??'')?source?.title:undefined;
   const blocked=state.loading||state.conflict||!!state.error;
   const assessment=view?.assessments.findLast(a=>a.sentenceId===card?.id);
   const currentRating=localRating&&card&&localRating.key===sentencePracticeKey(card)&&localRating.attempt===practice?.retryAttempt?localRating.rating:assessment?.rating;
@@ -133,7 +135,7 @@ export function ContextWorkspace({sessionId,input,initialError,resumeOnLoad=fals
     {unconfirmed?<p className={styles.notice} role="status">{state.error||state.conflict?'部分操作仍待确认；本机记录已保留，可重试恢复。':`正在保存${state.pending?` ${state.pending} 项操作`:''}，服务端尚未确认。`}</p>:null}
     {!state.loading&&view&&!view.cards.length?<section className={styles.empty}><h1>这份材料暂时没有可学内容</h1><p>可能已撤销或正在更新，原学习记录仍然保留。</p><Link className="primary-button" href={`/study?mode=${view.mode}&choose=questions`}>换一道题</Link></section>:null}
     {view&&card&&(summary||view.status==='paused'||view.status==='completed')?<section className={styles.summary}>
-      <h1>{unconfirmed?'先停在这里，保存仍待确认':summary?'今天先到这里，也很好。':view.status==='completed'?'本次练习记录已保留':'上次停在这里'}</h1><p className={styles.lead}>{source?.title}</p>
+      <h1>{unconfirmed?'先停在这里，保存仍待确认':summary?'今天先到这里，也很好。':view.status==='completed'?'本次练习记录已保留':'上次停在这里'}</h1><p className={styles.lead} lang={questionEn?'en':undefined}>{questionEn||source?.title}</p>{questionZh?<p className={styles.promptTranslation}>{questionZh}</p>:null}
       <dl><div><dt>完整回答</dt><dd>{view.cards.length} 句，原顺序保留</dd></div><div><dt>这次正式自评</dt><dd>{view.assessments.length} 句{unconfirmed?'，保存待确认':''}；接触和再练不冒充掌握</dd></div><div><dt>下次复习</dt><dd>{unconfirmed?'保存确认后显示最新安排':view.nextDueAt?new Date(view.nextDueAt).toLocaleString('zh-CN'):'未自评的首次接触约24小时后再回想'}</dd></div></dl>
       <div className={styles.actions}><button className="primary-button" onClick={async()=>{if(await apply({type:'resume'}))setSummary(false)}}>继续这份回答</button><Link className="secondary-button" href={`/study?mode=${view.mode}&choose=questions`}>换一道题</Link><Link className="secondary-button" href="/">返回首页</Link></div>
       <div className={styles.actions}><button onClick={()=>openCoach('answer_guided')}>把整题串起来说</button><button onClick={()=>setRelated(true)}>换个相关问题试试</button>{source?.questionId&&<Link href={`/answer-history/${encodeURIComponent(source.questionId)}`}>我的回答录音</Link>}</div>
@@ -141,7 +143,7 @@ export function ContextWorkspace({sessionId,input,initialError,resumeOnLoad=fals
       <details><summary>回到回答中的某一句</summary>{view.cards.filter(c=>!c.unavailable).map(c=><div key={c.id} className={styles.summarySentence}><p>{c.chinese}</p><button disabled={blocked} onClick={async()=>{if(await focus(c))setSummary(false)}}>回到第 {c.ordinal+1} 句</button></div>)}</details>
     </section>:null}
     {view&&card&&!summary&&view.status==='active'?<>
-      <div className={styles.workHead}><div><h1>{source?.title||'我的完整回答'}</h1><p>完整回答 · {view.cards.length} 句 <span>本次待回想 {view.targetIds?.filter(id=>!view.assessments.some(item=>item.sentenceId===id)).length??0} 句</span></p></div><div className={styles.actions}><button onClick={()=>void leave(`/study?mode=${view.mode}&choose=questions`)}><Icon name="arrow"/>暂停并换题</button><button className={styles.quiet} onClick={()=>void leave()}>今天先到这里</button></div></div>
+      <div className={styles.workHead}><div><h1 lang={questionEn?'en':undefined}>{questionEn||source?.title||'我的完整回答'}</h1>{questionZh?<p className={styles.promptTranslation}>{questionZh}</p>:null}<p>完整回答 · {view.cards.length} 句 <span>本次待回想 {view.targetIds?.filter(id=>!view.assessments.some(item=>item.sentenceId===id)).length??0} 句</span></p></div><div className={styles.actions}><button onClick={()=>void leave(`/study?mode=${view.mode}&choose=questions`)}><Icon name="arrow"/>暂停并换题</button><button className={styles.quiet} onClick={()=>void leave()}>今天先到这里</button></div></div>
       <div className={styles.aligned}><div className={styles.columnHead}><span>我想表达的意思</span><span>自然英文 · 需要时再揭晓</span></div>
         {view.cards.map((c,i)=>{
           const active=c.id===card.id,p=view.practiceByUnit?.[sentencePracticeKey(c)]??{...emptySentencePractice(),stage:'recall' as const};

@@ -48,6 +48,17 @@ const sentence=(page:Page,index:number)=>page.getByRole('region',{name:`第 ${in
 const panel=(page:Page,name:string)=>page.getByRole('complementary',{name,exact:true});
 const notSaving=(page:Page)=>expect(page.getByText(/正在保存.*服务端尚未确认/)).toHaveCount(0);
 
+test('真实题库材料的学习页以英文题干为主，中文仅作辅助',async({page})=>{
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto('/sentence-study?scope=question&id=sentence-e2e-new&mode=learn');
+  await expect(page.getByRole('heading',{level:1,name:'How would you describe your day?',exact:true})).toBeVisible();
+  await expect(page.getByText('你会怎样描述这一天？',{exact:true})).toBeVisible();
+  await page.screenshot({path:'test-results/visual/question-en-first-1440.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.getByRole('heading',{level:1,name:'How would you describe your day?',exact:true})).toBeVisible();
+  await page.screenshot({path:'test-results/visual/question-en-first-390.png',fullPage:true});
+});
+
 test('首页保留自己选题和继续选择；整题九句、五个目标可自由切换而不评分',async({page})=>{
   const harness=await setup(page);await page.goto('/');await page.getByRole('link',{name:'学习',exact:true}).click();
   await expect(page.getByRole('heading',{name:'从一道题开始',exact:true})).toBeVisible();await page.getByRole('link',{name:'自己选题',exact:false}).click();

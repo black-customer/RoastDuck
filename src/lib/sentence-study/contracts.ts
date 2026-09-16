@@ -14,7 +14,7 @@ export interface SentenceCard {
   chinese:string;english:string;contextZh:string;meaningOrigin:'user_chinese'|'derived_from_english';
   usages:Array<{id:string;text:string;meaningZh:string;start:number;end:number;kind:'confirmed_error'|'preparation'}>;
   notes:Array<{id:string;textZh:string;kind:'correction'|'suggestion';evidence:string}>;
-  source:{type:'ielts_practice'|'free_talk';id:string;questionId:string|null;title:string;href:string};
+  source:{type:'ielts_practice'|'free_talk';id:string;questionId:string|null;title:string;href:string;questionEn?:string};
   progressVersion:number;
   userHighlights?:SentenceHighlight[];
   teaching?:SentenceTeaching;

@@ -5,7 +5,7 @@
 | 文档 | 状态 | 职责 |
 | --- | --- | --- |
 | [README](README.md) | 现行 | 本索引 |
-| [CONTEXT_WORKSPACE](CONTEXT_WORKSPACE.md) | 现行 | v0.4.0实施中：整题同页、首次复习、完整回答录音与含媒体备份；冲突时优先 |
+| [CONTEXT_WORKSPACE](CONTEXT_WORKSPACE.md) | 现行 | v0.4整题同页、首次复习、完整回答录音与含媒体备份；冲突时优先 |
 | [SENTENCE_STUDY](SENTENCE_STUDY.md) | 兼容 | 句子身份、独立调度和旧体验；默认路线已由CONTEXT_WORKSPACE替代 |
 | [GUIDED_REVEAL](GUIDED_REVEAL.md) | 兼容 | 跟手揭晓与教学合同保留；评分门槛、逐句页面以CONTEXT_WORKSPACE为准 |
 | [PERSONAL_FOCUS](PERSONAL_FOCUS.md) | 现行 | 真实生成修复、年轻美式文本/Milo、高亮、错误记忆及版本发布增量 |

@@ -1,5 +1,11 @@
 # 当前工程真相
 
+## v0.4.1 开发检查点（2026-09-16）
+
+- 用户发现整题学习页面把中文题名作为主标题。本轮将题库英文原题从稳定questions记录投影到当前句子来源，仅改变展示，中文退为辅助；历史材料与学习状态不改、不重生成。FreeTalk和缺英文题干的旧来源保留原题名。
+- 声音分析：现有MiMo已经使用data/audio/cache持久WAV缓存，浏览器保留当前/下一句资源；本机33个WAV合计约14.86MB，均值约0.45MB。此数仅描述现有样本，不能证明所有593句同体积。当前新文本首次生成是非流式完整WAV，不能把材料生成等同于音频已生成；尚未部署本地TTS或批量消费Runtime。
+- 英文题干27条定向单测、TypeScript、Lint及真实隔离题库浏览器测试通过；1440/390截图已查看，Impeccable检测[]。v0.4.1最终CI、本机切换和GitHub发布需以实际后续回执为准。
+
 ## 已发布：v0.4.0（2026-09-16）
 
 - GitHub公开安全快照7c8fece2cfbabbfabc7745df2f23fd6260fbcb58，完整Linux CI成功：https://github.com/black-customer/RoastDuck/actions/runs/35065913699。正式Release：https://github.com/black-customer/RoastDuck/releases/tag/v0.4.0；标签指向7c8fece，非Draft/Prerelease。首次候选2f9656d的CI仅因Windows npm 11写入的锁文件缺少Linux npm 10需要的可选依赖而在npm ci失败；用CI版本npm 10.9.8重建锁文件并通过同版本npm ci --dry-run，未关闭检查。
