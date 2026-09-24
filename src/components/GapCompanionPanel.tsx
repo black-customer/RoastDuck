@@ -50,8 +50,17 @@ export function GapCompanionPanel({ gapId, onLookup }: { gapId: string; onLookup
     setNewMemories([]);
   }, [gapId]);
 
+  const threadAttemptRef = useRef(false);
+
   useEffect(() => {
-    if (!open || thread || busy) return;
+    threadAttemptRef.current = false;
+  }, [gapId]);
+
+  useEffect(() => {
+    // 只自动尝试一次；失败后停留在错误提示，由用户手动重开面板重试，
+    // 避免网络或服务异常时无限 POST 循环。
+    if (!open || thread || busy || threadAttemptRef.current) return;
+    threadAttemptRef.current = true;
     setBusy(true);
     void fetch("/api/companion/threads", {
       method: "POST",
@@ -101,9 +110,11 @@ export function GapCompanionPanel({ gapId, onLookup }: { gapId: string; onLookup
       setNewMemories(body.newMemories ?? []);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "消息没有发送成功");
-      const response = await fetch(`/api/companion/threads/${encodeURIComponent(thread.id)}/messages`, { cache: "no-store" });
-      const body = (await response.json()) as { thread?: CompanionThread };
-      if (body.thread) setThread(body.thread);
+      try {
+        const response = await fetch(`/api/companion/threads/${encodeURIComponent(thread.id)}/messages`, { cache: "no-store" });
+        const body = (await response.json()) as { thread?: CompanionThread };
+        if (body.thread) setThread(body.thread);
+      } catch { /* 恢复读取失败时保留错误提示，等用户重试 */ }
     } finally {
       setBusy(false);
     }
@@ -178,7 +189,7 @@ export function GapCompanionPanel({ gapId, onLookup }: { gapId: string; onLookup
       <form className={styles.composer} onSubmit={submit}>
         <label htmlFor="gap-chloe-message">问当前表达</label>
         <textarea ref={composerRef} id="gap-chloe-message" rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="中文、英文或中英混合都可以" disabled={!thread || busy} onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); }
+          if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); }
         }} />
         <div><span>Enter 发送 · Shift + Enter 换行</span><button type="submit" disabled={!thread || busy || !draft.trim()}>发送</button></div>
       </form>

@@ -193,20 +193,20 @@ export async function appendUserAnswerVersion(answerId: string, textEn: string, 
   const [answer] = await db.select({ id: personalAnswers.id, superseded: personalAnswers.supersededByRevisionId }).from(personalAnswers).where(eq(personalAnswers.id, answerId)).limit(1);
   if (!answer) throw new AnswerServiceError("答案不存在", 404, "answer_not_found");
   if (answer.superseded) throw new AnswerServiceError("此回答已由切分修复后的记录取代，请打开新记录", 409, "answer_superseded");
-  const [{ latest }] = await db.select({ latest: sql<number>`COALESCE(MAX(${answerVersions.versionNo}), 0)` })
-    .from(answerVersions).where(eq(answerVersions.answerId, answerId));
-  const latestVersion = Number(latest);
-  if (latestVersion !== baseVersionNo) {
-    throw new AnswerServiceError("答案已有更新，请刷新后再保存", 409, "version_conflict");
-  }
-  const versionNo = latestVersion + 1;
   const id = `answer_version_${randomUUID()}`;
   const now = new Date().toISOString();
+  // 版本号检查必须在同一事务内，避免并发保存读到同一个 latest 后互相顶掉。
   await db.transaction(async (tx) => {
+    const [{ latest }] = await tx.select({ latest: sql<number>`COALESCE(MAX(${answerVersions.versionNo}), 0)` })
+      .from(answerVersions).where(eq(answerVersions.answerId, answerId));
+    const current = Number(latest);
+    if (current !== baseVersionNo) {
+      throw new AnswerServiceError("答案已有更新，请刷新后再保存", 409, "version_conflict");
+    }
     await tx.insert(answerVersions).values({
       id,
       answerId,
-      versionNo,
+      versionNo: current + 1,
       kind: "user_edited",
       textEn,
       changeSummaryJson: JSON.stringify(["用户手动编辑"]),

@@ -125,6 +125,8 @@ export function FreeTalkChat({
   }
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const inputRef = useRef("");
+  inputRef.current = input;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -243,7 +245,8 @@ export function FreeTalkChat({
     recognition.continuous = true;
     recognition.interimResults = true;
     let committed = "";
-    const before = input.trim();
+    let before = input.trim();
+    let lastEmitted = before;
     recognition.onresult = (event) => {
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
@@ -251,8 +254,18 @@ export function FreeTalkChat({
         if (res.isFinal) committed += res[0].transcript;
         else interim += res[0].transcript;
       }
+      const current = inputRef.current.trim();
+      if (current !== lastEmitted) {
+        // 听写期间的手动编辑优先：以编辑后的文本为新基底，不让转写覆盖输入。
+        before = current;
+        committed = "";
+        lastEmitted = current;
+        return;
+      }
       const recognized = `${committed}${interim}`.trim();
-      setInput([before, recognized].filter(Boolean).join(before ? " " : ""));
+      const next = [before, recognized].filter(Boolean).join(before ? " " : "");
+      lastEmitted = next;
+      setInput(next);
     };
     recognition.onerror = () => setListening(false);
     recognition.onend = () => setListening(false);

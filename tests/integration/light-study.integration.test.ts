@@ -29,7 +29,7 @@ beforeAll(async()=>{
 });
 afterEach(()=>{vi.restoreAllMocks();delete process.env.LIGHT_STUDY_ENABLED;});
 it("v24迁移连续，overview纯读取，材料范围不存在返回404",async()=>{
-  expect((await db.all<{v:number}>(sql`SELECT MAX(version) AS v FROM _schema_migrations`))[0].v).toBe(36);
+  expect((await db.all<{v:number}>(sql`SELECT MAX(version) AS v FROM _schema_migrations`))[0].v).toBe(37);
   expect(await service.lightOverview(all,time)).toMatchObject({newCount:1,dueCount:0,totalCount:1,defaultMode:"learn"});
   expect(await db.all(sql`SELECT * FROM light_study_sessions`)).toHaveLength(0);
   expect(await db.all(sql`SELECT * FROM light_study_progress`)).toHaveLength(0);
@@ -125,7 +125,7 @@ it("关闭新建仍能恢复旧批次，HTTP验证非法请求并保持GET只读
   const get=await import("@/app/api/light-study/overview/route");
   expect((await get.GET(new Request("http://localhost/api/light-study/overview?scope=bad"))).status).toBe(400);
   const post=await import("@/app/api/light-study/sessions/route");
-  expect((await post.POST(new Request("http://localhost/api/light-study/sessions",{method:"POST",body:"{"}))).status).toBe(400);
+  expect((await post.POST(new Request("http://localhost/api/light-study/sessions",{method:"POST",headers:{"content-type":"application/json"},body:"{"}))).status).toBe(400);
   const before=(await db.all<{n:number}>(sql`SELECT COUNT(*) AS n FROM light_study_events`))[0].n;
   expect((await get.GET(new Request("http://localhost/api/light-study/overview"))).status).toBe(200);
   expect((await db.all<{n:number}>(sql`SELECT COUNT(*) AS n FROM light_study_events`))[0].n).toBe(before);

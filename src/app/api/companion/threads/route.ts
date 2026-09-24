@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { createOrGetCompanionThread, listCompanionThreads, CompanionServiceError } from "@/lib/companion/service";
 import { createCompanionThreadSchema } from "@/lib/companion/schemas";
 
@@ -9,7 +10,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const parsed = createCompanionThreadSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = createCompanionThreadSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "Chloe 线程参数无效", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json({ thread: await createOrGetCompanionThread(parsed.data) }, { status: 201 });

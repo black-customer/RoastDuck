@@ -6,6 +6,7 @@ import path from 'node:path';
 import {prepareTestDatabase,assertInsideTestResults} from '../helpers/temp-db';
 import {migrationHistory} from '../helpers/legacy-schema';
 import {V36_DDL} from '../../db/migrations/v36-context-and-original-audio';
+import {V37_DDL} from '../../db/migrations/v37-light-study-event-index';
 import {ensureSchema} from '../../db/migrate';
 
 const temporary=prepareTestDatabase('v36-context-audio');
@@ -15,14 +16,14 @@ beforeAll(async()=>{
   process.env.ROASTDUCK_SKIP_DB_BACKUP='1';process.env.AI_PROVIDER='mock';
   client=createClient({url:temporary.url});await ensureSchema(client,temporary.url);
   // Reconstruct physical v35 ONLY in this new, explicitly isolated database.
-  for(const statement of [...V36_DDL].reverse()){
+  for(const statement of [...V37_DDL,...V36_DDL].reverse()){
     const column=/^ALTER TABLE ([a-z_][a-z0-9_]*) ADD COLUMN ([a-z_][a-z0-9_]*)/.exec(statement.trim());
     if(column){await client.execute(`ALTER TABLE "${column[1]}" DROP COLUMN "${column[2]}"`);continue;}
     const match=/^CREATE (?:UNIQUE )?(TABLE|INDEX) ([a-z_][a-z0-9_]*)/i.exec(statement.trim());
     if(!match)throw new Error('Update the explicit migration fixture for new DDL');
     await client.execute(`DROP ${match[1]} "${match[2]}"`);
   }
-  await client.execute('DELETE FROM _schema_migrations WHERE version=36');
+  await client.execute('DELETE FROM _schema_migrations WHERE version>=36');
   await client.execute("INSERT INTO questions(id,book_id,part,text,norm_text) VALUES('stable-q','retired',1,'What do you like?','stable-q')");
   await client.execute("INSERT INTO speaking_question_attempts(id,question_id,mode,answer_text,intended_meaning_zh,status) VALUES('stable-a','stable-q','practice','Synthetic original answer.','合成原意。','completed')");
   await client.execute("INSERT INTO sentence_study_progress(sentence_id,first_seen_at,last_seen_at,due_at,fsrs_json,version,last_rating) VALUES('stable-s','2026-09-01','2026-09-02','2026-09-30','{\"synthetic\":true}',4,'remembered')");

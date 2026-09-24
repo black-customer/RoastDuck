@@ -5,7 +5,19 @@ import {SYNC_ENTITIES} from '@/lib/device-sync/contracts';
 import {credentialValue} from '@/lib/app-services/shared';
 import {roleSpeechPreferencesSchema} from '@/lib/speech/contracts';
 // Reuse encryption only. This module does not initialize a device, sync server, or sync log.
-export const WEB_BACKUP_TABLES=[...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs','material_validation_cache','sentence_learning_units','sentence_study_progress','sentence_study_sessions','sentence_study_events','sentence_material_editions','sentence_highlights','sentence_teaching_editions','sentence_exposures','sentence_exposure_events','sentence_preferences','sentence_preference_events','sentence_feedback','sentence_feedback_events','sentence_practice_evidence','full_answer_attempts','answer_audio_assets','context_practice_tasks','coaching_practice_links'] as const;
+// 个人学习数据必须完整：v2 语境学习、Gap 诊断台账、V3 提取练习、个人 Chunk 与题目练习状态、
+// 输出会话、回答导入归档都进备份；缺失会在换机恢复时丢进度或产生指向不存在行的收件箱引用。
+export const WEB_BACKUP_TABLES=[
+  ...SYNC_ENTITIES.filter(t=>!t.startsWith('device_sync_')),
+  'user_settings','lexemes','text_annotations','learning_inbox_items','light_study_successions','light_study_succession_batches','expression_preferences','material_feedback','runtime_requests','companion_memory_jobs','material_validation_cache',
+  'learning_sessions','learning_events','learning_progress','review_log','learning_round_settlements',
+  'answer_gaps','gap_clusters','personal_gap_evidence','personal_diagnosis_batches',
+  'retrieval_attempts','question_learning_units','learning_experiment_assignments','learning_scenarios','learning_scenario_lines','expression_variants',
+  'chunks','chunk_examples','chunk_sources','chunk_pronunciations','chunk_question_links','chunk_topic_links','chunk_coverage_refs','personal_chunk_links','personal_answer_sentences','source_sentences','content_amendments','retired_learning_records','practice_legacy_analyses',
+  'question_attempts','question_mastery','question_aliases',
+  'speaking_sessions','speaking_messages','speaking_events','speaking_attempts','speaking_gap_links',
+  'answer_imports','answer_import_segments','answer_import_revisions','answer_import_revision_segments',
+  'sentence_learning_units','sentence_study_progress','sentence_study_sessions','sentence_study_events','sentence_material_editions','sentence_highlights','sentence_teaching_editions','sentence_exposures','sentence_exposure_events','sentence_preferences','sentence_preference_events','sentence_feedback','sentence_feedback_events','sentence_practice_evidence','full_answer_attempts','answer_audio_assets','context_practice_tasks','coaching_practice_links'] as const;
 export const rowSchema=z.record(z.string(),z.union([z.string(),z.number(),z.null()]));
 const archiveSchema=z.object({format:z.literal('roastduck-web-business-v1'),version:z.number().int().positive(),createdAt:z.string().datetime(),tables:z.record(z.string(),z.array(rowSchema).max(300000))}).strict();
 type Archive=z.infer<typeof archiveSchema>;

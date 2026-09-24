@@ -150,7 +150,7 @@ describe("IELTS 题库 HTTP 接口", () => {
     const setsBody = await setsResponse.json();
     expect(setsBody.sets.map((item: { id: string }) => item.id)).toEqual(["qs_2026_01_04", "qs_2026_05_08"]);
 
-    const response = await questionsRoute.GET(new Request("http://local/api/questions?set=qs_2026_01_04&part=1&q=工作"));
+    const response = await questionsRoute.GET(new Request("http://127.0.0.1/api/questions?set=qs_2026_01_04&part=1&q=工作"));
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.total).toBe(2);
@@ -159,14 +159,14 @@ describe("IELTS 题库 HTTP 接口", () => {
   });
 
   it("收藏和完成事件可筛选，重复 eventId 保持幂等", async () => {
-    const favoriteResponse = await favoriteRoute.PUT(new Request("http://local/api/questions/question_work/favorite", {
+    const favoriteResponse = await favoriteRoute.PUT(new Request("http://127.0.0.1/api/questions/question_work/favorite", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ favorite: true }),
     }), { params: Promise.resolve({ id: "question_work" }) });
     expect(favoriteResponse.status).toBe(200);
 
-    const attemptRequest = () => new Request("http://local/api/question-attempts", {
+    const attemptRequest = () => new Request("http://127.0.0.1/api/question-attempts", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ eventId: "11111111-1111-4111-8111-111111111111", questionId: "question_work", status: "completed", origin: "answer" }),
@@ -174,7 +174,7 @@ describe("IELTS 题库 HTTP 接口", () => {
     expect((await attemptsRoute.POST(attemptRequest())).status).toBe(200);
     expect((await attemptsRoute.POST(attemptRequest())).status).toBe(200);
 
-    const response = await questionsRoute.GET(new Request("http://local/api/questions?status=answered&favorite=1"));
+    const response = await questionsRoute.GET(new Request("http://127.0.0.1/api/questions?status=answered&favorite=1"));
     const body = await response.json();
     expect(body.items).toHaveLength(1);
     expect(body.items[0]).toMatchObject({ id: "question_work", answered: true, favorite: true });
@@ -182,18 +182,18 @@ describe("IELTS 题库 HTTP 接口", () => {
 
   it("随机题排除最近随机查看，详情保留跨季度来源，PDF 只走白名单", async () => {
     for (const [index, questionId] of ["question_work", "question_job"].entries()) {
-      const response = await attemptsRoute.POST(new Request("http://local/api/question-attempts", {
+      const response = await attemptsRoute.POST(new Request("http://127.0.0.1/api/question-attempts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ eventId: `22222222-2222-4222-8222-22222222222${index}`, questionId, status: "viewed", origin: "random" }),
       }));
       expect(response.status).toBe(200);
     }
-    const randomResponse = await randomRoute.GET(new Request("http://local/api/questions/random"));
+    const randomResponse = await randomRoute.GET(new Request("http://127.0.0.1/api/questions/random"));
     expect(randomResponse.status).toBe(200);
     expect((await randomResponse.json()).question.id).toBe("question_city");
 
-    const detailResponse = await detailRoute.GET(new Request("http://local/api/questions/question_work"), { params: Promise.resolve({ id: "question_work" }) });
+    const detailResponse = await detailRoute.GET(new Request("http://127.0.0.1/api/questions/question_work"), { params: Promise.resolve({ id: "question_work" }) });
     const detail = await detailResponse.json();
     expect(detail.question.sources).toHaveLength(2);
     expect(detail.question.setNames).toEqual(["2026 年 1–4 月", "2026 年 5–8 月"]);
@@ -202,27 +202,27 @@ describe("IELTS 题库 HTTP 接口", () => {
     const files=await import('node:fs/promises');
     const read=vi.spyOn(files.default,'readFile').mockResolvedValueOnce(Buffer.from('%PDF-1.4\n% synthetic source transport fixture\n%%EOF'));
     try{
-      const sourceResponse = await sourceRoute.GET(new Request("http://local/api/question-sources/part1_new_2026q1"), { params: Promise.resolve({ slug: "part1_new_2026q1" }) });
+      const sourceResponse = await sourceRoute.GET(new Request("http://127.0.0.1/api/question-sources/part1_new_2026q1"), { params: Promise.resolve({ slug: "part1_new_2026q1" }) });
       expect(sourceResponse.headers.get("content-type")).toBe("application/pdf");
       expect(read).toHaveBeenCalledTimes(1);
     }finally{read.mockRestore();}
-    const rejected = await sourceRoute.GET(new Request("http://local/api/question-sources/.."), { params: Promise.resolve({ slug: ".." }) });
+    const rejected = await sourceRoute.GET(new Request("http://127.0.0.1/api/question-sources/.."), { params: Promise.resolve({ slug: ".." }) });
     expect(rejected.status).toBe(400);
   });
 
   it("按历史回答、学习包和重复 Gap 筛选，并返回按题学习包", async () => {
     for (const status of ["has_history", "repeated_gaps"]) {
-      const response = await questionsRoute.GET(new Request(`http://local/api/questions?status=${status}`));
+      const response = await questionsRoute.GET(new Request(`http://127.0.0.1/api/questions?status=${status}`));
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body.items.map((item: { id: string }) => item.id)).toContain("question_work");
     }
     for(const status of ['has_learning','ready_to_learn']){
-      const result=await questionsRoute.GET(new Request(`http://local/api/questions?status=${status}`));
+      const result=await questionsRoute.GET(new Request(`http://127.0.0.1/api/questions?status=${status}`));
       expect((await result.json()).items.map((item:{id:string})=>item.id)).not.toContain('question_work');
     }
 
-    const response = await learningPackRoute.GET(new Request("http://local/api/questions/question_work/learning-pack"), { params: Promise.resolve({ id: "question_work" }) });
+    const response = await learningPackRoute.GET(new Request("http://127.0.0.1/api/questions/question_work/learning-pack"), { params: Promise.resolve({ id: "question_work" }) });
     expect(response.status).toBe(200);
     const { pack } = await response.json();
     expect(pack.state).toBe("ready_to_learn");

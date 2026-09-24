@@ -96,7 +96,13 @@ export function createAnswerAudioService(database: DatabasePort, root: () => str
             // Tombstones deliberately win over retry and duplicate content.
             await tx.run(sql`UPDATE answer_audio_uploads SET status='complete',asset_id=${duplicate.id},updated_at=${new Date().toISOString()} WHERE id=${id}`); return duplicate;
           }
-          if((await tx.all(sql`SELECT id FROM answer_audio_assets WHERE full_answer_id=${fullAnswerId}`)).length)throw new LocalWriteError('这次完整回答已有原声。请开始新一次完整回答，原声不会被覆盖。',409);
+          const [existing] = await tx.all<{ id: string }>(sql`SELECT id FROM answer_audio_assets WHERE full_answer_id=${fullAnswerId}`);
+          if (existing) {
+            // 该完整回答已有不同内容的原声：指向既有原声并结束上传，不把上传卡在 publishing；
+            // 抛出的 409 让用户开始新一次完整回答，重复 complete 也只会回到这里而不是重传。
+            await tx.run(sql`UPDATE answer_audio_uploads SET status='complete',asset_id=${existing.id},updated_at=${new Date().toISOString()} WHERE id=${id}`);
+            throw new LocalWriteError('这次完整回答已有原声。请开始新一次完整回答，原声不会被覆盖。',409);
+          }
           const at = new Date().toISOString();
           await tx.run(sql`INSERT INTO answer_audio_assets(id,full_answer_id,upload_id,sha256,byte_length,mime_type,extension,duration_seconds,source,original_name,created_at) VALUES(${id},${fullAnswerId},${id},${inspected.sha256},${inspected.byteLength},${inspected.mimeType},${inspected.extension},${inspected.durationSeconds},${input.source},${input.originalName},${at})`);
           await tx.run(sql`UPDATE answer_audio_uploads SET status='complete',asset_id=${id},updated_at=${at} WHERE id=${id}`);
@@ -114,13 +120,15 @@ export function createAnswerAudioService(database: DatabasePort, root: () => str
       if (bytes.length !== row.byte_length || sha256(bytes) !== row.sha256) throw new LocalWriteError('原声文件校验失败，请从备份恢复', 409);
       return { row, bytes };
     },
-    async change(id: string, action: 'note' | 'remove' | 'restore' | 'purge', note = '', confirmation?: string) {
+    async change(id: string, action: 'note' | 'remove' | 'restore' | 'purge', note?: string, confirmation?: string) {
       checkedId(id);
       if (action === 'purge' && confirmation !== '永久删除原声') throw new LocalWriteError('请单独确认永久删除原声', 400);
+      if (action === 'note' && note === undefined) throw new LocalWriteError('备注内容缺失；未修改原备注', 400);
+      const noteText = note ?? '';
       const row = await database.write(async tx => {
         const [prior] = await tx.all<AssetRow>(sql`SELECT * FROM answer_audio_assets WHERE id=${id}`); if (!prior) throw new LocalWriteError('原声不存在', 404);
         if (action === 'restore' && prior.purged_at) throw new LocalWriteError('原声已永久删除，不能恢复', 409);
-        if (action === 'note') await tx.run(sql`UPDATE answer_audio_assets SET note=${note.slice(0, 2000)} WHERE id=${id}`);
+        if (action === 'note') await tx.run(sql`UPDATE answer_audio_assets SET note=${noteText.slice(0, 2000)} WHERE id=${id}`);
         else if (action === 'remove') await tx.run(sql`UPDATE answer_audio_assets SET removed_at=COALESCE(removed_at,${new Date().toISOString()}) WHERE id=${id}`);
         else if (action === 'restore') await tx.run(sql`UPDATE answer_audio_assets SET removed_at=NULL WHERE id=${id}`);
         else await tx.run(sql`UPDATE answer_audio_assets SET removed_at=COALESCE(removed_at,${new Date().toISOString()}),purged_at=COALESCE(purged_at,${new Date().toISOString()}) WHERE id=${id}`);

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
-import { getDb } from "@db/client";
+import { getDbReady } from "@db/client";
 
 export const dynamic = "force-dynamic";
 
 /** 词书列表与进度。GET /api/books */
 export async function GET() {
-  const db = getDb();
+  const db = await getDbReady();
   const books = await db.all<Record<string, unknown>>(sql`
     SELECT b.id, b.title_zh AS titleZh, b.title_en AS titleEn, b.source_type AS sourceType,
       b.description_zh AS descriptionZh,

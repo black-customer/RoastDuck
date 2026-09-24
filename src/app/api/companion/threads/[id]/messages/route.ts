@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { safeErrorSummary } from "@/lib/ai/errors";
 import { createCompanionMessageSchema } from "@/lib/companion/schemas";
 import { CompanionServiceError, getCompanionThread, sendCompanionMessage } from "@/lib/companion/service";
@@ -14,7 +15,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const parsed = createCompanionMessageSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = createCompanionMessageSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "消息参数无效", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json(await sendCompanionMessage(id, parsed.data));

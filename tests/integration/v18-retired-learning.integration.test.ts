@@ -31,7 +31,7 @@ afterAll(() => client.close());
 describe("词书退役后的非破坏性修复", () => {
   it("从连续 v17 升级到 v33，并完整保留旧迁移校验和", async () => {
     const history = await migrationHistory(client);
-    expect(history.map(row => row.version)).toEqual(Array.from({ length:36 }, (_, index) => index + 1));
+    expect(history.map(row => row.version)).toEqual(Array.from({ length:37 }, (_, index) => index + 1));
     expect(history.slice(0, 17)).toEqual(originalHistory);
   });
 
@@ -58,7 +58,7 @@ describe("词书退役后的非破坏性修复", () => {
     const { getSessionView } = await import("@/lib/learning/session-service");
     await expect(getSessionView("removed_session")).rejects.toMatchObject({ status: 410, code: "materials_removed" });
     const { POST } = await import("@/app/api/questions/[id]/mastery/route");
-    const response = await POST(new Request("http://local", { method: "POST", body: JSON.stringify({ completedFourStep: true }) }), { params: Promise.resolve({ id: "retired_question" }) });
+    const response = await POST(new Request("http://127.0.0.1", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ completedFourStep: true }) }), { params: Promise.resolve({ id: "retired_question" }) });
     expect(response.status).toBe(409);
     expect((await client.execute("SELECT * FROM question_mastery")).rows).toHaveLength(0);
   });

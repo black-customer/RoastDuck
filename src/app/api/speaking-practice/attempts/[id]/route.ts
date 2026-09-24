@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { webError } from "@/lib/http/web-error";
 import { getSpeakingAttempt } from "@/lib/speaking-practice/service";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,6 @@ export async function GET(
     }
     return NextResponse.json({ attempt });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "获取答题记录失败";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return webError(error);
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { z } from "zod";
 import { createDifficultyNoteFromAnnotation, listNotes, upsertDifficultyNote } from "@/lib/learning/content";
 
@@ -23,7 +24,9 @@ const createNoteSchema = z
   });
 
 export async function POST(request: Request) {
-  const parsed = createNoteSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = createNoteSchema.safeParse(localBody.body);
   if (!parsed.success) {
     return NextResponse.json({ error: "请求体不合法", issues: parsed.error.issues }, { status: 400 });
   }

@@ -106,6 +106,29 @@ describe("Gap 提取 V3 学习会话", () => {
     expect(JSON.stringify(view.step)).not.toContain("microphone");
   });
 
+  it("daily 复习不因 V3 到期块卡死，V3 分配只在按题范围生效", async () => {
+    await db.insert(schema.learningProgress).values({
+      chunkId,
+      fsrsJson: JSON.stringify({ state: 2, step: 3, due: "2026-09-01T00:00:00.000Z", last_review: "2026-08-31T00:00:00.000Z" }),
+      introDone: 1,
+      ratingStatsJson: "{}",
+      skillStatsJson: "{}",
+      lastOutcomeJson: "{}",
+    }).onConflictDoUpdate({
+      target: schema.learningProgress.chunkId,
+      set: { fsrsJson: JSON.stringify({ state: 2, step: 3, due: "2026-09-01T00:00:00.000Z", last_review: "2026-08-31T00:00:00.000Z" }), introDone: 1 },
+    });
+    const view = await service.createOrResumeSession({ mode: "review", restart: true });
+    expect(view.experienceVersion).toBe("context_audio_v2");
+    expect(view.step.type).toBe("context_audio_input");
+    if (view.step.type !== "context_audio_input") throw new Error("daily 复习应进入常规语境步骤");
+    expect(view.id).toBeTruthy();
+
+    const questionView = await service.createOrResumeSession({ mode: "review", scope: "question", questionId, restart: true });
+    expect(questionView.experienceVersion).toBe("gap_retrieval_v3");
+    expect(questionView.step.type).toBe("review_prompt");
+  });
+
   it("精确命中完全本地判定，迁移成功后才结算一次 FSRS", async () => {
     const sessionId = await insertV3Session();
     const beforeRuns = (await db.select().from(schema.aiRuns)).length;

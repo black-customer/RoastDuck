@@ -1,6 +1,21 @@
 # 当前工程真相
 
-## v0.4.1 开发检查点（2026-09-16）
+## 开发中：v0.4.2 修复批次（2026-09-24—25）
+
+- 全库Review（API 88路由、核心学习/回答/句子模块、前端页面组件、AI/TTS/备份与性能）后定向修复，源码提交至 codex/web-usability：7f12594（daily复习v3卡死）、4fbcfcf（学习音频GET仅缓存）、6bc790d（25个写路由回环JSON守卫）、db82730（备份补齐个人学习数据）、8b796cd（听写陈旧闭包）、16c9e38（服务端写入加固）、121aa24（前端静默失败）、fe944b2→perf amend（镜像游标+v37索引）。
+- 关键语义变化：GET /api/learning/sessions/[id]/audio 只重定向已缓存音频（缺失404），生成走 POST /api/speech/synthesis；所有JSON写体经localJson/localJsonBody（回环Host/同源/application/json）；WEB_BACKUP_TABLES 补入 learning_sessions/progress/review_log/settlements、answer_gaps/personal_gap_evidence/personal_diagnosis_batches、retrieval_attempts/question_learning_units/learning_scenarios(+lines)/expression_variants、chunks系/personal_chunk_links/personal_answer_sentences/source_sentences/content_amendments、question_attempts/question_mastery/question_aliases、speaking_*、answer_import*。
+- v37索引迁移已在隔离库验证（迁移连续性夹具更新至37，legacy-schema默认maxVersion=37）；真实库应用与备份以本机下次init/启动回执为准。
+- 统一质量门 test-results/check-1790266534760：governance/lint/typecheck/unit(649)/integration(32文件)/golden/build:e2e/current-material-audit/sentence-material-audit 全部退出0；e2e 20项通过后既有Windows服务原生退出（exit.json 3221225477），按既定边界不调查，不称全绿；完整门以推送后 Linux CI 为准。此后补跑6个迁移相关集成文件通过（integration-1790266476395）。
+- 版本0.4.2、CHANGELOG、DATA_MODEL（v37+Web备份清单契约）已同步；发布快照、CI与Release回执见后续记录。
+
+## 已发布：v0.4.1（2026-09-19）
+
+- 英文题干补丁公开提交2c3b734edcfac4f845076c6563ffc3aa7988b89c，完整Linux CI成功：https://github.com/black-customer/RoastDuck/actions/runs/35103237270；正式Release：https://github.com/black-customer/RoastDuck/releases/tag/v0.4.1，非Draft/Prerelease。
+- 本机生产构建2ff43305cea0-e4e011aa1c-1789565855916运行于127.0.0.1:3001，启动器记录PID42268，健康检查返回roastduck。题库英文原题为主、中文辅助；历史材料和学习状态未重生成或重置。
+- 相关27条单测、TypeScript、Lint、隔离生产候选浏览器题干测试通过；1440/390截图已查看，Impeccable检测[]。开发Runtime请求0。
+- 声音只读诊断：现有data/audio/cache中33个WAV约14.86MB，均值约0.45MB；已完成请求记录的中位约3.4秒，但尾部包含长时间排队/恢复，不能冒充纯推理时延。另有5次invalid_audio、3次upstream_unavailable。缓存与冷生成须分开优化，v0.4.1未批量生成或部署本地模型。
+
+## v0.4.1 开发过程（2026-09-16—19）
 
 - 用户发现整题学习页面把中文题名作为主标题。本轮将题库英文原题从稳定questions记录投影到当前句子来源，仅改变展示，中文退为辅助；历史材料与学习状态不改、不重生成。FreeTalk和缺英文题干的旧来源保留原题名。
 - 声音分析：现有MiMo已经使用data/audio/cache持久WAV缓存，浏览器保留当前/下一句资源；本机33个WAV合计约14.86MB，均值约0.45MB。此数仅描述现有样本，不能证明所有593句同体积。当前新文本首次生成是非流式完整WAV，不能把材料生成等同于音频已生成；尚未部署本地TTS或批量消费Runtime。

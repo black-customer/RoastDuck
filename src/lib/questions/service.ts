@@ -446,6 +446,8 @@ export async function findSourceFile(sourceSlug: string): Promise<string | null>
 
 export async function setQuestionMastery(questionId: string, mastered: boolean) {
   const db = await getDbReady();
+  const [question] = await db.select({ id: questions.id }).from(questions).where(eq(questions.id, questionId)).limit(1);
+  if (!question) return null;
   const now = new Date().toISOString();
   await db.run(sql`
     INSERT INTO question_mastery (question_id, mastered, mastery_source, updated_at)

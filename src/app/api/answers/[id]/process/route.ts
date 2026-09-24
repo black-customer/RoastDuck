@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { processAnswerSchema } from "@/lib/answers/schemas";
 import { processPersonalAnswer } from "@/lib/answers/processor";
 import { safeErrorSummary } from "@/lib/ai/errors";
@@ -6,7 +7,9 @@ import { AnswerServiceError } from "@/lib/answers/service";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const parsed = processAnswerSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = processAnswerSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "重新处理请求不合法" }, { status: 400 });
   try {
     const answer = await processPersonalAnswer(id, parsed.data.clientRequestId, parsed.data.force);

@@ -103,14 +103,14 @@ describe("学习会话 HTTP 接口契约", () => {
     const initial = await initialResponse.json();
     expect(initial.settings.autoCollectDifficulties).toBe(false);
 
-    const invalidResponse = await settingsRoute.PATCH(new Request("http://local/api/settings", {
+    const invalidResponse = await settingsRoute.PATCH(new Request("http://127.0.0.1/api/settings", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ dailyNewTarget: 0 }),
     }));
     expect(invalidResponse.status).toBe(400);
 
-    const savedResponse = await settingsRoute.PATCH(new Request("http://local/api/settings", {
+    const savedResponse = await settingsRoute.PATCH(new Request("http://127.0.0.1/api/settings", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ autoPlay: false, personalNewRatio: 0.55 }),
@@ -120,7 +120,7 @@ describe("学习会话 HTTP 接口契约", () => {
     expect(saved.settings.autoPlay).toBe(false);
     expect(saved.settings.personalNewRatio).toBe(0.55);
 
-    await settingsRoute.PATCH(new Request("http://local/api/settings", {
+    await settingsRoute.PATCH(new Request("http://127.0.0.1/api/settings", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ autoPlay: true }),
@@ -128,7 +128,7 @@ describe("学习会话 HTTP 接口契约", () => {
   });
 
   it("创建、推进、恢复同一会话，并拒绝坏事件", async () => {
-    const createdResponse = await createRoute.POST(new Request("http://local/api/learning/sessions", {
+    const createdResponse = await createRoute.POST(new Request("http://127.0.0.1/api/learning/sessions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "learn" }),
@@ -139,14 +139,14 @@ describe("学习会话 HTTP 接口契约", () => {
     expect(JSON.stringify(created.step)).not.toContain("取得稳定进步");
     expect(JSON.stringify(created.step)).not.toContain("What helps you keep learning");
 
-    const invalidResponse = await eventRoute.POST(new Request(`http://local/api/learning/sessions/${created.id}/events`, {
+    const invalidResponse = await eventRoute.POST(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}/events`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ type: "rate_comprehension", rating: "maybe" }),
     }), { params: Promise.resolve({ id: created.id }) });
     expect(invalidResponse.status).toBe(400);
 
-    const eventResponse = await eventRoute.POST(new Request(`http://local/api/learning/sessions/${created.id}/events`, {
+    const eventResponse = await eventRoute.POST(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}/events`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -160,7 +160,7 @@ describe("学习会话 HTTP 接口契约", () => {
     expect(comprehension.step.type).toBe("comprehension_rating");
     expect(JSON.stringify(comprehension.step)).not.toContain("make steady progress");
 
-    const ratingResponse = await eventRoute.POST(new Request(`http://local/api/learning/sessions/${created.id}/events`, {
+    const ratingResponse = await eventRoute.POST(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}/events`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -175,7 +175,7 @@ describe("学习会话 HTTP 接口契约", () => {
     expect(transcript.step.context.lines).toHaveLength(2);
     expect(transcript.step).not.toHaveProperty("chunk");
 
-    const restoredResponse = await getRoute.GET(new Request(`http://local/api/learning/sessions/${created.id}`), {
+    const restoredResponse = await getRoute.GET(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}`), {
       params: Promise.resolve({ id: created.id }),
     });
     expect(restoredResponse.status).toBe(200);
@@ -183,11 +183,11 @@ describe("学习会话 HTTP 接口契约", () => {
     expect(restored.id).toBe(created.id);
     expect(restored.step.type).toBe("transcript_replay");
 
-    const abandonedResponse = await getRoute.DELETE(new Request(`http://local/api/learning/sessions/${created.id}`, {
+    const abandonedResponse = await getRoute.DELETE(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}`, {
       method: "DELETE",
     }), { params: Promise.resolve({ id: created.id }) });
     expect(abandonedResponse.status).toBe(200);
-    const staleResponse = await getRoute.GET(new Request(`http://local/api/learning/sessions/${created.id}`), {
+    const staleResponse = await getRoute.GET(new Request(`http://127.0.0.1/api/learning/sessions/${created.id}`), {
       params: Promise.resolve({ id: created.id }),
     });
     expect(staleResponse.status).toBe(409);

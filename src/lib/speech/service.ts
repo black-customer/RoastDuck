@@ -5,9 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { getDbReady } from "@db/client";
 import { audioAssets } from "@db/schema";
 import { readSpeechEnvironment } from "./config";
-import { SpeechProviderError, type SpeechSynthesisInput, type SpeechSynthesisResult } from "./contracts";
+import { SpeechProviderError, MIMO_TTS_MODEL, type SpeechSynthesisInput, type SpeechSynthesisResult } from "./contracts";
 import { MimoTtsProvider } from "./mimo-provider";
-import {createSpeechRequests,WEB_AUDIO_VERSION} from './request-service';
+import {createSpeechRequests,WEB_AUDIO_VERSION,webAudioKey} from './request-service';
 import {nodeDatabase} from '@/lib/platform/node/database';
 
 function safeAssetPath(relativePath: string): string {
@@ -35,6 +35,21 @@ export async function synthesizeSpeech(input:SpeechSynthesisInput,options:Speech
   // The old teaching prompt is not equivalent to the approved conversational styles.
   // Old assets remain available by ID; new synthesis only reuses the exact request hash.
   return requests().synthesize({...input,voice},options);
+}
+
+/**
+ * 只读查找已缓存的 Web 音频：GET 不得写 speech_requests 或触发付费合成。
+ * 缓存缺失返回 null，由调用方决定提示；生成仍走 POST /api/speech/synthesis。
+ */
+export async function lookupCachedSpeech(input:SpeechSynthesisInput):Promise<SpeechSynthesisResult|null>{
+  if(process.env.ROASTDUCK_E2E==="1"||process.env.AI_PROVIDER==="mock"||process.env.NODE_ENV==="test"||process.env.VITEST)return null;
+  const config=readSpeechEnvironment(),voice=input.voice??config.voice,full={...input,voice};
+  const key=webAudioKey(full);
+  if(!await requests().cached(key))return null;
+  const db=await getDbReady();
+  const [asset]=await db.select({id:audioAssets.id}).from(audioAssets).where(and(eq(audioAssets.id,`audio_${key.slice(0,32)}`),eq(audioAssets.status,"ready"))).limit(1);
+  if(!asset)return null;
+  return {assetId:asset.id,audioUrl:`/api/speech/assets/${asset.id}`,provider:'mimo',model:MIMO_TTS_MODEL,voice,accent:input.accent,format:'wav',cached:true};
 }
 
 export async function findAudioAsset(assetId: string): Promise<{ absolutePath: string; format: string } | null> {

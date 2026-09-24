@@ -275,6 +275,17 @@ export async function applyPersonalChunks(
   }
 }
 
+/** 所有确认通过的 chunk 一起入库：中途失败回滚，不留半成品（幂等键在事务内重放仍成立）。 */
+export async function applyApprovedPersonalChunks(
+  answerId: string,
+  versionId: string,
+  generated: { candidates: PersonalChunkCandidate[] },
+  review: PersonalChunkReview,
+  audit: { generatorRunId: string; reviewerRunId: string },
+) {
+  return withDbTransaction(() => applyPersonalChunks(answerId, versionId, generated, review, audit));
+}
+
 async function activeTransformJob(answerId: string) {
   const db = await getDbReady();
   const rows = await db.select().from(aiJobs)
@@ -367,7 +378,7 @@ export async function processPersonalAnswer(
         idempotencyKey: `${materialJob.idempotencyKey}_review`,
       }),
       isRejected: () => false,
-      apply: async (generated, review, audit) => { await applyPersonalChunks(answerId, versionId, generated, review, audit); },
+      apply: async (generated, review, audit) => { await applyApprovedPersonalChunks(answerId, versionId, generated, review, audit); },
     });
     const now = new Date().toISOString();
     await db.update(personalAnswers).set({ status: "ready", updatedAt: now }).where(eq(personalAnswers.id, answerId));

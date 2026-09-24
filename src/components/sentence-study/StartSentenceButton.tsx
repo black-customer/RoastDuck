@@ -15,7 +15,7 @@ export function StartSentenceButton({scope,mode,resumeSessionId,selection='scope
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   async function start(){
     if(lock.current)return;lock.current=true;setBusy(true);setError('');
-    if(resumeSessionId){router.push(`/sentence-study?session=${encodeURIComponent(resumeSessionId)}&resume=1`);return;}
+    if(resumeSessionId){router.push(`/sentence-study?session=${encodeURIComponent(resumeSessionId)}&resume=1`);setBusy(false);lock.current=false;return;}
     const key=`roastduck_sentence_start:${mode}:${sentenceScopeQuery(scope)}:${selection}`;
     try{
       if(!request.current){

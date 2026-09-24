@@ -38,6 +38,8 @@ export function SpeakingArena({ question, answerId, resumeSessionId }: { questio
   const [session, setSession] = useState<SpeakingSessionView | null>(null);
   const [lookupId, setLookupId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const draftRef = useRef("");
+  draftRef.current = draft;
   const [inputLanguage, setInputLanguage] = useState<InputLanguage>("mixed");
   const [listening, setListening] = useState(false);
   const [draftFromVoice, setDraftFromVoice] = useState(false);
@@ -211,8 +213,9 @@ export function SpeakingArena({ question, answerId, resumeSessionId }: { questio
     recognition.lang = inputLanguage === "en" ? "en-US" : "zh-CN";
     recognition.continuous = true;
     recognition.interimResults = true;
-    const before = draft.trim();
+    let before = draft.trim();
     let committed = "";
+    let lastEmitted = before;
     recognition.onresult = (event) => {
       let interim = "";
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
@@ -220,7 +223,17 @@ export function SpeakingArena({ question, answerId, resumeSessionId }: { questio
         if (result.isFinal) committed += result[0].transcript;
         else interim += result[0].transcript;
       }
-      setDraft([before, `${committed}${interim}`.trim()].filter(Boolean).join(before ? " " : ""));
+      const current = draftRef.current.trim();
+      if (current !== lastEmitted) {
+        // 听写期间的手动编辑优先：以编辑后的文本为新基底，不让转写覆盖输入。
+        before = current;
+        committed = "";
+        lastEmitted = current;
+        return;
+      }
+      const next = [before, `${committed}${interim}`.trim()].filter(Boolean).join(before ? " " : "");
+      lastEmitted = next;
+      setDraft(next);
     };
     recognition.onerror = (event) => {
       setListening(false);

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
-import { getDb } from "@db/client";
+import { getDbReady } from "@db/client";
 
 export const dynamic = "force-dynamic";
 
 /** 单个语块详情。GET /api/chunks/[id] */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = getDb();
+  const db = await getDbReady();
   const chunks = await db.all<Record<string, unknown>>(sql`
     SELECT c.id, c.display_chunk AS display, c.canonical_chunk AS canonical, c.unit_type AS unitType,
       c.meaning_zh AS meaningZh, c.english_gloss AS englishGloss, c.pattern,

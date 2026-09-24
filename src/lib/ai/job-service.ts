@@ -93,11 +93,14 @@ export async function transitionAiJob(jobId: string, nextStatus: AiJobStatus, la
   if (!AI_JOB_STATUSES.includes(current) || !transitions[current].includes(nextStatus)) {
     throw new Error(`非法 AI Job 状态转换：${current} → ${nextStatus}`);
   }
-  await db.update(aiJobs).set({
+  const transitioned = await db.update(aiJobs).set({
     status: nextStatus,
     lastErrorCode: lastErrorCode ?? (nextStatus === "completed" ? null : job.lastErrorCode),
     updatedAt: new Date().toISOString(),
-  }).where(and(eq(aiJobs.id, jobId), eq(aiJobs.status, current)));
+  }).where(and(eq(aiJobs.id, jobId), eq(aiJobs.status, current))).returning({ id: aiJobs.id });
+  if (!transitioned.length) {
+    throw new Error(`非法 AI Job 状态转换：${current} → ${nextStatus}`);
+  }
   const [updated] = await db.select().from(aiJobs).where(eq(aiJobs.id, jobId)).limit(1);
   return updated;
 }

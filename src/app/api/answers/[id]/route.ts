@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { updateAnswerSchema } from "@/lib/answers/schemas";
 import { AnswerServiceError, appendUserAnswerVersion, getPersonalAnswer } from "@/lib/answers/service";
 
@@ -13,7 +14,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const parsed = updateAnswerSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = updateAnswerSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "答案版本不合法", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json({ answer: await appendUserAnswerVersion(id, parsed.data.textEn, parsed.data.baseVersionNo) });

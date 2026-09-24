@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { localJson } from "@/lib/http/local-write";
+import { webError } from "@/lib/http/web-error";
 import { evaluateTranslationInputSchema } from "@/lib/speaking-practice/schemas";
 import {
   evaluateTranslation,
@@ -13,7 +15,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const json = (await request.json()) as unknown;
+    const json = (await localJson(request)) as unknown;
     const parsed = evaluateTranslationInputSchema.safeParse(json);
 
     if (!parsed.success) {
@@ -29,7 +31,6 @@ export async function POST(
     if (error instanceof SpeakingPracticeError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    const message = error instanceof Error ? error.message : "评估翻译失败";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return webError(error);
   }
 }

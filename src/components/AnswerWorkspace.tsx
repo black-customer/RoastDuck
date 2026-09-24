@@ -33,9 +33,11 @@ export function AnswerWorkspace({ initialAnswer }: { initialAnswer: PersonalAnsw
     if (answer.status === "superseded") return;
     if (!["queued", "processing"].includes(answer.status) && !["queued", "generating", "reviewing", "applying"].includes(answer.job?.status ?? "")) return;
     const timer = window.setInterval(async () => {
-      const response = await fetch(`/api/answers/${encodeURIComponent(answer.id)}`, { cache: "no-store" });
-      const body = (await response.json()) as { answer?: PersonalAnswerView };
-      if (response.ok && body.answer) setAnswer(body.answer);
+      try {
+        const response = await fetch(`/api/answers/${encodeURIComponent(answer.id)}`, { cache: "no-store" });
+        const body = (await response.json()) as { answer?: PersonalAnswerView };
+        if (response.ok && body.answer) setAnswer(body.answer);
+      } catch { /* 轮询失败不打断正在编辑的页面；恢复后自动继续 */ }
     }, 2000);
     return () => window.clearInterval(timer);
   }, [answer.id, answer.job?.status, answer.status]);

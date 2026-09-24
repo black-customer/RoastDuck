@@ -1,4 +1,6 @@
 import { after, NextResponse } from "next/server";
+import { localJson } from "@/lib/http/local-write";
+import { webError } from "@/lib/http/web-error";
 import { createAttemptInputSchema } from "@/lib/speaking-practice/schemas";
 import {
   prepareSpeakingAttempt,
@@ -18,8 +20,7 @@ export async function GET(
     const attempts = await listQuestionAttempts(id);
     return NextResponse.json({ attempts });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "获取历史回答失败";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return webError(error);
   }
 }
 
@@ -29,7 +30,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const json = (await request.json()) as unknown;
+    const json = (await localJson(request)) as unknown;
     const parsed = createAttemptInputSchema.safeParse({
       ...(typeof json === "object" && json !== null ? json : {}),
       questionId: id,
@@ -49,7 +50,6 @@ export async function POST(
     if (error instanceof SpeakingPracticeError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    const message = error instanceof Error ? error.message : "创建答题失败";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return webError(error);
   }
 }

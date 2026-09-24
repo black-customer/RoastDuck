@@ -25,13 +25,23 @@ export function createChatService(database:DatabasePort,runtime:RuntimeCalls,mem
   async function get(id:string){const [result]=await database.read(tx=>tx.all<AppConversation>(sql`${conversationSql} WHERE f.id=${id}`));if(!result)throw new TrainingError("对话不存在",404,"conversation_missing");return result;}
   const messages=(id:string)=>database.read(tx=>tx.all<AppMessage>(sql`SELECT * FROM free_talk_messages WHERE conversation_id=${id} ORDER BY sequence_no`));
   async function mirror(tx:SqlWriter,conversationId:string,threadId:string){
+    // 镜像按 sequence_no 追加：一次查询已镜像的最大序号，只补新消息并刷新最后一条的投递状态，
+    // 不再每条消息做 SELECT+INSERT（随对话增长退化为 O(N²)）。
     const rows=await tx.all<AppMessage>(sql`SELECT * FROM free_talk_messages WHERE conversation_id=${conversationId} ORDER BY sequence_no`);
-    for(const row of rows){
+    if(!rows.length)return;
+    const [last]=await tx.all<{source_id:string}>(sql`SELECT source_id FROM companion_messages WHERE thread_id=${threadId} AND source_type='free_talk' ORDER BY sequence_no DESC LIMIT 1`);
+    const lastMirroredIndex=last?rows.findIndex(row=>row.id===last.source_id):-1;
+    const pending=lastMirroredIndex<0?rows:rows.slice(lastMirroredIndex+1);
+    for(const row of pending){
       const metadata=meta(row),status=row.role==="user"&&metadata.deliveryStatus&&metadata.deliveryStatus!=="completed"?metadata.deliveryStatus:"sent";
-      const [existing]=await tx.all<{id:string}>(sql`SELECT id FROM companion_messages WHERE thread_id=${threadId} AND source_type='free_talk' AND source_id=${row.id} LIMIT 1`);
       await tx.run(sql`INSERT INTO companion_messages(id,thread_id,sequence_no,role,text,status,client_message_id,source_type,source_id,ai_run_id,metadata_json,created_at)
-        VALUES(${existing?.id??stableId("companion_message",conversationId,row.id)},${threadId},${row.sequence_no},${row.role==="assistant"?"teacher":"user"},${row.text},${status},${row.id},'free_talk',${row.id},${metadata.runId??null},${row.metadata_json},${row.created_at})
+        VALUES(${stableId("companion_message",conversationId,row.id)},${threadId},${row.sequence_no},${row.role==="assistant"?"teacher":"user"},${row.text},${status},${row.id},'free_talk',${row.id},${metadata.runId??null},${row.metadata_json},${row.created_at})
         ON CONFLICT(id) DO UPDATE SET status=excluded.status,ai_run_id=excluded.ai_run_id,metadata_json=excluded.metadata_json`);
+    }
+    if(lastMirroredIndex>=0){
+      // 新回复落库后，最后一条已镜像消息的投递状态要从 pending 收敛为 completed。
+      const prior=rows[lastMirroredIndex],metadata=meta(prior),status=prior.role==="user"&&metadata.deliveryStatus&&metadata.deliveryStatus!=="completed"?metadata.deliveryStatus:"sent";
+      await tx.run(sql`UPDATE companion_messages SET status=${status},ai_run_id=${metadata.runId??null},metadata_json=${prior.metadata_json} WHERE thread_id=${threadId} AND source_type='free_talk' AND source_id=${prior.id}`);
     }
   }
   async function ensureThread(tx:SqlWriter,conversation:AppConversation,questionId:string|null=null){

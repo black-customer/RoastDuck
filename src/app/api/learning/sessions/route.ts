@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { createOrResumeSession, LearningSessionError } from "@/lib/learning/session-service";
 import { createSessionSchema } from "@/lib/learning/types";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const parsed = createSessionSchema.safeParse(await request.json().catch(() => ({})));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = createSessionSchema.safeParse(localBody.body ?? {});
   if (!parsed.success) return NextResponse.json({ error: "会话参数无效", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json(await createOrResumeSession(parsed.data));

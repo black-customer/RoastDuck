@@ -559,8 +559,10 @@ export async function createOrResumeSession(input: {
     : mode === "review"
       ? queue!.due
       : [...queue!.fresh, ...queue!.due];
-  const v3Ids = await filterV3Assignments(ids, scopeId);
-  const useV3 = v3Ids.length > 0 && (scope === "question" || mode === "review");
+  // V3 提取内容必须由 assignment 携带的 questionId 加载；daily 范围没有 questionId，
+  // 走 V3 会因内容缺失抛 409，且会话行在 toView 前已提交、无法恢复。
+  const v3Ids = scope === "question" ? await filterV3Assignments(ids, scopeId!) : [];
+  const useV3 = v3Ids.length > 0;
   if (useV3) ids = v3Ids;
   if (ids.length === 0) {
     return {

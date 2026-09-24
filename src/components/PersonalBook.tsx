@@ -18,9 +18,11 @@ export function PersonalBook({ initialBook }: { initialBook: PersonalBookView })
   const [error, setError] = useState("");
 
   async function refresh() {
-    const response = await fetch("/api/personal-book", { cache: "no-store" });
-    const body = (await response.json()) as { book?: PersonalBookView };
-    if (response.ok && body.book) setBook(body.book);
+    try {
+      const response = await fetch("/api/personal-book", { cache: "no-store" });
+      const body = (await response.json()) as { book?: PersonalBookView };
+      if (response.ok && body.book) setBook(body.book);
+    } catch { /* 刷新失败保留当前列表与既有错误提示 */ }
   }
 
   async function remove(id: string) {

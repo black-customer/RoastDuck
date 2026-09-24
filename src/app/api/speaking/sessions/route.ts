@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { createSpeakingSessionSchema } from "@/lib/speaking/schemas";
 import { createSpeakingSession, SpeakingServiceError } from "@/lib/speaking/service";
 import { safeErrorSummary } from "@/lib/ai/errors";
 
 export async function POST(request: Request) {
-  const parsed = createSpeakingSessionSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = createSpeakingSessionSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "输出会话参数不合法", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json({ session: await createSpeakingSession(parsed.data) }, { status: 201 });

@@ -43,7 +43,7 @@ beforeAll(async () => {
 });
 
 function sessionRequest(clientRequestId = requestId, answerId: string | null = null) {
-  return new Request("http://local/api/speaking/sessions", {
+  return new Request("http://127.0.0.1/api/speaking/sessions", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ clientRequestId, questionId, answerId }),
@@ -51,7 +51,7 @@ function sessionRequest(clientRequestId = requestId, answerId: string | null = n
 }
 
 function eventRequest(sessionId: string, payload: Record<string, unknown>) {
-  return eventsRoute.POST(new Request(`http://local/api/speaking/sessions/${sessionId}/events`, {
+  return eventsRoute.POST(new Request(`http://127.0.0.1/api/speaking/sessions/${sessionId}/events`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
@@ -59,7 +59,7 @@ function eventRequest(sessionId: string, payload: Record<string, unknown>) {
 }
 
 function messageRequest(sessionId: string, payload: Record<string, unknown>) {
-  return messagesRoute.POST(new Request(`http://local/api/speaking/sessions/${sessionId}/messages`, {
+  return messagesRoute.POST(new Request(`http://127.0.0.1/api/speaking/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
@@ -104,7 +104,7 @@ describe("口语输出与纠错 HTTP 接口", () => {
     expect(feedbackSession.feedback.items[0].interactiveGap.annotations.length).toBeGreaterThan(0);
 
     const annotationId = feedbackSession.feedback.items[0].interactiveGap.annotations[0].id;
-    const lookupResponse = await lookupRoute.GET(new Request(`http://local/api/lookups/${annotationId}`), { params: Promise.resolve({ annotationId }) });
+    const lookupResponse = await lookupRoute.GET(new Request(`http://127.0.0.1/api/lookups/${annotationId}`), { params: Promise.resolve({ annotationId }) });
     expect(lookupResponse.status).toBe(200);
     expect(await lookupResponse.json()).toMatchObject({ noteId: null });
 
@@ -150,7 +150,7 @@ describe("口语输出与纠错 HTTP 接口", () => {
   }, 60_000);
 
   it("刷新可读取同一会话，已有答案优先成为中文思路", async () => {
-    const existingResponse = await sessionRoute.GET(new Request("http://local/api/speaking/session"), { params: Promise.resolve({ id: `speaking_${requestId.replaceAll("-", "")}` }) });
+    const existingResponse = await sessionRoute.GET(new Request("http://127.0.0.1/api/speaking/session"), { params: Promise.resolve({ id: `speaking_${requestId.replaceAll("-", "")}` }) });
     const existing = (await existingResponse.json()).session;
     expect(existing.status).toBe("completed");
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { z } from "zod";
 import { clearCompanionMemories, CompanionServiceError, deleteCompanionMemory, listCompanionMemories, updateCompanionMemory } from "@/lib/companion/service";
 import { updateCompanionMemorySchema } from "@/lib/companion/schemas";
@@ -11,7 +12,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const parsed = updateCompanionMemorySchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = updateCompanionMemorySchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "记忆修改参数无效", issues: parsed.error.issues }, { status: 400 });
   try {
     return NextResponse.json({ memory: await updateCompanionMemory(parsed.data) });
@@ -25,7 +28,9 @@ const deleteSchema = z.object({ id: z.string().min(1).max(160).optional(), all: 
   .refine((value) => Boolean(value.id) !== Boolean(value.all), "必须且只能指定一条记忆或全部记忆");
 
 export async function DELETE(request: Request) {
-  const parsed = deleteSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = deleteSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "删除参数无效", issues: parsed.error.issues }, { status: 400 });
   try {
     if (parsed.data.all) return NextResponse.json({ deleted: await clearCompanionMemories() });

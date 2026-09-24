@@ -32,7 +32,7 @@ beforeAll(async () => {
 });
 
 function createRequest() {
-  return new Request("http://local/api/answers", {
+  return new Request("http://127.0.0.1/api/answers", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ clientRequestId: requestId, questionId: "question_answers_api", inputLanguage: "mixed", rawText: "I usually 在晚上复习 because it is quiet." }),
@@ -55,13 +55,13 @@ describe("个人回答 HTTP 接口", () => {
     expect(duplicateBody.answer.id).toBe(answerId);
     expect(duplicateBody.answer.versions).toHaveLength(1);
 
-    const jobResponse = await jobRoute.GET(new Request(`http://local/api/ai/jobs/${firstBody.answer.job.id}`), { params: Promise.resolve({ id: firstBody.answer.job.id }) });
+    const jobResponse = await jobRoute.GET(new Request(`http://127.0.0.1/api/ai/jobs/${firstBody.answer.job.id}`), { params: Promise.resolve({ id: firstBody.answer.job.id }) });
     expect(jobResponse.status).toBe(200);
     expect((await jobResponse.json()).job).not.toHaveProperty("payloadJson");
   });
 
   it("用户编辑只追加版本，旧版本仍可回看，冲突返回 409", async () => {
-    const response = await answerRoute.PATCH(new Request(`http://local/api/answers/${answerId}`, {
+    const response = await answerRoute.PATCH(new Request(`http://127.0.0.1/api/answers/${answerId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ textEn: "I usually review my notes at night because it is quiet.", baseVersionNo: 1 }),
@@ -72,7 +72,7 @@ describe("个人回答 HTTP 接口", () => {
     expect(body.answer.versions.map((item: { versionNo: number }) => item.versionNo)).toEqual([2, 1]);
     expect(body.answer.rawText).toBe("I usually 在晚上复习 because it is quiet.");
 
-    const conflict = await answerRoute.PATCH(new Request(`http://local/api/answers/${answerId}`, {
+    const conflict = await answerRoute.PATCH(new Request(`http://127.0.0.1/api/answers/${answerId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ textEn: "A stale edit.", baseVersionNo: 1 }),
@@ -81,7 +81,7 @@ describe("个人回答 HTTP 接口", () => {
   });
 
   it("用 Mock 执行修订、Generator 与独立 Reviewer，题目详情返回个人材料", async () => {
-    const retry = await processRoute.POST(new Request(`http://local/api/answers/${answerId}/process`, {
+    const retry = await processRoute.POST(new Request(`http://127.0.0.1/api/answers/${answerId}/process`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ clientRequestId: "44444444-4444-4444-8444-444444444444" }),
@@ -91,7 +91,7 @@ describe("个人回答 HTTP 接口", () => {
     expect(processed.answer.status).toBe("ready");
     expect(processed.answer.versions[0]).toMatchObject({ kind: "ai_revised", textEn: "I stay focused by putting my phone in another room." });
 
-    const detail = await detailRoute.GET(new Request("http://local/api/questions/question_answers_api"), { params: Promise.resolve({ id: "question_answers_api" }) });
+    const detail = await detailRoute.GET(new Request("http://127.0.0.1/api/questions/question_answers_api"), { params: Promise.resolve({ id: "question_answers_api" }) });
     expect(detail.status).toBe(200);
     const questionDetail = (await detail.json()).question;
     expect(questionDetail.answerHistory).toEqual([expect.objectContaining({ id: answerId, inputLanguage: "mixed", status: "ready" })]);

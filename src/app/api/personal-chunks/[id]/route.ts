@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { localJsonBody } from "@/lib/http/local-write";
 import { z } from "zod";
 import { hidePersonalChunk, updatePersonalChunk } from "@/lib/answers/processor";
 
@@ -9,7 +10,9 @@ const updateSchema = z.object({
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const parsed = updateSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = updateSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "个人 Chunk 修改内容不合法" }, { status: 400 });
   const result = await updatePersonalChunk(id, parsed.data);
   if (result === "not_found") return NextResponse.json({ error: "Chunk 不存在" }, { status: 404 });

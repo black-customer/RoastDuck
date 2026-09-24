@@ -50,7 +50,7 @@ describe("IELTS Speaking Question Practice API Endpoints", () => {
   let createdAttemptId = "";
 
   it("POST /api/speaking-practice/questions/[id]/attempts creates an attempt with two input fields", async () => {
-    const request = new Request(`http://local/api/speaking-practice/questions/${questionId}/attempts`, {
+    const request = new Request(`http://127.0.0.1/api/speaking-practice/questions/${questionId}/attempts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -68,14 +68,14 @@ describe("IELTS Speaking Question Practice API Endpoints", () => {
     expect(body.attempt.answerText).toContain("井盖");
     createdAttemptId = body.attempt.id;
     for (const work of background.splice(0)) await work();
-    const { attempt } = await (await attemptRoute.GET(new Request("http://local"), { params: Promise.resolve({ id: createdAttemptId }) })).json();
+    const { attempt } = await (await attemptRoute.GET(new Request("http://127.0.0.1"), { params: Promise.resolve({ id: createdAttemptId }) })).json();
     expect(attempt.status).toBe("completed");
     expect(attempt.gapCount).toBe(1);
     expect(attempt.naturalVersion).toContain("manhole cover");
   });
 
   it("GET /api/speaking-practice/questions/[id]/attempts lists all independent attempts", async () => {
-    const response = await attemptsRoute.GET(new Request("http://local"), { params: Promise.resolve({ id: questionId }) });
+    const response = await attemptsRoute.GET(new Request("http://127.0.0.1"), { params: Promise.resolve({ id: questionId }) });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.attempts.length).toBeGreaterThanOrEqual(1);
@@ -83,7 +83,7 @@ describe("IELTS Speaking Question Practice API Endpoints", () => {
   });
 
   it("GET /api/speaking-practice/attempts/[id] retrieves attempt analysis, gaps, and cloze", async () => {
-    const response = await attemptRoute.GET(new Request("http://local"), { params: Promise.resolve({ id: createdAttemptId }) });
+    const response = await attemptRoute.GET(new Request("http://127.0.0.1"), { params: Promise.resolve({ id: createdAttemptId }) });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.attempt.id).toBe(createdAttemptId);
@@ -91,7 +91,7 @@ describe("IELTS Speaking Question Practice API Endpoints", () => {
   });
 
   it("POST /api/speaking-practice/attempts/[id]/translation evaluates translation semantically", async () => {
-    const request = new Request("http://local", {
+    const request = new Request("http://127.0.0.1", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -145,7 +145,7 @@ describe("AI Free Talk API Endpoints", () => {
     expect(postMsgBody.assistantMessage.text.length).toBeGreaterThan(0);
     expect(postMsgBody.messages.some((m:{role:string;text:string})=>m.role==='user'&&m.text==='I was walking around and saw a 井盖.')).toBe(true);
 
-    const getMsgsRes = await messagesRoute.GET(new Request("http://local"), { params: Promise.resolve({ id: conversationId }) });
+    const getMsgsRes = await messagesRoute.GET(new Request("http://127.0.0.1"), { params: Promise.resolve({ id: conversationId }) });
     expect(getMsgsRes.status).toBe(200);
     const getMsgsBody = await getMsgsRes.json();
     expect(getMsgsBody.messages.some((m:{id:string;text:string})=>m.id===postMsgBody.assistantMessage.id&&m.text===postMsgBody.assistantMessage.text)).toBe(true);

@@ -48,6 +48,8 @@ export function AnswerStudio({ question }: { question: QuestionDetail }) {
   const [lookupId, setLookupId] = useState<string | null>(null);
   const [language, setLanguage] = useState<AnswerInputLanguage>("mixed");
   const [text, setText] = useState("");
+  const textRef = useRef("");
+  textRef.current = text;
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [speechNote, setSpeechNote] = useState("");
@@ -77,7 +79,8 @@ export function AnswerStudio({ question }: { question: QuestionDetail }) {
     recognition.continuous = true;
     recognition.interimResults = true;
     let committed = "";
-    const before = text.trim();
+    let before = text.trim();
+    let lastEmitted = before;
     recognition.onresult = (event) => {
       let interim = "";
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
@@ -85,8 +88,18 @@ export function AnswerStudio({ question }: { question: QuestionDetail }) {
         if (result.isFinal) committed += result[0].transcript;
         else interim += result[0].transcript;
       }
+      const current = textRef.current.trim();
+      if (current !== lastEmitted) {
+        // 听写期间的手动编辑优先：以编辑后的文本为新基底，不让转写覆盖输入。
+        before = current;
+        committed = "";
+        lastEmitted = current;
+        return;
+      }
       const recognized = `${committed}${interim}`.trim();
-      setText([before, recognized].filter(Boolean).join(before ? " " : ""));
+      const next = [before, recognized].filter(Boolean).join(before ? " " : "");
+      lastEmitted = next;
+      setText(next);
     };
     recognition.onerror = (event) => {
       setListening(false);

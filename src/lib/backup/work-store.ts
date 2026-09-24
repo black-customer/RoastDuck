@@ -35,7 +35,13 @@ async function lock<T>(file: string, work: () => Promise<T>): Promise<T> {
       try {process.kill(owner.pid, 0);} catch (reason) {if ((reason as NodeJS.ErrnoException).code === 'ESRCH') alive = false;}
     }
     if (alive) throw new BackupError('备份分块正在保存，请稍后重试。', 409);
-    await fs.unlink(file); handle = await fs.open(file, 'wx', 0o600);
+    await fs.unlink(file).catch((error: NodeJS.ErrnoException) => {if (error.code !== 'ENOENT') throw error;});
+    try {handle = await fs.open(file, 'wx', 0o600);}
+    catch (error) {
+      // 另一个进程同时清走了死锁文件；重试一次拿锁而不是裸抛 EEXIST。
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      try {handle = await fs.open(file, 'wx', 0o600);} catch {throw new BackupError('备份分块正在保存，请稍后重试。', 409);}
+    }
   }
   try {await handle.writeFile(JSON.stringify({pid: process.pid})); return await work();}
   finally {await handle.close(); await fs.unlink(file).catch(() => undefined);}
@@ -84,6 +90,9 @@ export async function appendBackupChunk(root: string, id: string, offset: number
           written += next.bytesWritten;
         }
         await handle.sync();
+      } else {
+        // 跳过位置会造成文件空洞，必须按服务器返回的位置续传。
+        throw new BackupError('分块位置越界，请按服务器位置继续上传。', 409);
       }
       const nextOffset = (await handle.stat()).size;
       return {nextOffset, complete: nextOffset === upload.bytes};

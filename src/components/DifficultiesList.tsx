@@ -191,7 +191,7 @@ export function DifficultiesList({ initialNotes }: { initialNotes: DifficultyNot
         <div className="py-20 text-center">
           <p className="text-lg font-semibold">这里暂时没有{filter === "open" ? "待处理" : filter === "resolved" ? "已解决" : ""}难点</p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">学习时点击英文，系统会自动把需要回看的内容带到这里。</p>
-          <Link href="/learn?mode=learn" className="primary-button mt-6">去学习</Link>
+          <Link href="/study?mode=learn" className="primary-button mt-6">去学习</Link>
         </div>
       )}
 

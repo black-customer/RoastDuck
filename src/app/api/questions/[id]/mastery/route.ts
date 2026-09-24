@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { localJsonBody } from "@/lib/http/local-write";
 import { setQuestionMastery } from "@/lib/questions/service";
 
 const masteryInputSchema = z.object({
@@ -8,8 +9,9 @@ const masteryInputSchema = z.object({
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const json = await request.json().catch(() => ({}));
-  const parsed = masteryInputSchema.safeParse(json);
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = masteryInputSchema.safeParse(localBody.body ?? {});
   if (!parsed.success) {
     return NextResponse.json({ error: "掌握状态参数不合法" }, { status: 400 });
   }
@@ -19,6 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   if (typeof parsed.data.mastered === "boolean") {
     const result = await setQuestionMastery(id, parsed.data.mastered);
+    if (!result) return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     return NextResponse.json(result);
   }
   return NextResponse.json({ error: "缺少有效参数" }, { status: 400 });

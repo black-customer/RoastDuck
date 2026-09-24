@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { localJsonBody } from "@/lib/http/local-write";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDbReady } from "@db/client";
@@ -14,7 +15,9 @@ const patchNoteSchema = z
   .refine((value) => value.userRemark !== undefined || value.status !== undefined, "至少更新一个字段");
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const parsed = patchNoteSchema.safeParse(await request.json().catch(() => null));
+  const localBody = await localJsonBody(request);
+  if (!localBody.ok) return localBody.response;
+  const parsed = patchNoteSchema.safeParse(localBody.body);
   if (!parsed.success) return NextResponse.json({ error: "笔记参数无效", issues: parsed.error.issues }, { status: 400 });
   const { id } = await params;
   const db = await getDbReady();

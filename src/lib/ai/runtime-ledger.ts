@@ -10,7 +10,7 @@ interface Receipt {
   request_hash:string;response_json:string|null;error_code:string|null;updated_at:string;
 }
 export class RuntimeRequestError extends Error {
-  constructor(message:string,readonly code:"request_pending"|"result_unknown"|"request_failed"|"receipt_conflict") {super(message);}
+  constructor(message:string,readonly code:"request_pending"|"result_unknown"|"request_failed"|"receipt_conflict"|"invalid_receipt") {super(message);}
 }
 export interface RuntimeCallOptions {jobId?:string|null;retryFailed?:boolean;retryUnknown?:boolean}
 export type RuntimeResult<T>=StructuredAiResult<T>&{runId:string;attempts:number};
@@ -39,8 +39,14 @@ export function createRuntimeCalls(database:DatabasePort,provider:AiProvider,clo
   async function execute<T>(key:string,requestHash:string,request:StructuredAiRequest<T>,options:RuntimeCallOptions):Promise<RuntimeResult<T>> {
     const [receipt]=await database.read(tx=>tx.all<Receipt>(sql`SELECT * FROM runtime_requests WHERE logical_key=${key}`));
     if(receipt?.state==="completed"){
-      const cached=JSON.parse(receipt.response_json!) as StructuredAiResult<T>;
-      return {...cached,data:request.schema.parse(cached.data),runId:receipt.run_id,attempts:0};
+      let cached:StructuredAiResult<T>|null=null;
+      try{const parsed=JSON.parse(receipt.response_json!) as StructuredAiResult<T>;cached={...parsed,data:request.schema.parse(parsed.data)};}
+      catch{
+        // 损坏或与当前 Schema 不兼容的缓存回执不能自动重新付费请求，按失败处理并要求明确重试。
+        await database.write(tx=>tx.run(sql`UPDATE runtime_requests SET state='failed',error_code='invalid_receipt' WHERE logical_key=${key} AND run_id=${receipt.run_id}`));
+        if(!options.retryFailed)throw new RuntimeRequestError("上次结果缓存损坏；确认重试会再次请求","invalid_receipt");
+      }
+      if(cached)return {...cached,runId:receipt.run_id,attempts:0};
     }
     if(receipt?.state==="pending"||receipt?.state==="unknown"){
       const local=received.get(receipt.run_id) as StructuredAiResult<T>|undefined;
