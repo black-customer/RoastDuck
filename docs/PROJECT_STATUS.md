@@ -1,5 +1,12 @@
 # 当前工程真相
 
+## 已发布：v0.4.2（2026-09-25）
+
+- 公开安全快照6498573推送main，完整Linux CI通过：https://github.com/black-customer/RoastDuck/actions/runs/36028295138（app-quality 7m53s）。正式Release：https://github.com/black-customer/RoastDuck/releases/tag/v0.4.2，非Draft/Prerelease，标签精确指向6498573。
+- 全库Review后修复：daily复习v3卡死、学习音频GET改为仅缓存+本机守卫、25个写路由回环JSON守卫、Web业务备份补齐个人学习数据表、3处听写陈旧闭包、服务端写入路径加固、前端静默失败收敛、FreeTalk镜像游标化与v37轻学习事件索引迁移。
+- 本机统一质量门check-1790266534760九项退出0（含649单测、32集成文件、构建、两类材料审计）；E2E 20项通过后既有Windows服务原生退出0xC0000005，不调查，完整门以Linux CI为准。开发Runtime请求0。
+- v37已在隔离库验证；真实库将于下次启动/init时按既有备份流程应用。私人数据、真实音频与旧Git历史未上传。
+
 ## 开发中：v0.4.2 修复批次（2026-09-24—25）
 
 - 全库Review（API 88路由、核心学习/回答/句子模块、前端页面组件、AI/TTS/备份与性能）后定向修复，源码提交至 codex/web-usability：7f12594（daily复习v3卡死）、4fbcfcf（学习音频GET仅缓存）、6bc790d（25个写路由回环JSON守卫）、db82730（备份补齐个人学习数据）、8b796cd（听写陈旧闭包）、16c9e38（服务端写入加固）、121aa24（前端静默失败）、fe944b2→perf amend（镜像游标+v37索引）。
